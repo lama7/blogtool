@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from optparse import OptionParser
+from tempfile import NamedTemporaryFile
 import blogapi
 
 import btconfigparser
@@ -11,6 +12,7 @@ import re
 import sys
 import os
 import types
+import subprocess
 
 try:
     import markdown
@@ -679,8 +681,33 @@ def bt(argv):
 ################################################################################
 #
 #
+def edit(fh):
+    editor = os.getenv('EDITOR', 'vim')
+
+    try:
+        rcode = subprocess.call([editor, fh.name])
+    except OSError, e:
+        print "Can't launch %s:  %s" % (editor, e)
+        return None
+
+    if rcode == 0:
+        return True
+    else:
+        return None
+
+################################################################################
+#
+#
 def main():
-    bt(sys.argv[1:])
+    if len(sys.argv) == 1:
+        fd = NamedTemporaryFile()
+        text = edit(fd)
+        if text != None:
+            bt([fd.name])
+        else:
+            print "Nothing to do, exiting."
+    else:
+        bt(sys.argv[1:])
 
 ################################################################################
 #
