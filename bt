@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+# I pilfered this technique from the blogtk2.0 code.  In essence, this is an
+# entry point to the actual python code.  The benefit here is the "import"
+# causes the module to be compiled to bytecode.  Though the benefit in this case
+# is probably small.
+
+import sys
+from os.path import join
+
+sys.path.insert(0, join('/usr', 'local', 'share', 'blogtool', 'lib'))
+
+from blogtool import main
+main()
