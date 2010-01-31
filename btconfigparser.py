@@ -1,5 +1,6 @@
 import re
 import types
+import sys
 
 ''' Start by defining a bunch of exception classes for various parse errors.
 Admittedly, this is likely a naive implementaion, but I'm still learning about
@@ -30,24 +31,6 @@ class btKeywordError(btParseError):
     def __str__(self):
         return self.message
     
-################################################################################
-#
-#
-class btOperatorError(btParseError):
-    def __init__(self, operator):
-        self.message = "Invalid header operator: %s" % operator
-    def __str__(self):
-        return self.message
-
-################################################################################
-#
-#
-class btListError(btParseError):
-    def __init__(self, string):
-        self.message = "List error: %s" % string
-    def __str__(self):
-        return self.message
-
 ################################################################################
 #
 #
@@ -104,11 +87,31 @@ class btPostSettings():
 #
 #  define a config class- this will hide some ugliness
 #
+#  This version of the parser uses a different technique to make approach a
+#  "truer" parser- that is, the ability to parse a series of lines according
+#                  to a set of rules
+#
+#  The rules for this new version are as follows:
+#  -  the largest element I'll call a ASSIGNMENT- consisting of a KEYWORD followed
+#     ':', followed by an element
+#  -  the parser starts by finding a KEYWORD, which is a capitalized word
+#  -  the ':' can be followed by a single ELEMENT or a list of ',' separated
+#     ELEMENTs
+#  -  ASSIGNMENTs can span multiple lines if comprised of ',' separated
+#     ELEMENTs
+#  -  an ELEMENT can be a GROUP or a VALUE terminated by a newline or a ','
+#  -  a GROUP is a series of SENTENCES related to the original KEYWORD
+#     it starts with a '{' and is terminated by a '}'
+#  -  a VALUE is a contiguous piece of text terminated by a ',' or a '\n'
+#     or a '}'
+#  -  multiple groups can be specified using a ',' to separate them
+#
 class bt_config():
-    __hdr_keyword = re.compile('([A-Z]+)\s*([:|{|\[])\s*(.*)', re.DOTALL)
-    __hdr_value = re.compile('([^\n]+)\s*([A-Z]+.*|\}.*|$)', re.DOTALL)
-    __hdr_list = re.compile('([^\]]+)\s*\]\s*(.*)', re.DOTALL)
-    __hdr_group_term = re.compile('\s*[}]\s*(.*)', re.DOTALL)
+    __hdr_value = re.compile('([^\n,]+)\s*(.*)', re.DOTALL)
+    __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
+    __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
+    __hdr_comma = re.compile(',\s*(.*)', re.DOTALL)
+    __hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
     __hdr_keywords = [ 'TITLE',
                        'BLOG',
                        'NAME',
@@ -121,38 +124,114 @@ class bt_config():
                        'POSTTIME' ]
 
     def __init__(self):
-        self.__hdr_operator = { '{' : self.__parseGroup,
-                                '[' : self.__parseList,
-                                ':' : self.__parseValue, }
-#       self.__ast = {}
+        pass
 
+    # the 'parsestring' should be the ENTIRE string to parse, not a piece-meal
+    # version of it
     def parse(self, parsestring):
-        # turn the string into an astract syntax tree which we will then
-        # turn into a config object
         ast = {}
+        # turn the string into an abstract syntax tree which we will then
+        # turn into a config object
         while parsestring:
-            (keyword, val, parsestring) = self.__parseKeyword(parsestring)
-
-            # build AST using keyword/ value pairs
-            if keyword not in ast:
-                ast[keyword] = []
-            if keyword == 'CATEGORIES' or keyword == 'TAGS':
-                ast[keyword].append(val)
-            elif type(val) == types.ListType:
-                ast[keyword].extend(val)
-            else:
-                ast[keyword].append(val)
+            (keyword, val, parsestring) = self.__parseAssignment(parsestring)
+            self.__addAST(ast, keyword, val)
 
         # determine how many configs we need by finding the length of the 
         # longest list in the AST
         numconfigs = max(map(lambda x: len(ast[x]), ast.keys()))
         postconfig = [ btPostSettings() for x in range(numconfigs) ]
 
-        # now walk the tree to build the object
+        return self.__interpAST(ast, postconfig)
+
+
+    # entry point to for parsing- basically, pass in any string to this
+    def __parseAssignment(self, parsestring):
+        m = self.__hdr_keyword.match(parsestring)
+        if m == None:
+            raise btNoKeyword(parsestring)
+
+        keyword, parsestring = m.group(1,2)
+        if keyword not in self.__hdr_keywords:
+            raise btKeywordError(keyword)
+
+        val, parsestring = self.__parseElement(parsestring)
+
+        return keyword, val, parsestring
+
+    # at this point, a 'KEYWORD:' has been parsed
+    def __parseElement(self, parsestring):
+        # if next character is a '{' then  parse a GROUP
+        # otherwise, look for VALUE
+        m = self.__hdr_group.match(parsestring)
+        if m != None:
+            return self.__parseGroup(m.group(1))
+        else:
+            return self.__parseValue(parsestring)
+
+    # a VALUE is anything up to a newline or a ','
+    def __parseValue(self, parsestring):
+        m = self.__hdr_value.match(parsestring)
+        if m == None:
+            raise btValueError(parsestring)
+        val, parsestring = m.group(1).rstrip(), m.group(2)
+
+        # if next character is a comma, then we have a list otherwise
+        # it's a single value assignment
+        return self.__parseComma(val, parsestring)
+
+    # a KEYWORD has been parse followed by a '{', so we need to start
+    # parsing assignmens again.
+    def __parseGroup(self, parsestring):
+        sub_ast = {}
+
+        # first process the group
+        m = None
+        while m == None:
+            # continue processing within current group
+            (keyword, val, parsestring) = self.__parseAssignment(parsestring)
+            self.__addAST(sub_ast, keyword, val)
+            
+            # check for end of group
+            m = self.__hdr_group_term.match(parsestring)
+
+        # if next character is a comma, then we have a list
+        return self.__parseComma(sub_ast, m.group(1))
+
+    # common comma processing
+    def __parseComma(self, obj, parsestring):
+        m = self.__hdr_comma.match(parsestring)
+        if m == None:
+            return [obj], parsestring
+        else:
+            vallist, parsestring = self.__parseElement(m.group(1))
+            vallist.insert(0, obj)
+            return vallist, parsestring
+
+    # adds a key value pair into the ast as appropriate
+    def __addAST(self, ast, keyword, val):
+        # build AST using keyword value pairs
+        if keyword not in ast:
+            ast[keyword] = []
+
+        # determine how to add value into AST
+        # in the case of CATEGORIES or TAGS, a list IS the object that
+        # is needed, rather than a text string for other case so append
+        # the list itself
+        if keyword == 'CATEGORIES' or keyword == 'TAGS':
+            ast[keyword].append(val)
+        else:
+            ast[keyword].extend(val)
+
+    # takes an AST and creates config objects from it
+    def __interpAST(self, ast, postconfig):
         # start by looking for the BLOG entry- process if it's a group
-        if 'BLOG' in ast and \
-           type(ast['BLOG'][0]) == types.DictType:
+        if 'BLOG' in ast: 
             for blog, config in zip(ast['BLOG'], postconfig):
+                # make sure it's a dict before proceeding
+                if type(blog) != types.DictType:
+                    config.set('name', blog)
+                    continue
+
                 # in a blog group, we'll assume there are no lists
                 # anywhere we aren't expecting them
                 for k,v in blog.iteritems():
@@ -160,9 +239,12 @@ class bt_config():
                     if k == 'categories' or k == 'tags':
                         if type(v) != types.ListType:
                             v = [v]
-                    config.set(k, v)
+                    config.set(k, v.pop())
             del ast['BLOG']
 
+        return self.__interpASTcommon(ast, postconfig)
+
+    def __interpASTcommon(self, ast, postconfig):
         # processing is pretty straight forward now- iterate through the AST
         # and fill in the config objects.  
         for k, vallist in ast.iteritems():
@@ -204,49 +286,4 @@ class bt_config():
 
         return postconfig
 
-    def __parseKeyword(self, string):
-        m = self.__hdr_keyword.match(string)
-        if m == None:
-            raise btNoKeyword(string)
-        
-        (keyword, operator, string) = m.group(1, 2, 3)
-        if keyword not in self.__hdr_keywords:
-            raise btKeywordError(keyword)
 
-        if operator not in self.__hdr_operator:
-            raise btOperatorError(operator)
-
-        val, string = self.__hdr_operator[operator](string)
-
-        return keyword, val, string
-
-    def __parseGroup(self, string):
-        d = {}
-
-        while 1:
-            # check if we've reached the end of the group
-            m = self.__hdr_group_term.match(string)
-            if m == None:
-                # continue processing within current group
-                (keyword, val, string) = self.__parseKeyword(string)
-                d[keyword] = val
-            else:
-                break
-        
-        return (d, m.group(1))
-
-    def __parseList(self, string):
-        m = self.__hdr_list.match(string)
-        if m == None:
-            raise btListError(string)
-
-        list = re.split('\s*,\s*', m.group(1).rstrip())
-        return (list, m.group(2))
-
-    def __parseValue(self, string):
-        m = self.__hdr_value.match(string)
-        if m == None:
-            raise btValueError(string)
-        
-        return m.group(1).rstrip(), m.group(2)
- 
