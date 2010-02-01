@@ -43,6 +43,15 @@ class btValueError(btParseError):
 ################################################################################
 #
 #
+class btInterpError(btParseError):
+    def __init__(self, key, value):
+        self.message = "Value '%s' not valid for key '%s'" % (key, value)
+    def __str__(self):
+        return self.message
+
+################################################################################
+#
+#
 class btPostSettings():
     def __init__(self):
         
@@ -225,6 +234,8 @@ class bt_config():
     # takes an AST and creates config objects from it
     def __interpAST(self, ast, postconfig):
         # start by looking for the BLOG entry- process if it's a group
+        # entries under the BLOG keyword define settings specific to 1 config
+        # so process BLOG entries in order and build 1 config at a time
         if 'BLOG' in ast: 
             for blog, config in zip(ast['BLOG'], postconfig):
                 # make sure it's a dict before proceeding
@@ -234,16 +245,21 @@ class bt_config():
 
                 # in a blog group, we'll assume there are no lists
                 # anywhere we aren't expecting them
-                for k,v in blog.iteritems():
+                for k, v in blog.iteritems():
                     k = k.lower()
-                    if k == 'categories' or k == 'tags':
-                        if type(v) != types.ListType:
-                            v = [v]
+                    # within a BLOG group, the only setting that can have more
+                    # than 1 value are CATEGORIES and TAGS
+                    if len(v) != 1:
+                        raise btInterpError(k, v)
+
                     config.set(k, v.pop())
             del ast['BLOG']
 
         return self.__interpASTcommon(ast, postconfig)
 
+    # this takes entries that are common to all configs- basically, for each
+    # setting, look at each config and if a value isn't already set then set
+    # it, otherwise leave it alone
     def __interpASTcommon(self, ast, postconfig):
         # processing is pretty straight forward now- iterate through the AST
         # and fill in the config objects.  
@@ -283,6 +299,9 @@ class bt_config():
 #                    # matches the list index for the value, then assign
 #                    if config.get(k) == None or v.index(o) == postconfig.index(config):
 #                        config.set(k, o)
+        for pc in postconfig:
+            pc.debug()
+        sys.exit()
 
         return postconfig
 
