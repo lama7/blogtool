@@ -462,37 +462,6 @@ def bt(argv):
     # and then later to process the post header
     btconfig = btconfigparser.bt_config()
 
-    for file in argv:
-        # since we'll be processing all of this from memory, just read everything
-        # into a list.  We won't need it after we process it anyway
-        try:
-            f = open(file, 'r')
-            lines = f.readlines()
-
-        except IOError:
-            print "Unable to open %s..." % f
-            continue
-
-        finally:
-            f.close()
-
-        header, posttext = getHeaderandPostText(lines)
-
-        del lines  # no longer needed
-
-        # now that we have the post header processed, we need to reconcile it
-        # with anything from a config file
-        try:
-            post_config = btconfig.parse(header)
-        except btconfigparser.btParseError, err_str:
-            print err_str
-            sys.exit()
-
-
-    sys.exit()
-
-
-
     ############################################################################ 
     # command line option parser is initialized and then invoked in this
     # function- I can't really say this is THE way to do it, but it seems OK
