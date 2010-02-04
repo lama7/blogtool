@@ -299,9 +299,6 @@ class bt_config():
 #                    # matches the list index for the value, then assign
 #                    if config.get(k) == None or v.index(o) == postconfig.index(config):
 #                        config.set(k, o)
-        for pc in postconfig:
-            pc.debug()
-        sys.exit()
 
         return postconfig
 
