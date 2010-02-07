@@ -607,11 +607,18 @@ def bt(argv):
             f = open(file, 'r')
             lines = f.readlines()
 
+        # hopefully, this isn't too clever.  The assumption is that file
+        # failed to opend because it doesn't exist.  In this case, open
+        # it and launch and editor.  When the editor exits, insert the file
+        # to argv list we are iterating over and go back to the top
         except IOError:
-            print "Unable to open %s..." % f
+            f = open(file, 'w')
+            edit(f)
+            argv.insert(0, file)
             continue
 
-        finally:
+        # executed if no exceptions raised
+        else:
             f.close()
 
         # technically, there needs to be at least 3 lines in the file- one for the
@@ -701,8 +708,7 @@ def edit(fh):
 def main():
     if len(sys.argv) == 1:
         fd = NamedTemporaryFile()
-        text = edit(fd)
-        if text != None:
+        if edit(fd) != None:
             bt([fd.name])
         else:
             print "Nothing to do, exiting."
