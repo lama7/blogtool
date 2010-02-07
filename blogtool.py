@@ -481,9 +481,7 @@ def bt(argv):
 
     ############################################################################ 
     # delete post option processing
-    atleastoneoptionfound = None
     if opts.del_postid:
-        atleastoneoptionfound = 1
         # We need a blog to delete from.  If there are multiple blogs specified
         # in the config file, then bail and instruct the user to use the -b
         # option.  If only 1, then use it regardless.  Oh- if multiples, then
@@ -504,7 +502,6 @@ def bt(argv):
     ############################################################################ 
     # recent post summary option processing
     if opts.num_recent_t:
-        atleastoneoptionfound = 1
         pc = getpostconfig(cf_config)
         if pc == None:
             error("Cannot process 'recent' request because there is no blog\n\
@@ -528,7 +525,6 @@ def bt(argv):
     ############################################################################ 
     # list blog categories option
     if opts.getcats:
-        atleastoneoptionfound = 1
         pc = getpostconfig(cf_config)
         if pc == None:
             error("Cannot process 'categories' request because there is no\n\
@@ -557,7 +553,6 @@ def bt(argv):
     ############################################################################ 
     # add a new category
     if opts.newcat:
-        atleastoneoptionfound = 1
         pc = getpostconfig(cf_config)
         if pc == None:
             error("Cannot process newcategory request because there is no\n\
@@ -584,19 +579,6 @@ def bt(argv):
 
         print "Done\n"
         del blog
-
-    # Basically, blogtool is supposed to do SOMETHING.  Either delete a post, 
-    # publish a post, get recent posts, whatever.  As implemented, publishing
-    # posts are not implemented as an option- just supply the filename on the
-    # command line.  Everything else is implemented as an option.  Further, 
-    # if options are supplied in ADDITION to post files, blogtool will process
-    # everything.  So either options are specified, or posts are specified,
-    # or both are specified.
-    if len(argv) == 0:
-        if not atleastoneoptionfound:
-            parser.error("Try specifying some arguments.  Really...")
-        else:
-            sys.exit()
 
     ############################################################################ 
     # fairly straightforward loop over the file in the arglist
@@ -625,7 +607,7 @@ def bt(argv):
         # header, one blank line, one line for post text
         if len(lines) < 3:
             error('Postfile must have a blank line separating header and post \
-                   text')
+                   text\n')
 
         header, posttext = getHeaderandPostText(lines)
 
