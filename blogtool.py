@@ -259,7 +259,7 @@ def procPost(blog, blogname,  posttext):
     # doesn't seem to hurt anyone if I leave it in place
     # don't do this for 'pre' tags
     souptext = soup.findAll(text = True) 
-    [ t.replaceWith(t.replace('\n', '')) for t in souptext if not skiptag(t) ]
+    [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
 
     # now deal with all the 'img' tags
     for img in soup.findAll('img'):
