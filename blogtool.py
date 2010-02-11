@@ -18,14 +18,16 @@ try:
     import markdown
 except ImportError:
     print """
-You need to install python-markdown before you can use blogtool."""
+You need to install python-markdown before you can use blogtool.
+"""
     sys.exit()
 
 try:
     import BeautifulSoup 
 except ImportError:
     print """
-You need to install BeautifulSoup before you can use blogtool."""
+You need to install BeautifulSoup before you can use blogtool.
+"""
     sys.exit()
 
 #################################################################################
@@ -37,17 +39,20 @@ options = [
                  'optstr_long'  : '--add-categories',
                  'action' : 'store_true',
                  'dest' : 'addcats',
-                 'help' : "Categories specified for the post will be added to the\
-                           blog's category list if they do not already exist." 
+                 'help' : """
+Categories specified for the post will be added to the blog's category list if
+they do not already exist.
+"""
             },
             
             {    'optstr_short' : '-b',
                  'optstr_long'  : '--blog',
                  'action' : 'store',
                  'dest' : "blogname",
-                 'help' : "Blog name for operations on blog.  The name must\
-                           correspond to a name in ~/.btconfig or a config file\
-                           specified on the command line." 
+                 'help' : """
+Blog name for operations on blog.  The name must correspond to a name in
+~/.btconfig or a config file specified on the command line.
+""" 
             },
              
             {    'optstr_short' : "-c", 
@@ -101,14 +106,6 @@ options = [
         ]
 
 ################################################################################
-#
-# error
-#
-def error(str):
-    sys.stderr.write(str)
-    sys.exit(1)
-
-################################################################################
 #   
 #   Error classes for blogtool
 #
@@ -126,7 +123,8 @@ class blogtoolNoBlogName(blogtoolError):
     def __init__(self):
         self.message = """
 There are multple blogs in the config file.  Use the '-b' option to specify
-which to use."""
+which to use.
+"""
 
     def __str__(self):
         return self.message
@@ -137,7 +135,8 @@ which to use."""
 class blogtoolBadName(blogtoolError):
     def __init__(self):
         self.message = """
-The blog name provided does not match anything in the configuration file."""
+The blog name provided does not match anything in the configuration file.
+"""
 
     def __str__(self):
         return self.message
@@ -152,11 +151,56 @@ A '~/.btconfig' file was not found nor was a config file specified on the comman
 line.  Without a configuration file, the only operation possible is posting.
 
 To perform any optional operations (deleting posts, retrieving recent titles,
-etc.) please create a ~/.btconfig file."""
+etc.) please create a ~/.btconfig file.
+"""
 
     def __str__(self):
         return self.message
 
+################################################################################
+#   
+#
+class blogtoolPostFileError(blogtoolError):
+    def __init__(self):
+        self.message = """
+Post file must have a blank line separating header and post text.
+"""
+
+    def __str__(self):
+        return self.message
+
+################################################################################
+#   
+#
+class blogtoolDeletePostError(blogtoolError):
+    def __init__(self, postid, blogname):
+        self.message = "Unable to delete post %s from %s" % (postid, blogname)
+    
+    def __str__(self):
+        return self.message
+
+################################################################################
+#   
+#
+class blogtoolFNFError(blogtoolError):
+    def __init__(self, filename):
+        self.message = "File not found: %s" % filename
+
+    def __str__(self):
+        return self.message
+
+################################################################################
+#   
+#
+class blogtoolHeaderError(blogtoolError):
+    def __init__(self):
+        self.message = """
+The post file has an invalid header.
+"""
+
+    def __str__(self):
+        return self.message
+        
 ################################################################################
 #   
 #
@@ -225,7 +269,10 @@ class blogtool():
 
         # now actually check for options to process
         if self.opts.del_postid:
-            self.doOptionDelPost()
+            try:
+                self.doOptionDelPost()
+            except blogtoolDeletePostError, err_str:
+                print err_str
 
         if self.opts.num_recent_t:
             self.doOptionGetRecent()
@@ -239,10 +286,17 @@ class blogtool():
     ############################################################################ 
     def doFilelist(self):
         for self.filename in self.filelist:
+            print "Processing post file %s..." % self.filename
+
             try:
                 self.doPostFile()
             except blogtoolRetry:
                 self.filelist.insert(0, self.filename)
+                continue
+            except (blogtoolPostFileError, blogtoolHeaderError), err_msg:
+                print err_msg
+                print "The post in %s will cannot be sent to blog." % \
+                                                                   self.filename
                 continue
 
             for bpc in self.post_config:
@@ -305,8 +359,8 @@ class blogtool():
 
         postid = self.blogproxy.deletePost(self.opts.del_postid)
         if postid == None:
-            error("Unable to delete post %s from %s" % (self.opts.del_postid, \
-                                                        self.bc.name))
+            raise blogtoolDeletePostError(self.opts.del_postid, self.bc.name)
+
 
     ############################################################################ 
     def doOptionGetRecent(self):
@@ -404,7 +458,7 @@ class blogtool():
                     # try anchoring file to the user's home directory       
                     imgf = os.path.expanduser('~') + '/' + imgf
                     if os.path.isfile(imgf) != 1:
-                        error("Image file not found: %s\n" % img['src'])
+                        raise blogtoolFNFError(img['src'])
             else:
                 # this is a link so don't proceed any further, move on to the next
                 continue
@@ -504,8 +558,7 @@ class blogtool():
         # technically, there needs to be at least 3 lines in the file- one for the
         # header, one blank line, one line for post text
         if len(lines) < 3:
-            error('Postfile must have a blank line separating header and post \
-                   text\n')
+            raise blogtoolPostFileError()
 
         self.header, self.posttext = getHeaderandPostText(lines)
 
@@ -518,7 +571,7 @@ class blogtool():
                                          self.cf_config)
         except btconfigparser.btParseError, err_str:
             print err_str
-            sys.exit()
+            raise blogtoolHeaderError()
 
     ############################################################################ 
     def pushPost(self):
