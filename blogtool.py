@@ -17,14 +17,88 @@ import subprocess
 try:
     import markdown
 except ImportError:
-    print "You need to install python-markdown before you can use blogtool."
+    print """
+You need to install python-markdown before you can use blogtool."""
     sys.exit()
 
 try:
     import BeautifulSoup 
 except ImportError:
-    print "You need to install BeautifulSoup before you can use blogtool."
+    print """
+You need to install BeautifulSoup before you can use blogtool."""
     sys.exit()
+
+#################################################################################
+#
+# bt_options- for processing command line arguments
+#
+options = [
+            {    'optstr_short' : '-a',
+                 'optstr_long'  : '--add-categories',
+                 'action' : 'store_true',
+                 'dest' : 'addcats',
+                 'help' : "Categories specified for the post will be added to the\
+                           blog's category list if they do not already exist." 
+            },
+            
+            {    'optstr_short' : '-b',
+                 'optstr_long'  : '--blog',
+                 'action' : 'store',
+                 'dest' : "blogname",
+                 'help' : "Blog name for operations on blog.  The name must\
+                           correspond to a name in ~/.btconfig or a config file\
+                           specified on the command line." 
+            },
+             
+            {    'optstr_short' : "-c", 
+                 'optstr_long'  : "--config", 
+                 'action' : 'store',
+                 'dest' : "configfile", 
+                 'help' : "specify a config file" 
+            },
+            
+            {    'optstr_short' : "-d", 
+                 'optstr_long' : '--delete',
+                 'action' : 'store',
+                 'dest' : "del_postid", 
+                 'help' : "delete a post" 
+            },
+            
+            {    'optstr_short' : "-C",
+                 'optstr_long'  : "--Categories",
+                 'action' : "store_true",
+                 'dest' : "getcats",
+                 'help' : "Get a list of catgories for a blog" 
+            },
+            
+            {    'optstr_short' : "-s",
+                 'optstr_long'  : "--schedule",
+                 'action' : 'store',
+                 'dest' : "posttime",
+                 'help' : "Time to publish post in YYYYmmddHHMMSS format" 
+            },
+            
+            {    'optstr_short' : "-t",
+                 'optstr_long'  : "--recent-titles",
+                 'action' : 'store',
+                 'dest' : "num_recent_t",
+                 'help' : "rettrieve recent posts from a blog" 
+            },
+            
+            {    'optstr_short' : "-n",
+                 'optstr_long'  : "--new-categories",
+                 'action' : 'store',
+                 'dest' : "newcat",
+                 'help' : "Add a new category to a blog" 
+            },
+            
+            {    'optstr_long' : "--draft",
+                 'action' : "store_false",
+                 'dest' : "publish",
+                 'default' : True,
+                 'help' : "Do not publish post.  Hold it as a draft." 
+            },
+        ]
 
 ################################################################################
 #
@@ -35,85 +109,606 @@ def error(str):
     sys.exit(1)
 
 ################################################################################
+#   
+#   Error classes for blogtool
 #
-# split the file into 2 sections- the header and the post
-# divider is the first blank line encountered
-#
-def getHeaderandPostText(linelist):
-    # find first blank line so we can split the list
-    for line in linelist:
-        if line.isspace():
-            i = linelist.index(line)
-            break
 
-    return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
+################################################################################
+#   
+#  define base class for errors
+class blogtoolError(Exception):
+    pass
+
+################################################################################
+#   
+#
+class blogtoolNoBlogName(blogtoolError):
+    def __init__(self):
+        self.message = """
+There are multple blogs in the config file.  Use the '-b' option to specify
+which to use."""
+
+    def __str__(self):
+        return self.message
+
+################################################################################
+#   
+#
+class blogtoolBadName(blogtoolError):
+    def __init__(self):
+        self.message = """
+The blog name provided does not match anything in the configuration file."""
+
+    def __str__(self):
+        return self.message
+
+################################################################################
+#   
+#
+class blogtoolNoConfig(blogtoolError):
+    def __init__(self):
+        self.message = """
+A '~/.btconfig' file was not found nor was a config file specified on the command
+line.  Without a configuration file, the only operation possible is posting.
+
+To perform any optional operations (deleting posts, retrieving recent titles,
+etc.) please create a ~/.btconfig file."""
+
+    def __str__(self):
+        return self.message
+
+################################################################################
+#   
+#
+class blogtoolRetry(blogtoolError):
+    pass
+
+   
+################################################################################
+#
+# blogtool class
+#
+#    Define the blogtool class.  This pulls a bunch of related functions and
+#    leverages some of the niceties of classes to streamline the code.  It is 
+#    a fairly significant refactor of the original code which had function that
+#    passed around blog information like the name or the class itself.
+#
+class blogtool():
+
+    ############################################################################ 
+    def __init__(self, argv):
+        # create config parser object
+        self.btconfig = btconfigparser.bt_config()
+
+        # create option parser object
+        parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
+        for o in options:
+            # o is a dict
+            if 'optstr_short' not in o.keys():
+                parser.add_option(o['optstr_long'], 
+                                  action = o['action'],
+                                  dest = o['dest'],
+                                  default = o['default'],
+                                  help = o['help'])
+            else:
+                parser.add_option(o['optstr_short'],
+                                  o['optstr_long'], 
+                                  action = o['action'],
+                                  dest = o['dest'],
+                                  help = o['help'])
+        (self.opts, self.filelist) = parser.parse_args(argv)
+
+        # process any configuration files 
+        # do this NOW because option processing requires blog related info
+        # like xmlrpc, passwords, etc.
+        cf_str = configfile(self.opts.configfile)
+        if cf_str == None:
+            self.cf_config = None
+        else:
+            try:
+                self.cf_config = self.btconfig.parse(cf_str)
+            except btconfigparser.btParseError, err_str:
+                print err_str
+                sys.exit()
+
+    ############################################################################ 
+    def doPreOptions(self):
+        # option processing to be done independent of post files
+        if not (self.opts.del_postid or 
+                self.opts.num_recent_t or 
+                self.opts.getcats or
+                self.opts.newcat):
+            return
+
+        # setup bc and blogproxy for option processing
+        self.setBlogConfig()
+
+        # now actually check for options to process
+        if self.opts.del_postid:
+            self.doOptionDelPost()
+
+        if self.opts.num_recent_t:
+            self.doOptionGetRecent()
+
+        if self.opts.getcats:
+            self.doOptionGetCategories()
+
+        if self.opts.newcat:
+            self.doOptionAddBlogCategory()
+
+    ############################################################################ 
+    def doFilelist(self):
+        for self.filename in self.filelist:
+            try:
+                self.doPostFile()
+            except blogtoolRetry:
+                self.filelist.insert(0, self.filename)
+                continue
+
+            for bpc in self.post_config:
+                self.bc = bpc
+                if self.pushPost():
+                    print 'Update post file...'
+                    self.updateFile()
+
+    ############################################################################ 
+    def setBlogConfig(self):
+        # this function sets the working blog config
+        if self.cf_config == None:
+           raise blogtoolNoConfig() 
+
+        if len(self.cf_config) == 1:
+            self.bc = self.cf_config[0]
+        else:
+            if not self.opts.blogname:
+                raise blogtoolNoBlogName()
+            for bc in self.cf_config:
+                if bc.name == self.opts.blogname:
+                    self.bc = bc
+                    break
+            else:
+                # the name provided does not match anything in the config file
+                raise blogtoolBadName()
+
+        self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
+                                           self.bc.username,
+                                           self.bc.password)
+
+    ############################################################################ 
+    def addCategory(self, c, substart, parentId):
+        # subcategories are demarked by '.'
+        newcatlist = c.split('.')
+
+        # the isBlogCategory returns a tuple containing the first cat/
+        # subcat that is not on the blog.  We cannot assume that the
+        # first entry in the list matches the cat returned in the tuple
+        # so we'll remove categories/subcats that already exist on
+        # the blog
+        while substart != newcatlist[0]:
+            newcatlist.pop(0)
+     
+        # now add the categories as needed- init the parent ID field
+        # using the value from the tuple returned above
+        for c in newcatlist:
+            print "Adding %s with parent %s" % (c, parentId)
+            parentId = self.blogproxy.newCategory(self.opts.blogname, c, parentId)
+
+    ############################################################################ 
+    def doOptionDelPost(self):
+        # delete post option processing
+    
+        # We need a blog to delete from.  If there are multiple blogs specified
+        # in the config file, then bail and instruct the user to use the -b
+        # option.  If only 1, then use it regardless.  Oh- if multiples, then
+        # check if a blog was specified.
+        print "Deleting post %s" % self.opts.del_postid
+
+        postid = self.blogproxy.deletePost(self.opts.del_postid)
+        if postid == None:
+            error("Unable to delete post %s from %s" % (self.opts.del_postid, \
+                                                        self.bc.name))
+
+    ############################################################################ 
+    def doOptionGetRecent(self):
+        # recent post summary option processing
+        print "Retrieving %s most recent posts from %s.\n" % (self.opts.num_recent_t,
+                                                              self.bc.name)
+
+        recent = self.blogproxy.getRecentTitles(self.bc.name, self.opts.num_recent_t)
+        print "POSTID\tTITLE                               \tDATE CREATED"
+        print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
+        for post in recent:
+            t_converted = datetime.datetime.strptime(post['dateCreated'].value,
+                                                     "%Y%m%dT%H:%M:%S")
+            padding = ' '*(35 - len(post['title']))
+            print "%s\t%s\t%s" % (post['postid'],
+                                  post['title'] + padding,
+                                  t_converted.strftime("%b %d, %Y at %H:%M"))
+
+        del recent
+
+    ############################################################################ 
+    def doOptionGetCategories(self):
+        # list blog categories
+        print "Retrieving category list for %s." % self.bc.name
+
+        cat_list = self.blogproxy.getCategories(self.bc.name)
+        
+        print "Category       \tParent        \tDescription"
+        print "%s\t%s\t%s" % ('='*14, '='*14, '='*35)
+        for cat in cat_list:
+           parent = [ c['categoryName'] for c in cat_list 
+                                        if cat['parentId'] == c['categoryId'] ]
+           str = cat['categoryName'] + ' '*(16 - len(cat['categoryName']))
+           if len(parent) == 0:
+               str += ' '*16
+           else:
+               str += parent[0] + ' '*(16 - len(parent[0]))
+
+           str += cat['categoryDescription']
+           print str
+
+        del cat_list
+
+    ############################################################################ 
+    def doOptionAddBlogCategory(self):
+        # add a new category
+        print "Checking if category already exists on %s..." % (self.bc.name)
+
+        # this will check the category string to see if it is a valid blog
+        # category, or partially valid if sub-categories are specified.
+        # If the category exists on the blog, processing stops, otherwise
+        # the first part that is not on the blog is returned
+        t = blogapi.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
+                                   self.opts.newcat)
+        if t == None:
+            print "The category specified alread exists on the blog."
+        else:
+            # t is a tuple with the first NEW category from the category string
+            # specified and it's parentId.  Start adding categories from here
+            print "Attempting to add %s category to %s" % (self.opts.newcat,
+                                                           self.bc.name)
+            # the '*' is the unpacking operator
+            self.addCategory(self.opts.newcat, *t)
+
+    ############################################################################ 
+    def procPost(self):
+        # helper function for comprehension below
+        def skiptag(tag):
+            return (isinstance(tag, BeautifulSoup.Comment) or
+                    tag.parent.name == 'pre' or
+                    tag.parent.name == 'code')
+
+        # when we run the text through markdown, it will preserve the linefeeds of 
+        # the original text.  This is a problem when publishing because the blog
+        # software turns the linefeeds within the 'p' tags to 'br' tags which
+        # defeats the formatting powers of HTML.  So we'll remove all of the
+        # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
+        # because it streamlines what would otherwise be a tedious process
+        soup = BeautifulSoup.BeautifulSoup(markdown.markdown(self.posttext))
+
+        # remove extraneous newlines from the NavigableStrings (text)
+        # for better or worse, I'll leave extra space (i.e. multiple consecutive
+        # space characters) alone, for now.  Browser's get rid of the space so it 
+        # doesn't seem to hurt anyone if I leave it in place
+        # don't do this for 'pre' tags
+        souptext = soup.findAll(text = True) 
+        [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
+
+        # now deal with all the 'img' tags
+        for img in soup.findAll('img'):
+            # first, make sure this looks like a valid file
+            imgf = img['src']
+            if imgf.find("http://") == -1:
+                if os.path.isfile(imgf) != 1:
+                    # try anchoring file to the user's home directory       
+                    imgf = os.path.expanduser('~') + '/' + imgf
+                    if os.path.isfile(imgf) != 1:
+                        error("Image file not found: %s\n" % img['src'])
+            else:
+                # this is a link so don't proceed any further, move on to the next
+                continue
+
+            # run it up the flagpole...
+            print "Attempting to upload '%s'..." % imgf
+            res = self.blogproxy.upload(self.bc.blogname, imgf)
+            if res == None:
+                print "Upload failed, proceeding...\n"
+                continue
+            print "Done"
+
+            # replace the image file name in the 'img' tag with the url and also
+            # add the 'alt' attribute, assuming it wasn't provided
+            # check for an 'res' attribute and append this to the filename while
+            # removing it from the attribute list
+            img['src'] = res['url']
+            if not img.has_key('alt'):
+                img['alt'] = res['file']
+
+            if img.has_key('res'):
+                res_str = '-' + img['res'] + '.'
+                img['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, img['src'])
+                
+                # the 'res' attr is bogus- I've added it so that I can specify the
+                # appropriate resolution file I want in the url.  
+                # remove it from the final post
+                del(img['res'])
+
+        return soup.renderContents()
+
+    ############################################################################ 
+    def procPostCategories(self):
+        # first, build a list of catgories that aren't on the blog from the
+        # post's category list
+        nonCats = []
+        for c in self.bc.categories:
+            t = blogapi.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
+                                       c)
+            if t != None:
+                nonCats.append((c,) + t)
+
+        # see if there were any unrecognized categories
+        if len(nonCats) == 0:
+            print "Post categories OK"
+        elif self.opts.addcats:
+            # since the addcat option is processed prior to post processing,
+            # we should be able to get away with coopting the opts.blogname
+            # and setting it to the current bc.name value without any 
+            # repercussions- but check here when some kind of potential funny
+            # business starts
+            self.opts.blogname = self.bc.name
+            [ self.addCategory(*ct) for ct in nonCats ]
+        else:
+            rcats = [ ct[0] for ct in nonCats ]
+            print "Category '%s' is not a valid category for %s so it is being\n\
+                   \r removed from the category list for this post.\n\
+                   \rUse the -a option if you wish to override this behavior or\n\
+                   \rthe -n option to add it from the command line.\n" %\
+                                                         (', '.join(rcats),
+                                                          self.bc.name)
+            [ self.bc.categories.remove(c) for c in rcats ]
+
+        # last bit of category processing- if there are any categories 
+        # with subcategories, like 'cat.subcat', they need to be split
+        # up so that the post is categorized properly
+        # the 'list(set(...)) removes all duplicates 
+        if len(self.bc.categories) == 0:
+            print "This post has no valid categories, the default blog category\n\
+                   \rwill be used.\n"
+            return self.bc.categories
+        else:
+            return list(set(reduce(lambda l1, l2: l1 + l2, 
+                               [c.split('.') for c in self.bc.categories])))
+
+    ############################################################################ 
+    def doPostFile(self):
+        # since we'll be processing all of this from memory, just read everything
+        # into a list.  We won't need it after we process it anyway
+        try:
+            f = open(self.filename, 'r')
+            lines = f.readlines()
+
+        # hopefully, this isn't too clever.  The assumption is that file
+        # failed to opend because it doesn't exist.  In this case, open
+        # it and launch and editor.  When the editor exits, insert the file
+        # to argv list we are iterating over and go back to the top
+        except IOError:
+            f = open(self.filename, 'w')
+            edit(f)
+            raise blogtoolRetry()
+
+        # executed if no exceptions raised
+        else:
+            f.close()
+
+        # technically, there needs to be at least 3 lines in the file- one for the
+        # header, one blank line, one line for post text
+        if len(lines) < 3:
+            error('Postfile must have a blank line separating header and post \
+                   text\n')
+
+        self.header, self.posttext = getHeaderandPostText(lines)
+
+        del lines  # no longer needed
+
+        # now that we have the post header processed, we need to reconcile it
+        # with anything from a config file
+        try:
+            self.post_config = reconcile(self.btconfig.parse(self.header),
+                                         self.cf_config)
+        except btconfigparser.btParseError, err_str:
+            print err_str
+            sys.exit()
+
+    ############################################################################ 
+    def pushPost(self):
+        # this handles pushing a post up to a blog
+        self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
+                                           self.bc.username,
+                                           self.bc.password)
+
+        posthtml = self.procPost()
+
+        print "Checking post categories..."
+        self.bc.categories = self.procPostCategories()
+
+        # now build a post structure
+        try:
+            post = blogapi.buildPost(self.bc,
+                                     posthtml,
+                                     timestamp = self.opts.posttime,
+                                     publish = self.opts.publish )
+        except blogapi.timeFormatError, timestr:
+            print timestr
+            sys.exit()
+
+        # time to publish, or update...
+        if self.bc.postid:
+            print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
+            postid = blog.editPost(self.bc.postid, post)
+            return None
+
+        # sending a new post
+        if self.opts.publish:
+            print "Publishing '%s' to '%s'" % (self.bc.title,  self.bc.name) 
+        else:
+            print "Publishing '%s' to '%s' as a draft" % (self.bc.title,
+                                                          self.bc.name)
+
+        postid = self.blogproxy.publishPost(self.bc.name, post)
+        if postid != None:
+            header = self.updateHeader(postid)
+            return 1                
+
+    ############################################################################ 
+    def updateHeader(self, postid):
+        # This function consists of subfunctions that drill into the header string
+        # to find where to insert the POSTID info.  Each function returns a 
+        # tuple consisting of the next state, the header string that has been
+        # processed and the header string yet to be processed
+
+        # state-function to find the BLOG keyword in the header
+        def findbloggroup(l):
+            # it possible that BLOG will not appear in the header (blog info
+            # can also be defined in an rc file or command line options)
+            # if we reach the end of the header, just append the POSTID there
+            m = re.match('(.*?BLOG\s*\{\s*)(.*)', l, re.DOTALL)
+            if m == None:
+                # no BLOG groups, so just append the POSTID to the end of the 
+                # line/header and we're done
+                l += 'POSTID: %s\n' % postid
+                return None, l, ''
+
+            return states.index(findblogname), m.group(1), m.group(2)
+
+        # find the NAME keyword in the BLOG group- also checks for the 
+        # blogname itself since it's likely the two are on the same line
+        def findblogname(l):
+            m = re.match('(.*?NAME\s*:\s*|NAME\s*:\s*)([^\n]+)(.*)', l, re.DOTALL)
+            if m != None:
+                # found NAME keyword in the group
+                hdr_ret = m.group(1) + m.group(2)
+                if self.bc.name not in hdr_ret:
+                    return states.index(findbloggroup), hdr_ret, m.group(3)
+
+                # found the blogname, go to findendgroup
+                return states.index(findendgroup), hdr_ret, m.group(3)
+
+            # NAME keyword not in string, so go back to looking for another
+            # BLOG group
+            return states.index(findendgroup), '', l
+
+        # we've found the group where the POSTID is going to be written,
+        # now it's just a matter of finding the end of the group where we'll
+        # add it
+        def findendgroup(l):
+            m = re.match('(.*?)([}])(.*)', l, re.DOTALL)
+            hdr_ret = m.group(1)
+            hdr_ret += '    POSTID: %s\n' % postid
+            hdr_ret += m.group(2) + m.group(3)
+            return None, hdr_ret, ''
+
+        #
+        # This is where the actual function is implemented- just a simple
+        # FSM that processes the header string and inserts what is requied.
+        #
+        states = [
+                  findbloggroup,
+                  findblogname,
+                  findendgroup ]
+
+        current_state = states.index(findbloggroup)
+        hdr_str = self.header
+        self.header = ''
+        while current_state != None:
+            current_state, procd_hdr, hdr_str = states[current_state](hdr_str)
+            self.header += procd_hdr
+
+    ############################################################################ 
+    def updateFile(self):
+        # alter the file name so we don't overwrite
+        self.filename += '.posted'
+        try:
+            f = open(self.filename, 'w')
+            f.write(self.header)
+            f.write('\n')
+            f.write(self.posttext)
+        except IOError:
+            print "Error writing updated post file %s" % file
+        else:
+            f.close()
 
 #################################################################################
+## entry function for processing post text- image links and what not are
+## dealt with here
+##
+#def procPost(blog, blogname,  posttext):
 #
-# bt_options- for processing command line arguments
+#    # helper function for comprehension below
+#    def skiptag(tag):
+#        return (isinstance(tag, BeautifulSoup.Comment) or
+#                tag.parent.name == 'pre' or
+#                tag.parent.name == 'code')
 #
-def bt_options(argv):
-    usage = "Usage: %prog [options] postfile1 postfile2 ,.."
+#    # when we run the text through markdown, it will preserve the linefeeds of 
+#    # the original text.  This is a problem when publishing because the blog
+#    # software turns the linefeeds within the 'p' tags to 'br' tags which
+#    # defeats the formatting powers of HTML.  So we'll remove all of the
+#    # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
+#    # because it streamlines what would otherwise be a tedious process
+#    soup = BeautifulSoup.BeautifulSoup(markdown.markdown(posttext))
+#
+#    # remove extraneous newlines from the NavigableStrings (text)
+#    # for better or worse, I'll leave extra space (i.e. multiple consecutive
+#    # space characters) alone, for now.  Browser's get rid of the space so it 
+#    # doesn't seem to hurt anyone if I leave it in place
+#    # don't do this for 'pre' tags
+#    souptext = soup.findAll(text = True) 
+#    [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
+#
+#    # now deal with all the 'img' tags
+#    for img in soup.findAll('img'):
+#        # first, make sure this looks like a valid file
+#        imgf = img['src']
+#        if imgf.find("http://") == -1:
+#            if os.path.isfile(imgf) != 1:
+#                # try anchoring file to the user's home directory       
+#                imgf = os.path.expanduser('~') + '/' + imgf
+#                if os.path.isfile(imgf) != 1:
+#                    error("Image file not found: %s\n" % img['src'])
+#        else:
+#            # this is a link so don't proceed any further, move on to the next
+#            continue
+#
+#        # run it up the flagpole...
+#        print "Attempting to upload '%s'..." % imgf
+#        res = blog.upload(blogname, imgf)
+#        if res == None:
+#            print "Upload failed, proceeding...\n"
+#            continue
+#        print "Done"
+#
+#        # replace the image file name in the 'img' tag with the url and also
+#        # add the 'alt' attribute, assuming it wasn't provided
+#        # check for an 'res' attribute and append this to the filename while
+#        # removing it from the attribute list
+#        img['src'] = res['url']
+#        if not img.has_key('alt'):
+#            img['alt'] = res['file']
+#
+#        if img.has_key('res'):
+#            res_str = '-' + img['res'] + '.'
+#            img['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, img['src'])
+#            
+#            # the 'res' attr is bogus- I've added it so that I can specify the
+#            # appropriate resolution file I want in the url.  
+#            # remove it from the final post
+#            del(img['res'])
+#
+#    return soup.renderContents()
+#
 
-    # create parser object
-    global parser 
-    parser = OptionParser(usage)
-
-    parser.add_option("-a",
-                      "--add-categories",
-                      action = "store_true",
-                      dest = "addcats",
-                      help = "Categories specified for the post will be added\
-                              to the blog's category list if they do not\
-                              already exist.")
-
-    parser.add_option("-b",
-                      "--blog",
-                      dest="blogname",
-                      help="Blog name for operations on blog.  The name must\
-                            correspond to a name in .btconfig or a config file\
-                            specified on the command line.")
- 
-    parser.add_option("-c", 
-                      "--config", 
-                      dest="configfile", 
-                      help="specify a config file")
-
-    parser.add_option("-d", 
-                      dest="del_postid", 
-                      help="delete a post")
-
-    parser.add_option("-C",
-                      "--Categories",
-                      action="store_true",
-                      dest="getcats",
-                      help="Get a list of catgories for a blog")
-
-    parser.add_option("-s",
-                      "--schedule",
-                      dest = "posttime",
-                      help = "Time to publish post in YYYYmmddHHMMSS format")
-
-    parser.add_option("-t",
-                      "--recent-titles",
-                      dest="num_recent_t",
-                      help="rettrieve recent posts from a blog")
-
-    parser.add_option("-n",
-                      "--new-categories",
-                      dest="newcat",
-                      help="Add a new category to a blog")
-
-    parser.add_option("--draft",
-                      action = "store_false",
-                      dest = "publish",
-                      default = True,
-                      help = "Do not publish post.  Hold it as a draft.")
-
-    # here we go...
-    return parser.parse_args(argv)
-
-#################################################################################
+################################################################################
 # 
 # Checks for and processes a config file for blogtool 
 #  Info in config file: anything that can appear in the header of a postfile
@@ -150,7 +745,7 @@ def configfile(cfile):
     except IOError:
         print "Unable to open config file: %s" % cfile
         sys.exit(1)
-    finally:
+    else:
         f.close()
 
     return config_str 
@@ -214,458 +809,18 @@ def reconcile(pcl, cfcl):
 
 ################################################################################
 #
+# split the file into 2 sections- the header and the post
+# divider is the first blank line encountered
 #
-def addCategory(blog, blogname, c, substart, parentId):
-    # subcategories are demarked by '.'
-    newcatlist = c.split('.')
+def getHeaderandPostText(linelist):
+    # find first blank line so we can split the list
+    for line in linelist:
+        if line.isspace():
+            i = linelist.index(line)
+            break
 
-    # the isBlogCategory returns a tuple containing the first cat/
-    # subcat that is not on the blog.  We cannot assume that the
-    # first entry in the list matches the cat returned in the tuple
-    # so we'll remove categories/subcats that already exist on
-    # the blog
-    while substart != newcatlist[0]:
-        newcatlist.pop(0)
- 
-    # now add the categories as needed- init the parent ID field
-    # using the value from the tuple returned above
-    for c in newcatlist:
-        print "Adding %s with parent %s" % (c, parentId)
-        parentId = blog.newCategory(blogname, c, parentId)
+    return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
-#################################################################################
-# entry function for processing post text- image links and what not are
-# dealt with here
-#
-def procPost(blog, blogname,  posttext):
-
-    # helper function for comprehension below
-    def skiptag(tag):
-        return (isinstance(tag, BeautifulSoup.Comment) or
-                tag.parent.name == 'pre' or
-                tag.parent.name == 'code')
-
-    # when we run the text through markdown, it will preserve the linefeeds of 
-    # the original text.  This is a problem when publishing because the blog
-    # software turns the linefeeds within the 'p' tags to 'br' tags which
-    # defeats the formatting powers of HTML.  So we'll remove all of the
-    # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
-    # because it streamlines what would otherwise be a tedious process
-    soup = BeautifulSoup.BeautifulSoup(markdown.markdown(posttext))
-
-    # remove extraneous newlines from the NavigableStrings (text)
-    # for better or worse, I'll leave extra space (i.e. multiple consecutive
-    # space characters) alone, for now.  Browser's get rid of the space so it 
-    # doesn't seem to hurt anyone if I leave it in place
-    # don't do this for 'pre' tags
-    souptext = soup.findAll(text = True) 
-    [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
-
-    # now deal with all the 'img' tags
-    for img in soup.findAll('img'):
-        # first, make sure this looks like a valid file
-        imgf = img['src']
-        if imgf.find("http://") == -1:
-            if os.path.isfile(imgf) != 1:
-                # try anchoring file to the user's home directory       
-                imgf = os.path.expanduser('~') + '/' + imgf
-                if os.path.isfile(imgf) != 1:
-                    error("Image file not found: %s\n" % img['src'])
-        else:
-            # this is a link so don't proceed any further, move on to the next
-            continue
-
-        # run it up the flagpole...
-        print "Attempting to upload '%s'..." % imgf
-        res = blog.upload(blogname, imgf)
-        if res == None:
-            print "Upload failed, proceeding...\n"
-            continue
-        print "Done"
-
-        # replace the image file name in the 'img' tag with the url and also
-        # add the 'alt' attribute, assuming it wasn't provided
-        # check for an 'res' attribute and append this to the filename while
-        # removing it from the attribute list
-        img['src'] = res['url']
-        if not img.has_key('alt'):
-            img['alt'] = res['file']
-
-        if img.has_key('res'):
-            res_str = '-' + img['res'] + '.'
-            img['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, img['src'])
-            
-            # the 'res' attr is bogus- I've added it so that I can specify the
-            # appropriate resolution file I want in the url.  
-            # remove it from the final post
-            del(img['res'])
-
-    return soup.renderContents()
-
-################################################################################
-#
-# procPostCategories- basically a glorified check for typos in the catetories
-#                     so the user will know and can act accordingly
-#
-def procPostCategories(pc, blog, addCatOption): 
-    # first, build a list of catgories that aren't on the blog from the
-    # post's category list
-    nonCats = []
-    for c in pc.categories:
-        t = blogapi.isBlogCategory(blog.getCategories(pc.name), c)
-        if t != None:
-            nonCats.append((c,) + t)
-
-    # see if there were any unrecognized categories
-    if len(nonCats) == 0:
-        print "Post categories OK"
-    elif addCatOption:
-        [ addCategory(blog, pc.name, *ct) for ct in nonCats ]
-    else:
-        rcats = [ ct[0] for ct in nonCats ]
-        print "Category '%s' is not a valid category for %s so it is being\n\
-               \r removed from the category list for this post.\n\
-               \rUse the -a option if you wish to override this behavior or\n\
-               \rthe -n option to add it from the command line.\n" %\
-                                                     (', '.join(rcats), pc.name)
-        [ pc.categories.remove(c) for c in rcats ]
-
-    # last bit of category processing- if there are any categories 
-    # with subcategories, like 'cat.subcat', they need to be split
-    # up so that he post is categorized properly
-    # the 'list(set(...)) removes all duplicates 
-    if len(pc.categories) == 0:
-        print "This post has no valid categories, the default blog category\n\
-               \rwill be used.\n"
-        return pc.categories
-    else:
-        return list(set(reduce(lambda l1, l2: l1 + l2, 
-                           [c.split('.') for c in pc.categories])))
-
-################################################################################
-#
-# updateHeader- when a post is successfully published, an ID number is
-#                 returned. This function adds a POSTID field to the header. 
-#
-# One thing we can count on is that the header is properly formed here
-#
-def updateHeader(header, blogname, postid):
-    
-    # This function consists of subfunctions that drill into the header string
-    # to find where to insert the POSTID info.  Each function returns a 
-    # tuple consisting of the next state, the header string that has been
-    # processed and the header string yet to be processed
-
-    # state-function to find the BLOG keyword in the header
-    def findbloggroup(l):
-        # it possible that BLOG will not appear in the header (blog info
-        # can also be defined in an rc file or command line options)
-        # if we reach the end of the header, just append the POSTID there
-        m = re.match('(.*?BLOG\s*\{\s*)(.*)', l, re.DOTALL)
-        if m == None:
-            # no BLOG groups, so just append the POSTID to the end of the 
-            # line/header and we're done
-            l += 'POSTID: %s\n' % postid
-            return None, l, ''
-
-        return states.index(findblogname), m.group(1), m.group(2)
-
-    # find the NAME keyword in the BLOG group- also checks for the 
-    # blogname itself since it's likely the two are on the same line
-    def findblogname(l):
-        m = re.match('(.*?NAME\s*:\s*|NAME\s*:\s*)([^\n]+)(.*)', l, re.DOTALL)
-        if m != None:
-            # found NAME keyword in the group
-            hdr_ret = m.group(1) + m.group(2)
-            if blogname not in hdr_ret:
-                return states.index(findbloggroup), hdr_ret,  m.group(3)
-
-            # found the blogname, go to findendgroup
-            return states.index(findendgroup), hdr_ret, m.group(3)
-
-        # NAME keyword not in string, so go back to looking for another
-        # BLOG group
-        return states.index(findendgroup), '', l
-
-    # we've found the group where the POSTID is going to be written,
-    # now it's just a matter of finding the end of the group where we'll
-    # add it
-    def findendgroup(l):
-        m = re.match('(.*?)([}])(.*)', l, re.DOTALL)
-        hdr_ret = m.group(1)
-        hdr_ret += '    POSTID: %s\n' % postid
-        hdr_ret += m.group(2) + m.group(3)
-        return None, hdr_ret, ''
-
-    #
-    # This is where the actual function is implemented- just a simple
-    # FSM that processes the header string and inserts what is requied.
-    #
-    states = [
-              findbloggroup,
-              findblogname,
-              findendgroup ]
-
-    current_state = states.index(findbloggroup)
-    hdr_str = header
-    header = ''
-    while current_state != None:
-        current_state, procd_hdr, hdr_str = states[current_state](hdr_str)
-        header += procd_hdr
-
-    return header
-    
-################################################################################
-#
-# writes an updated file- basically consists of an updated header with the
-#                         POSTID field added
-def updateFile(file, header, posttext):
-    # alter the file name so we don't overwrite
-    file += '.posted'
-    try:
-        f = open(file, 'w')
-        f.write(header)
-        f.write('\n')
-        f.write(posttext)
-    except IOError:
-        print "Error writing updated post file %s" % file
-    finally:
-        f.close()
-
-################################################################################
-# 
-# bt- this is the "main" function, as it were.  Program flow is controlled by 
-#     this function.  Start here when if you dare...
-#
-def bt(argv):
-
-    ############################################################################ 
-    # helper function used when processing certain command line options
-    def getpostconfig(cf):
-        if cf == None:
-            return None
-
-        if len(cf) != 1:
-            if not opts.blogname:
-                error("There are multiple blogs in the config file.  Use the\n\
-                       \r-b option to specify which to use.\n")
-            for blog in cf:
-                if blog.name == opts.blogname:
-                    return blog
-        else:
-             return cf[0]
-
-        return None  # name doesn't match anything in config file
-
-    ############################################################################ 
-    # create a parser object that we'll use in a bit to process the config file
-    # and then later to process the post header
-    btconfig = btconfigparser.bt_config()
-
-    ############################################################################ 
-    # command line option parser is initialized and then invoked in this
-    # function- I can't really say this is THE way to do it, but it seems OK
-    (opts, argv) = bt_options(argv)
-
-    ############################################################################ 
-    # handle any config files- we need to do this now because even for option 
-    # processing we minimally need username, xmlrpc, and password info available
-    cf_config = None
-    cf_str = configfile(opts.configfile)
-    if cf_str != None:
-        try:
-            cf_config = btconfig.parse(cf_str)
-        except btconfigparser.btParseError, err_str:
-            print err_str
-            sys.exit()
-
-    ############################################################################ 
-    # delete post option processing
-    if opts.del_postid:
-        # We need a blog to delete from.  If there are multiple blogs specified
-        # in the config file, then bail and instruct the user to use the -b
-        # option.  If only 1, then use it regardless.  Oh- if multiples, then
-        # check if a blog was specified.
-        pc = getpostconfig(cf_config)
-        if pc == None:
-            error("Cannot process 'delete' because there is no blog specified.\n")
-
-        blog = blogapi.blogproxy(pc.xmlrpc, pc.username, pc.password)
-        print "Deleting post %s" % opts.del_postid
-        postid = blog.deletePost(opts.del_postid)
-        if postid == None:
-            error("Unable to delete post %s from %s" % (opts.del_postid, \
-                                                        pc.name))
-        print "Done\n"
-        del pc, blog
-
-    ############################################################################ 
-    # recent post summary option processing
-    if opts.num_recent_t:
-        pc = getpostconfig(cf_config)
-        if pc == None:
-            error("Cannot process 'recent' request because there is no blog\n\
-                   \rspecified\n")
-
-        blog = blogapi.blogproxy(pc.xmlrpc, pc.username, pc.password)
-        print "Retrieving %s most recent posts from %s.\n" % (opts.num_recent_t,
-                                                              pc.name)
-        recent = blog.getRecentTitles(pc.name, opts.num_recent_t)
-        print "POSTID\tTITLE                               \tDATE CREATED"
-        print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
-        for post in recent:
-            t_converted = datetime.datetime.strptime(post['dateCreated'].value,
-                                                     "%Y%m%dT%H:%M:%S")
-            padding = ' '*(35 - len(post['title']))
-            print "%s\t%s\t%s" % (post['postid'],
-                                    post['title'] + padding,
-                                    t_converted.strftime("%b %d, %Y at %H:%M"))
-        del pc, blog, recent
-
-    ############################################################################ 
-    # list blog categories option
-    if opts.getcats:
-        pc = getpostconfig(cf_config)
-        if pc == None:
-            error("Cannot process 'categories' request because there is no\n\
-                   \rblog specified\n")
-
-        blog = blogapi.blogproxy(pc.xmlrpc, pc.username, pc.password)
-        print "Retrieving category list for %s." % pc.name
-        cat_list = blog.getCategories(pc.name)
-        
-        print "Category       \tParent        \tDescription"
-        print "%s\t%s\t%s" % ('='*14, '='*14, '='*35)
-        for cat in cat_list:
-           parent = [ c['categoryName'] for c in cat_list 
-                                        if cat['parentId'] == c['categoryId'] ]
-           str = cat['categoryName'] + ' '*(16 - len(cat['categoryName']))
-           if len(parent) == 0:
-               str += ' '*16
-           else:
-               str += parent[0] + ' '*(16 - len(parent[0]))
-
-           str += cat['categoryDescription']
-           print str
-
-        del blog, cat_list, pc
-
-    ############################################################################ 
-    # add a new category
-    if opts.newcat:
-        pc = getpostconfig(cf_config)
-        if pc == None:
-            error("Cannot process newcategory request because there is no\n\
-                   \rblog specified\n")
-
-        # first, make sure the category doesn't already exist
-        print "Checking if category already exists on %s..." % (pc.name)
-        blog = blogapi.blogproxy(pc.xmlrpc, pc.username, pc.password)
-
-        # this will check the category string to see if it is a valid blog
-        # category, or partially valid if sub-categories are specified.
-        # If the category exists on the blog, processing stops, otherwise
-        # the first part that is not on the blog is returned
-        t = blogapi.isBlogCategory(blog.getCategories(pc.name), opts.newcat)
-        if t == None:
-            print "The category specified alread exists on the blog."
-        else:
-            # t is a tuple with the first NEW category from the category string
-            # specified and it's parentId.  Start adding categories from here
-            print "Attempting to add %s category to %s" % (opts.newcat,
-                                                           pc.name)
-            # the '*' is the unpacking operator
-            addCategory(blog, pc.name, opts.newcat, *t)
-
-        print "Done\n"
-        del blog
-
-    ############################################################################ 
-    # fairly straightforward loop over the file in the arglist
-    for file in argv:
-        # since we'll be processing all of this from memory, just read everything
-        # into a list.  We won't need it after we process it anyway
-        try:
-            f = open(file, 'r')
-            lines = f.readlines()
-
-        # hopefully, this isn't too clever.  The assumption is that file
-        # failed to opend because it doesn't exist.  In this case, open
-        # it and launch and editor.  When the editor exits, insert the file
-        # to argv list we are iterating over and go back to the top
-        except IOError:
-            f = open(file, 'w')
-            edit(f)
-            argv.insert(0, file)
-            continue
-
-        # executed if no exceptions raised
-        else:
-            f.close()
-
-        # technically, there needs to be at least 3 lines in the file- one for the
-        # header, one blank line, one line for post text
-        if len(lines) < 3:
-            error('Postfile must have a blank line separating header and post \
-                   text\n')
-
-        header, posttext = getHeaderandPostText(lines)
-
-        del lines  # no longer needed
-
-        # now that we have the post header processed, we need to reconcile it
-        # with anything from a config file
-        try:
-            post_config = reconcile(btconfig.parse(header), cf_config)
-        except btconfigparser.btParseError, err_str:
-            print err_str
-            sys.exit()
-
-        # loop through the blogs that this post is being written to.
-        updatepostfile = 0
-        for pc in post_config:
-            # setup proxy server with appropriate info
-            blog = blogapi.blogproxy(pc.xmlrpc, pc.username, pc.password)
-
-            # process post text
-            posthtml = procPost(blog, pc.name, posttext)
-
-            print "Checking post categories..."
-            pc.categories = procPostCategories(pc, blog, opts.addcats)
-
-            # we need a post structure, so get one
-            try:
-                post = blogapi.buildPost(pc, 
-                                         posthtml,
-                                         timestamp = opts.posttime,
-                                         publish = opts.publish)
-            except blogapi.timeFormatError, timestr:
-                print timestr
-                sys.exit()
-
-            # time to publish, or update, the post
-            if pc.postid:
-                print "Updating '%s' on %s..." % (pc.title, pc.name)
-                postid = blog.editPost(pc.postid, post)
-            else:
-                if opts.publish:
-                    print "Publishing '%s' to '%s'" % (pc.title,  pc.name) 
-                else:
-                    print "Publishing '%s' to '%s' as a draft" % (pc.title,
-                                                                  pc.name)
-
-                postid = blog.publishPost(pc.name, post)
-                if postid != None:
-                    header = updateHeader(header, pc.name, postid)
-                    updatepostfile = 1
-
-        # check if we need to update the post file
-        if updatepostfile:
-            print 'Updating post file...'
-            updateFile(file, header, posttext)
-
-    print "Done."
-    sys.exit()
 
 ################################################################################
 #
@@ -688,22 +843,28 @@ def edit(fh):
 #
 #
 def main():
+    # if there are no arguments, then launch an editor, then proceed with the
+    # file generated by the editor, otherwise, proceed normally
     if len(sys.argv) == 1:
         fd = NamedTemporaryFile()
         if edit(fd) != None:
-            bt([fd.name])
+            bt = blogtool([fd.name])
         else:
             print "Nothing to do, exiting."
     else:
-        bt(sys.argv[1:])
+        bt = blogtool(sys.argv[1:])
+
+    # process option that are independent of post files
+    bt.doPreOptions()
+
+    # now process the postfile, if any
+    bt.doFilelist()
+
+    print 'Done.'
+    sys.exit()
 
 ################################################################################
 #
 # nothing special here...
 if __name__ == "__main__":
     main()
-
-''' TODO:
-         - make sure updating the header is done properly.
-         - add processing for scheduling for blog posting
-'''
