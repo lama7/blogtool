@@ -85,7 +85,7 @@ as the value.
 Keyword Definitions
 ===================
 
-TITLE
+* TITLE
   Defines the post title that will appear on the blog.  
 
   Any printable character can be used in the title.
@@ -103,12 +103,69 @@ TITLE
   useful if publishing a post to multiple blogs.
 
 * NAME
+  Specifies the actual name of the blog.  
+
 * XMLRPC
+  The location of the xmlrpc file for the blog.
+
 * CATEGORIES
+  The category the post should be filed under on the blog.  If filing under a
+  subcategory, then it should be listed as a dotted representation of the
+  category.  Example: parentcat.subcat1.subcat2
+
+  Can be a single value or a comma separated list.
+
+
 * POSTID
+  The ID number of a post.  The presence of this in the header means that the
+  post will be edited.
+
 * USERNAME
+  The login name for posting to the blog.  The is required to be able to post to
+  a weblog.
+
 * PASSWORD
+  The password for the USERNAME for gaining access to the weblog.
+
 * TAGS
+  For defining the tags for a post.  Can be a single value or a comma separated
+  list.
+
 * POSTTIME
+  Used to schedule a post.  A number of formats are possible:
+  + YYYYMMDDThh:mm
+  + YYYYMMDDThh:mmAM/PM
+  + YYYYMMDDThh:mm:ss
+  + YYYYMMDDThh:mm:ssAM/PM
+  + Month Day, YYYY hh:mm
+  + Month Day, YYYY hh:mm AM/PM
+  + MM/DD/YYYY hh:mm
+  + MM/DD/YYYY hh:mmAM/PM
+  + hh:mm MM/DD/YYYY
+  + hh:mmAM/PM MM/DD/YYYY
 
+Configuration Files
+===================
 
+To reduce the amount of header typing, it is possible to create a configuration
+file for blogtool to obtain parameter settings that are used all the time.  The
+file '~/.btconfig' is automatically looked for when blogtool is started.
+Alternatively, a configuration file can be specified on the command line using
+the '-c' options.
+
+A configuration file basically consists of a header.  The most useful purpose is
+to supply redundant configuration information like XMLRPC, NAME, USERNAME and
+PASSWORD so that each post file does not require this information.  Given a
+configuration file with these four settings, then it is possible to construct
+post files with only two lines in the header- namely the TITLE and CATEGORIES of
+the post.
+
+Because of the way a configuration file's settings are reconciled with settings
+specified in a post file, it is possible to use the configuration file to define
+default settings for a blog, such as the CATEGORIES or TAGS.  Basically, if
+these settings are present in a configuration file, but NOT present in the post
+file, then the configuration file setting will be used.  Otherwise, post file
+settings ALWAYS override configuration file settings.
+
+The configuration file was implemented as a courtesy to the user so as to avoid
+the tedium of constantly entering the same values for every post.
