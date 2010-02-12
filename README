@@ -1,0 +1,114 @@
+What is blogtool?
+=================
+
+Blogtool is a command line blog client for Wordpress weblogs.
+
+Huh?
+====
+
+I've tried a variety of graphical blog clients.  All of them had spotty
+behavior.  As I continued blogging, I realized that the gui based clients were
+overkill for what I was doing.
+
+What was I doing?  Pushing text up to my blog.  Occasionally with some pictures
+in it.  I didn't require any fancy formatting or visual gimmickery or visual
+control.  Even for the pictures, I mainly had to orient them horizontally,
+vertically, center them and size them.
+
+So all I really needed was an editor with a backend that could take the text and
+publish it on my blog.  Actually, my blogs.  I had a backup that I posted
+everything to as well.  Remarkably, none of the clients I used really dealt well
+with multiple blogs.
+
+Thus was born blogtool.
+
+What's it do?
+=============
+
+In addition to writing a post to a blog via xmlrpc, it also supports post
+deletion and edits.  Categories and tags can be specified for the post.  A post
+can be sent to multiple blogs, with slightly different configurations (different
+categories or tags, for instance).  Additionally, image files embedded in the
+post are uploaded to the blog as part of the publishing process.  Post can be
+scheduled and can also be written as 'drafts' (not published).
+
+In addition, blog categories can be listed and created and any number of recent
+entries can be retrieved and listed.  These actions are accomplished independent
+of posts.  As a matter of fact, it's possible to do any combination of these
+things with a entry on the command line.
+
+What's the catch?
+=================
+
+Well, in order to do any of this stuff, blogtool needs some basic info about the
+blog.  Also, as mentioned, it really only supports Wordpress blogs since that's
+what my blog software is and therefore what blogtool has been tested on.
+
+The basic blog info is provided via keywords and values separated by colons.
+Dont' worry- there's only about 10 keywords and of those, only three would be
+used on a regular basis for multiple blogs.  If posting to a single blog, only
+two keywords are needed with any regularity.
+
+These keywords are used to create a header in the file.  After the header is
+created, just start creating the blog post text.
+
+The Details
+===========
+A blogtool header can consist of any combination of the following keywords:
+
+* TITLE
+* BLOG
+* NAME
+* XMLRPC
+* CATEGORIES
+* POSTID
+* USERNAME
+* PASSWORD
+* TAGS
+* POSTTIME
+
+Notice, these are listed in caps.  That's because the keywords should be
+capitalized in the header.  Each keyword should be followed by a ':' and then an
+appropriate value.  More on those in below.  Each line of the header is
+terminated simply with a carriage return.  So don't try to put all the header
+stuff on a single line.  To terminate a header, simply create a blank line.
+Everything after that blank line is processed as post text and will be published
+on the blog.
+
+For the purposes of posting, the only *required* keywords are XMLRPC, NAME,
+USERNAME, and PASSWORD.  Without these, blogtool can't push anything up to a
+weblog.
+
+For keywords such as CATEGORIES and TAGS, a comma separated list can be supplied
+as the value.
+
+Keyword Definitions
+===================
+
+TITLE
+  Defines the post title that will appear on the blog.  
+
+  Any printable character can be used in the title.
+
+* BLOG
+  Serves dual purposes.  With a single value it defines the name of the blog for
+  posting to.  Again, basically any character can be used.  
+  
+  A comma separated list of blog names can be supplied if it's desired to
+  publish to multiple blogs.
+
+  Alternatively, a group can be assigned.  
+  A group is a bracket ('{}') enclosed
+  series of keywords that define unique values for a blog.  Groups are most
+  useful if publishing a post to multiple blogs.
+
+* NAME
+* XMLRPC
+* CATEGORIES
+* POSTID
+* USERNAME
+* PASSWORD
+* TAGS
+* POSTTIME
+
+
