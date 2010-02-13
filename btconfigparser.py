@@ -172,21 +172,24 @@ class bt_config():
         # if next character is a '{' then  parse a GROUP
         # otherwise, look for VALUE
         m = self.__hdr_group.match(parsestring)
-        if m != None:
-            return self.__parseGroup(m.group(1))
-        else:
+        if == None:
+            # no bracket following keyword, so parse a normal value
             return self.__parseValue(parsestring)
+
+        # an opening brackets starts a group
+        return self.__parseGroup(m.group(1))
 
     # a VALUE is anything up to a newline or a ','
     def __parseValue(self, parsestring):
         m = self.__hdr_value.match(parsestring)
         if m == None:
             raise btValueError(parsestring)
-        val, parsestring = m.group(1).rstrip(), m.group(2)
+#        val, parsestring = m.group(1).rstrip(), m.group(2)
 
         # if next character is a comma, then we have a list otherwise
         # it's a single value assignment
-        return self.__parseComma(val, parsestring)
+#        return self.__parseComma(val, parsestring)
+        return self.__parseComma(m.group(1).rstrip(), m.group(2))
 
     # a KEYWORD has been parse followed by a '{', so we need to start
     # parsing assignmens again.
