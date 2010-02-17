@@ -547,7 +547,12 @@ class blogtool():
         # it and launch and editor.  When the editor exits, insert the file
         # to argv list we are iterating over and go back to the top
         except IOError:
-            f = open(self.filename, 'w')
+            try:
+                f = open(self.filename, 'w')
+            except IOError, err:
+                print err
+                sys.exit()
+
             edit(f)
             raise blogtoolRetry()
 
