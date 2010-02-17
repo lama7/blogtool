@@ -45,7 +45,7 @@ class btValueError(btParseError):
 #
 class btInterpError(btParseError):
     def __init__(self, key, value):
-        self.message = "Value '%s' not valid for key '%s'" % (key, value)
+        self.message = "Value '%s' not valid for key '%s'" % (value, key)
     def __str__(self):
         return self.message
 
@@ -94,6 +94,13 @@ class btPostSettings():
 
 ################################################################################
 #
+#
+class keyword():
+    def __init__(self, kwtype):
+        self.kwtype = kwtype
+
+################################################################################
+#
 #  define a config class- this will hide some ugliness
 #
 #  This version of the parser uses a different technique to make approach a
@@ -115,30 +122,48 @@ class btPostSettings():
 #     or a '}'
 #  -  multiple groups can be specified using a ',' to separate them
 #
+#  To tease out the above a little more, there should be some more
+#  reasonable restrictions on the header syntax, so to speak.  For instance,
+#  groups don't make any sense for certain keywords, like PASSWORD or
+#  TITLE.  They do, sort of, make sense for use with CATEGORIES and 
+#  TAGS since they support lists.  Grouping would provide a means to 
+#  distinguish which elements of the list are together.  The flipside is 
+#  perhaps it is more sensible to use '[]' for this purpose.
+#  Another limitation is that there is NO reason to allow groups to be 
+#  nested.   
+#
 class bt_config():
     __hdr_value = re.compile('([^\n,]+)\s*(.*)', re.DOTALL)
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
     __hdr_comma = re.compile(',\s*(.*)', re.DOTALL)
     __hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
-    __hdr_keywords = [ 'TITLE',
-                       'BLOG',
-                       'NAME',
-                       'XMLRPC',
-                       'CATEGORIES',
-                       'POSTID', 
-                       'USERNAME',
-                       'PASSWORD',
-                       'TAGS', 
-                       'POSTTIME' ]
+
+    KTYPE_SINGLEVAL = 0
+    KTYPE_MULTIVAL = 1
+    KTYPE_GROUP = 2
 
     def __init__(self):
-        pass
+        self.__kw_tbl = dict(
+                             [
+                              ( 'TITLE', keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'BLOG', keyword(self.KTYPE_GROUP) ),
+                              ( 'NAME', keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'XMLRPC', keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'CATEGORIES', keyword(self.KTYPE_MULTIVAL) ),
+                              ( 'POSTID',  keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'USERNAME', keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'PASSWORD', keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'TAGS',  keyword(self.KTYPE_MULTIVAL) ),
+                              ( 'POSTTIME',  keyword(self.KTYPE_SINGLEVAL) ) 
+                             ]
+                            )
 
     # the 'parsestring' should be the ENTIRE string to parse, not a piece-meal
     # version of it
     def parse(self, parsestring):
         ast = {}
+
         # turn the string into an abstract syntax tree which we will then
         # turn into a config object
         while parsestring:
@@ -152,7 +177,6 @@ class bt_config():
 
         return self.__interpAST(ast, postconfig)
 
-
     # entry point to for parsing- basically, pass in any string to this
     def __parseAssignment(self, parsestring):
         m = self.__hdr_keyword.match(parsestring)
@@ -160,7 +184,7 @@ class bt_config():
             raise btNoKeyword(parsestring)
 
         keyword, parsestring = m.group(1,2)
-        if keyword not in self.__hdr_keywords:
+        if keyword not in self.__kw_tbl:
             raise btKeywordError(keyword)
 
         val, parsestring = self.__parseElement(parsestring)
@@ -172,7 +196,7 @@ class bt_config():
         # if next character is a '{' then  parse a GROUP
         # otherwise, look for VALUE
         m = self.__hdr_group.match(parsestring)
-        if == None:
+        if m == None:
             # no bracket following keyword, so parse a normal value
             return self.__parseValue(parsestring)
 
@@ -184,11 +208,9 @@ class bt_config():
         m = self.__hdr_value.match(parsestring)
         if m == None:
             raise btValueError(parsestring)
-#        val, parsestring = m.group(1).rstrip(), m.group(2)
 
         # if next character is a comma, then we have a list otherwise
         # it's a single value assignment
-#        return self.__parseComma(val, parsestring)
         return self.__parseComma(m.group(1).rstrip(), m.group(2))
 
     # a KEYWORD has been parse followed by a '{', so we need to start
@@ -221,6 +243,18 @@ class bt_config():
 
     # adds a key value pair into the ast as appropriate
     def __addAST(self, ast, keyword, val):
+        # first, make sure the value is agreeable with the keyword type
+        kwtype = self.__kw_tbl[keyword].kwtype
+
+        # single value keyword are just that- and no groups
+        if (kwtype == self.KTYPE_SINGLEVAL and
+            (len(val) > 1 or type(val[0]) == types.DictType)):
+            raise btInterpError(keyword, val)
+        # multival can't have any groups in the list
+        elif (kwtype == self.KTYPE_MULTIVAL and
+              len([ v for v in val if type(v) == types.DictType ]) != 0):
+            raise btInterpError(keyword, val)
+
         # build AST using keyword value pairs
         if keyword not in ast:
             ast[keyword] = []
@@ -303,6 +337,8 @@ class bt_config():
 #                    if config.get(k) == None or v.index(o) == postconfig.index(config):
 #                        config.set(k, o)
 
+#        for pc in postconfig:
+#            pc.debug()
+#        sys.exit()
+
         return postconfig
-
-
