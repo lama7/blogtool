@@ -884,7 +884,7 @@ def getHeaderandPostText(linelist):
 #
 #
 def edit(fh):
-    editor = os.getenv('EDITOR', 'vim')
+    editor = os.getenv('EDITOR', 'editor')
 
     try:
         rcode = subprocess.call([editor, fh.name])
