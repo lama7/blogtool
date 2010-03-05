@@ -2,6 +2,11 @@
 
 from optparse import OptionParser
 from tempfile import NamedTemporaryFile
+from StringIO import StringIO
+
+import xml.etree.cElementTree as etree
+import unicodedata as ud
+
 import blogapi
 
 import btconfigparser
@@ -22,13 +27,13 @@ You need to install python-markdown before you can use blogtool.
 """
     sys.exit()
 
-try:
-    import BeautifulSoup 
-except ImportError:
-    print """
-You need to install BeautifulSoup before you can use blogtool.
-"""
-    sys.exit()
+#try:
+#    import BeautifulSoup 
+#except ImportError:
+#    print """
+#You need to install BeautifulSoup before you can use blogtool.
+#"""
+#    sys.exit()
 
 #################################################################################
 #
@@ -74,6 +79,18 @@ Blog name for operations on blog.  The name must correspond to a name in
                  'action' : "store_true",
                  'dest' : "getcats",
                  'help' : "Get a list of catgories for a blog" 
+            },
+
+            {
+                 'optstr_short' : '-g',
+                 'optstr_long'  : '--getpost',
+                 'action' : 'store',
+                 'dest' : 'get_postid',
+                 'help' : """
+Retrieves a blog post and writes it to STDOUT.  Certain HTML tags are stripped
+and an attempt is made to format the text.  A header is also created, meaning
+a file capture could be used for updating with blogtool.  
+"""                     
             },
             
             {    'optstr_short' : "-s",
@@ -261,7 +278,8 @@ class blogtool():
         if not (self.opts.del_postid or 
                 self.opts.num_recent_t or 
                 self.opts.getcats or
-                self.opts.newcat):
+                self.opts.newcat or
+                self.opts.get_postid):
             return
 
         # setup bc and blogproxy for option processing
@@ -282,6 +300,9 @@ class blogtool():
 
         if self.opts.newcat:
             self.doOptionAddBlogCategory()
+
+        if self.opts.get_postid:
+            self.doOptionGetPost()
 
     ############################################################################ 
     def doFilelist(self):
@@ -426,69 +447,82 @@ class blogtool():
             self.addCategory(self.opts.newcat, *t)
 
     ############################################################################ 
-    def procPost(self):
-        # helper function for comprehension below
-        def skiptag(tag):
-            return (isinstance(tag, BeautifulSoup.Comment) or
-                    tag.parent.name == 'pre' or
-                    tag.parent.name == 'code')
+    def doOptionGetPost(self):
+        # retrieve a post from blog
+        print "Retrieving post %s from blog %s..." % (self.opts.get_postid, 
+                                                      self.bc.name)
 
+        post = self.blogproxy.getPost(self.opts.get_postid)
+#        for k,v in post.iteritems():
+#            print "%s : %s" % (k, v)
+        print repr(post['description'])
+        print repr(post['mt_text_more'])
+
+        md = html2md()
+        text = md.convert(post['description'])
+        if post['mt_text_more']:
+            text += "<!--more-->\n\n"
+            mdmore = html2md()
+            text += mdmore.convert(post['mt_text_more'])
+
+        print text
+
+        sys.exit()
+
+    ############################################################################ 
+    def procPost(self):
         # when we run the text through markdown, it will preserve the linefeeds of 
         # the original text.  This is a problem when publishing because the blog
         # software turns the linefeeds within the 'p' tags to 'br' tags which
         # defeats the formatting powers of HTML.  So we'll remove all of the
         # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
         # because it streamlines what would otherwise be a tedious process
-        soup = BeautifulSoup.BeautifulSoup(markdown.markdown(self.posttext))
+        tree = etree.XML('<post>%s</post>' % markdown.markdown(self.posttext))
+        for e in tree.getiterator():
+            if e.text and e.tag not in ['pre', 'code', 'comment']:
+                e.text = e.text.replace('\n', u' ')
+            if e.tail:
+                e.tail = e.tail.replace('\n', u' ')
+            if e.tag == 'img':
+                ifile = e.attrib['src']
+                if ifile.find("http://") == 1:
+                    # web resource defined, nothing to do
+                    continue
+                else:
+                    if os.path.isfile(ifile) != 1:
+                        ifile = os.path.join(os.path.expanduser('~'), ifile)
+                        if os.path.isfile(ifile) != 1:
+                            raise blogtoolFNFError(e.attrib['src'])
 
-        # remove extraneous newlines from the NavigableStrings (text)
-        # for better or worse, I'll leave extra space (i.e. multiple consecutive
-        # space characters) alone, for now.  Browser's get rid of the space so it 
-        # doesn't seem to hurt anyone if I leave it in place
-        # don't do this for 'pre' tags
-        souptext = soup.findAll(text = True) 
-        [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
+                # run it up the flagpole
+                print "Attempting to upload '%s'..." % ifile
+                res = self.blogproxy.upload(self.bc.blogname, ifile)
+                if res == None:
+                    print "Upload failed, proceeding...\n"
+                    continue
+                print "Done"
 
-        # now deal with all the 'img' tags
-        for img in soup.findAll('img'):
-            # first, make sure this looks like a valid file
-            imgf = img['src']
-            if imgf.find("http://") == -1:
-                if os.path.isfile(imgf) != 1:
-                    # try anchoring file to the user's home directory       
-                    imgf = os.path.expanduser('~') + '/' + imgf
-                    if os.path.isfile(imgf) != 1:
-                        raise blogtoolFNFError(img['src'])
-            else:
-                # this is a link so don't proceed any further, move on to the next
-                continue
+                # replace the image file name in the 'img' tag with the url and also
+                # add the 'alt' attribute, assuming it wasn't provided
+                e.attrib['src'] = res['url']
+                if 'alt' not in e.keys():
+                    e.set('alt', res['file'])
 
-            # run it up the flagpole...
-            print "Attempting to upload '%s'..." % imgf
-            res = self.blogproxy.upload(self.bc.blogname, imgf)
-            if res == None:
-                print "Upload failed, proceeding...\n"
-                continue
-            print "Done"
+                # check for an 'res' attribute and append this to the filename while
+                # removing it from the attribute list
+                if 'res' in e.keys():
+                    res_str = '-' + e.attrib['res'] + '.'
+                    e.attrib['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, e.attrib['src'])
+                    
+                    # the 'res' attr is bogus- I've added it so that I can specify the
+                    # appropriate resolution file I want in the url.  
+                    # remove it from the final post
+                    del(e.attrib['res'])
 
-            # replace the image file name in the 'img' tag with the url and also
-            # add the 'alt' attribute, assuming it wasn't provided
-            # check for an 'res' attribute and append this to the filename while
-            # removing it from the attribute list
-            img['src'] = res['url']
-            if not img.has_key('alt'):
-                img['alt'] = res['file']
-
-            if img.has_key('res'):
-                res_str = '-' + img['res'] + '.'
-                img['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, img['src'])
-                
-                # the 'res' attr is bogus- I've added it so that I can specify the
-                # appropriate resolution file I want in the url.  
-                # remove it from the final post
-                del(img['res'])
-
-        return soup.renderContents()
+#        print etree.tostring(tree)
+#        sys.exit()
+    
+        return (etree.tostring(tree).replace('<post>', '')).replace('</post>', '')
 
     ############################################################################ 
     def procPostCategories(self):
@@ -603,7 +637,7 @@ class blogtool():
         # time to publish, or update...
         if self.bc.postid:
             print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
-            postid = blog.editPost(self.bc.postid, post)
+            postid = self.blogproxy.editPost(self.bc.postid, post)
             return None
 
         # sending a new post
@@ -695,6 +729,240 @@ class blogtool():
             print "Error writing updated post file %s" % file
         else:
             f.close()
+
+#################################################################################
+class html2md:
+    def __init__(self):
+
+        self.out = ''
+        self._tags = []  # holds nested tags- not the same as the last
+                         # processed tag since tags are removed from the list
+                         # when the end of the tag is reached
+        self._opened_tags = []
+        self._last_processed = None  # last tag processed
+        self.bq = ''
+        self.ol_tag = 1
+        self.reflinks = 0
+        self.links = []
+        self.start_handlers = dict(
+                                   [
+                                    ('a', self.a_start),
+                                    ('p', self.p_start),
+                                    ('blockquote', self.bq_start),
+                                    ('code', self.code_start),
+                                    ('em', self.em_start),
+                                    ('strong', self.strong_start),
+                                    ('li', self.li_start),
+                                    ('ul', self.ul_start),
+                                    ('ol', self.ol_start)
+                                   ]
+                                  )
+        self.end_handlers = dict (
+                                  [
+                                   ('a', self.a_end),
+                                   ('p', self.p_end),
+                                   ('blockquote', self.bq_end),
+                                   ('li', self.li_end),
+                                   ('ul', self.ul_end),
+                                   ('ol', self.ol_end)
+                                  ] 
+                                 )
+
+    def convert(self, html):
+        uhtml = ud.normalize('NFKD', unicode(html))
+
+        events = ('start', 'end')
+        for action, e in etree.iterparse(StringIO("<post>%s</post>" % uhtml),
+                                         events = events):
+            if action == 'start':
+                self._tag_enter(e.tag)
+                if e.tag in self.start_handlers.keys():
+                    self.start_handlers[e.tag](e)
+                else:
+                    self.generic_start_handler(e)
+            
+            if action == 'end':
+                if e.tag in self.end_handlers.keys():
+                    self.end_handlers[e.tag](e)
+                else:
+                    self.generic_end_handler(e)
+
+                self._tag_exit(e.tag)
+
+        return self.out
+ 
+    def _outAppend(self, s):
+        # if we're in a blockquote, then prepend the '> '
+        if 'blockquote' in self._tags:
+            self.out += self.bq
+
+        # make sure that there is text- if the tag starts with, say, a link
+        # then text will be None
+        if s:
+            self.out += s
+
+    def generic_start_handler(self, e):
+        if e.text:
+            self.out += (e.text.lstrip()).rstrip('\n')
+
+    def generic_end_handler(self, e):
+        pass
+
+    def p_start(self, p):
+        # if the p-tag occurs within a list, then remove the 
+        # trailing '\n' because it will get added on by the p-tag
+        # processing
+        if self._last_tag() == 'li':
+            if self._opened_tags[-2] == 'p':
+                self.out += '    '
+            else:
+                self.out = self.out[:-1]
+
+        self._outAppend(p.text)
+
+    def p_end(self, p):
+        if len(self.links) != 0:
+            self._outAppend("\n\n%s" % self.reflinkText())
+        
+        self.out += '\n'
+        self._outAppend('\n')
+
+    def bq_start(self, bqe):
+        self.bq += '> '
+
+    def bq_end(self, bqe):
+        self.bq = self.bq[2:]
+        self.out = self.out[:-4]
+        
+        self.out += '\n'
+        if not self.bq:
+            self.out += '\n'
+
+    def a_start(self, a):
+        pass
+
+    def a_end(self, a):
+        # first, put the text together
+        self._outAppend("[%s][%s]" % (a.text, self.reflinks))
+        self._outAppend(self._checktail(a))
+
+        # now, save off reflink and link itself
+        if 'title' not in a.attrib.keys():
+            a.set('title', None)
+
+        self.links.append((self.reflinks, a.attrib['href'], a.attrib['title']))
+        self.reflinks += 1
+
+    def code_start(self, code):
+        last_tag = self._last_tag()
+        if last_tag == 'p':
+            self._outAppend(self.convert_inline(code, '`'))
+        elif last_tag == 'pre':
+            for line in code.text.split('\n'):
+                self._outAppend('    %s\n' % line)
+
+    def em_start(self, em):
+        # if the text ends with a space, then add it after the *
+        self._outAppend(self.convert_inline(em, '*'))
+
+    def strong_start(self, strong):
+        self._outAppend(self.convert_inline(strong, '**'))
+
+    def li_start(self, li):
+        last_tag = self._last_tag()
+        if last_tag == 'ul':
+            self._outAppend('* %s' % li.text)
+        elif last_tag == 'ol':
+            self._outAppend('%s.  %s' % (self.ol_tag, li.text))
+            self.ol_tag += 1
+
+    def li_end(self, li):
+        # we don't need to advance the line if we are in a list and 
+        # processing a p-tag- the p-tag processing will add linefeeds
+        if (self._opened_tags[-2] not in [ 'ul', 'ol' ] and
+            self._last_processed == 'p'):
+            pass
+        else:
+            # advance line for next list item
+            self.out += '\n'
+
+    def ol_start(self, ol):
+        pass
+
+    def ol_end(self, ol):
+        if ol.tail and not ol.tail.isspace():
+            self._outAppend(ol.tail)
+        if self._opened_tags[-1] != 'p':
+            self._outAppend('\n')
+        self.ol_tag = 1
+
+    def ul_start(self, ul):
+        pass
+
+    def ul_end(self, ul):
+        if ul.tail and not ul.tail.isspace():
+            self._outAppend(ul.tail)
+        self._outAppend('\n')
+
+    def convert_inline(self, e, c):
+        addspace = False
+        if e.text.endswith(' '):
+            addspace = True
+
+        text = "%s%s%s" % (c, e.text.rstrip(), c)
+        if addspace:
+            text += ' '
+
+        text += self._checktail(e)
+
+        return text
+
+    def _checktail(self, element):
+        if element.tail and not element.tail.isspace():
+            return element.tail
+        else:
+            return ''
+
+    def reflinkText(self):
+        text = ''
+        for ref in self.links:
+            text += "[%s]: %s" % (ref[0], ref[1])
+            if ref[2] != None:
+                text += ''' "%s"''' % (ref[2])
+            text += '\n'
+
+        del self.links[:]
+
+        return text.rstrip()
+
+    def _tag_enter(self, t):
+        self._tags.append(t)
+        self._opened_tags.append(t)
+
+    def _tag_exit(self, t):
+        if self._current_tag() != t:
+            print "Stack Error: %s versus current %s" % (self._current_tag, t)
+            print self._tags
+            sys.exit()
+        else:
+            self._last_processed = self._tags.pop()  # remove current tag
+
+    def _current_tag(self):
+        ntags = len(self._tags)
+        if ntags > 0:
+            return self._tags[ntags - 1]
+        else:
+            return None
+
+    def _last_tag(self):
+        ntags = len(self._tags)
+        if ntags > 1:
+            return self._tags[ntags - 2]
+        else:
+            return None
+
+    def _last_opened(self):
+        return self._opened_tags[-2]
 
 #################################################################################
 ## entry function for processing post text- image links and what not are
