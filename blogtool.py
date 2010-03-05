@@ -464,6 +464,7 @@ class blogtool():
 
         # retrieve a post from blog
         post = self.blogproxy.getPost(self.opts.get_postid)
+# the following lines are for debug purposes
 #        for k,v in post.iteritems():
 #            print "%s : %s" % (k, v)
 #        print repr(post['description'])
