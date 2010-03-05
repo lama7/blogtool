@@ -494,6 +494,10 @@ class blogtool():
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
 
+        sys.exit()
+
+    ############################################################################ 
+    def procPost(self):
         # when we run the text through markdown, it will preserve the linefeeds of 
         # the original text.  This is a problem when publishing because the blog
         # software turns the linefeeds within the 'p' tags to 'br' tags which
