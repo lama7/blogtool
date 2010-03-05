@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
+import blogapi
+import btconfigparser
+import html2md
+
 from optparse import OptionParser
 from tempfile import NamedTemporaryFile
-import blogapi
-
-import btconfigparser
 
 import time
 import datetime
@@ -15,20 +16,34 @@ import types
 import subprocess
 
 try:
-    import markdown
+    from lxml import etree
 except ImportError:
     print """
-You need to install python-markdown before you can use blogtool.
+ATTENTION:
+You need to install lxml to take full advantage of blogtool capabilities.
+Without it, downloading posts is disallowed.  If all you need it to publish
+posts to a blog, then this should be fine.
+
+Unfortunately, this annoying warning message will pop-up everytime you run
+blogtool.
 """
-    sys.exit()
+    raw_input('Press <ENTER> to continue...')
+    import xml.etree.cElementTree as etree
 
 try:
-    import BeautifulSoup 
+    import markdown
+    MARKDOWN_PRESENT = True
 except ImportError:
     print """
-You need to install BeautifulSoup before you can use blogtool.
+ATTENTION:
+In order to publish posts with blogtool, python-markdown is required.  Without
+it, all blogtool is capable of is some basic blog interaction for listing posts
+or listing/ modifying categories.
+
+Also, this annoying message will be displayed everytime you run blogtool.
 """
-    sys.exit()
+    raw_input('Press <ENTER> to continue...')
+    MARKDOWN_PRESENT = False
 
 #################################################################################
 #
@@ -74,6 +89,18 @@ Blog name for operations on blog.  The name must correspond to a name in
                  'action' : "store_true",
                  'dest' : "getcats",
                  'help' : "Get a list of catgories for a blog" 
+            },
+
+            {
+                 'optstr_short' : '-g',
+                 'optstr_long'  : '--getpost',
+                 'action' : 'store',
+                 'dest' : 'get_postid',
+                 'help' : """
+Retrieves a blog post and writes it to STDOUT.  Certain HTML tags are stripped
+and an attempt is made to format the text.  A header is also created, meaning
+a file capture could be used for updating with blogtool.  
+"""                     
             },
             
             {    'optstr_short' : "-s",
@@ -261,7 +288,8 @@ class blogtool():
         if not (self.opts.del_postid or 
                 self.opts.num_recent_t or 
                 self.opts.getcats or
-                self.opts.newcat):
+                self.opts.newcat or
+                self.opts.get_postid):
             return
 
         # setup bc and blogproxy for option processing
@@ -282,6 +310,9 @@ class blogtool():
 
         if self.opts.newcat:
             self.doOptionAddBlogCategory()
+
+        if self.opts.get_postid:
+            self.doOptionGetPost()
 
     ############################################################################ 
     def doFilelist(self):
@@ -426,12 +457,38 @@ class blogtool():
             self.addCategory(self.opts.newcat, *t)
 
     ############################################################################ 
+    def doOptionGetPost(self):
+        if not html2md.LXML_PRESENT:
+            print "Option not supported without python-lxml library."
+            return
+
+        # retrieve a post from blog
+        post = self.blogproxy.getPost(self.opts.get_postid)
+#        for k,v in post.iteritems():
+#            print "%s : %s" % (k, v)
+#        print repr(post['description'])
+#        print repr(post['mt_text_more'])
+
+        text = html2md.convert(post['description'])
+        if post['mt_text_more']:
+            text += "<!--more-->\n\n"
+            text += html2md.convert(post['mt_text_more'])
+
+        print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
+               self.bc.name, 
+               self.opts.get_postid, 
+               post['title'], 
+               ', '.join(post['categories']))
+        if post['mt_keywords']:
+            print 'TAGS: %s' % ', '.join(post['mt_keywords'])
+
+        print '\n' + text
+
+    ############################################################################ 
     def procPost(self):
-        # helper function for comprehension below
-        def skiptag(tag):
-            return (isinstance(tag, BeautifulSoup.Comment) or
-                    tag.parent.name == 'pre' or
-                    tag.parent.name == 'code')
+        if not MARKDOWN_PRESENT:
+            print "Unable to publish post without python-markdown.  Sorry..."
+            sys.exit()
 
         # when we run the text through markdown, it will preserve the linefeeds of 
         # the original text.  This is a problem when publishing because the blog
@@ -439,56 +496,52 @@ class blogtool():
         # defeats the formatting powers of HTML.  So we'll remove all of the
         # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
         # because it streamlines what would otherwise be a tedious process
-        soup = BeautifulSoup.BeautifulSoup(markdown.markdown(self.posttext))
+        tree = etree.XML('<post>%s</post>' % markdown.markdown(self.posttext))
+        for e in tree.getiterator():
+            if e.text and e.tag not in ['pre', 'code', 'comment']:
+                e.text = e.text.replace('\n', u' ')
+            if e.tail:
+                e.tail = e.tail.replace('\n', u' ')
+            if e.tag == 'img':
+                ifile = e.attrib['src']
+                if ifile.find("http://") == 1:
+                    # web resource defined, nothing to do
+                    continue
+                else:
+                    if os.path.isfile(ifile) != 1:
+                        ifile = os.path.join(os.path.expanduser('~'), ifile)
+                        if os.path.isfile(ifile) != 1:
+                            raise blogtoolFNFError(e.attrib['src'])
 
-        # remove extraneous newlines from the NavigableStrings (text)
-        # for better or worse, I'll leave extra space (i.e. multiple consecutive
-        # space characters) alone, for now.  Browser's get rid of the space so it 
-        # doesn't seem to hurt anyone if I leave it in place
-        # don't do this for 'pre' tags
-        souptext = soup.findAll(text = True) 
-        [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
+                # run it up the flagpole
+                print "Attempting to upload '%s'..." % ifile
+                res = self.blogproxy.upload(self.bc.blogname, ifile)
+                if res == None:
+                    print "Upload failed, proceeding...\n"
+                    continue
+                print "Done"
 
-        # now deal with all the 'img' tags
-        for img in soup.findAll('img'):
-            # first, make sure this looks like a valid file
-            imgf = img['src']
-            if imgf.find("http://") == -1:
-                if os.path.isfile(imgf) != 1:
-                    # try anchoring file to the user's home directory       
-                    imgf = os.path.expanduser('~') + '/' + imgf
-                    if os.path.isfile(imgf) != 1:
-                        raise blogtoolFNFError(img['src'])
-            else:
-                # this is a link so don't proceed any further, move on to the next
-                continue
+                # replace the image file name in the 'img' tag with the url and also
+                # add the 'alt' attribute, assuming it wasn't provided
+                e.attrib['src'] = res['url']
+                if 'alt' not in e.keys():
+                    e.set('alt', res['file'])
 
-            # run it up the flagpole...
-            print "Attempting to upload '%s'..." % imgf
-            res = self.blogproxy.upload(self.bc.blogname, imgf)
-            if res == None:
-                print "Upload failed, proceeding...\n"
-                continue
-            print "Done"
+                # check for an 'res' attribute and append this to the filename while
+                # removing it from the attribute list
+                if 'res' in e.keys():
+                    res_str = '-' + e.attrib['res'] + '.'
+                    e.attrib['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, e.attrib['src'])
+                    
+                    # the 'res' attr is bogus- I've added it so that I can specify the
+                    # appropriate resolution file I want in the url.  
+                    # remove it from the final post
+                    del(e.attrib['res'])
 
-            # replace the image file name in the 'img' tag with the url and also
-            # add the 'alt' attribute, assuming it wasn't provided
-            # check for an 'res' attribute and append this to the filename while
-            # removing it from the attribute list
-            img['src'] = res['url']
-            if not img.has_key('alt'):
-                img['alt'] = res['file']
-
-            if img.has_key('res'):
-                res_str = '-' + img['res'] + '.'
-                img['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, img['src'])
-                
-                # the 'res' attr is bogus- I've added it so that I can specify the
-                # appropriate resolution file I want in the url.  
-                # remove it from the final post
-                del(img['res'])
-
-        return soup.renderContents()
+#        print etree.tostring(tree)
+#        sys.exit()
+    
+        return (etree.tostring(tree).replace('<post>', '')).replace('</post>', '')
 
     ############################################################################ 
     def procPostCategories(self):
@@ -603,7 +656,7 @@ class blogtool():
         # time to publish, or update...
         if self.bc.postid:
             print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
-            postid = blog.editPost(self.bc.postid, post)
+            postid = self.blogproxy.editPost(self.bc.postid, post)
             return None
 
         # sending a new post
@@ -695,76 +748,6 @@ class blogtool():
             print "Error writing updated post file %s" % file
         else:
             f.close()
-
-#################################################################################
-## entry function for processing post text- image links and what not are
-## dealt with here
-##
-#def procPost(blog, blogname,  posttext):
-#
-#    # helper function for comprehension below
-#    def skiptag(tag):
-#        return (isinstance(tag, BeautifulSoup.Comment) or
-#                tag.parent.name == 'pre' or
-#                tag.parent.name == 'code')
-#
-#    # when we run the text through markdown, it will preserve the linefeeds of 
-#    # the original text.  This is a problem when publishing because the blog
-#    # software turns the linefeeds within the 'p' tags to 'br' tags which
-#    # defeats the formatting powers of HTML.  So we'll remove all of the
-#    # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
-#    # because it streamlines what would otherwise be a tedious process
-#    soup = BeautifulSoup.BeautifulSoup(markdown.markdown(posttext))
-#
-#    # remove extraneous newlines from the NavigableStrings (text)
-#    # for better or worse, I'll leave extra space (i.e. multiple consecutive
-#    # space characters) alone, for now.  Browser's get rid of the space so it 
-#    # doesn't seem to hurt anyone if I leave it in place
-#    # don't do this for 'pre' tags
-#    souptext = soup.findAll(text = True) 
-#    [ t.replaceWith(t.replace('\n', ' ')) for t in souptext if not skiptag(t) ]
-#
-#    # now deal with all the 'img' tags
-#    for img in soup.findAll('img'):
-#        # first, make sure this looks like a valid file
-#        imgf = img['src']
-#        if imgf.find("http://") == -1:
-#            if os.path.isfile(imgf) != 1:
-#                # try anchoring file to the user's home directory       
-#                imgf = os.path.expanduser('~') + '/' + imgf
-#                if os.path.isfile(imgf) != 1:
-#                    error("Image file not found: %s\n" % img['src'])
-#        else:
-#            # this is a link so don't proceed any further, move on to the next
-#            continue
-#
-#        # run it up the flagpole...
-#        print "Attempting to upload '%s'..." % imgf
-#        res = blog.upload(blogname, imgf)
-#        if res == None:
-#            print "Upload failed, proceeding...\n"
-#            continue
-#        print "Done"
-#
-#        # replace the image file name in the 'img' tag with the url and also
-#        # add the 'alt' attribute, assuming it wasn't provided
-#        # check for an 'res' attribute and append this to the filename while
-#        # removing it from the attribute list
-#        img['src'] = res['url']
-#        if not img.has_key('alt'):
-#            img['alt'] = res['file']
-#
-#        if img.has_key('res'):
-#            res_str = '-' + img['res'] + '.'
-#            img['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, img['src'])
-#            
-#            # the 'res' attr is bogus- I've added it so that I can specify the
-#            # appropriate resolution file I want in the url.  
-#            # remove it from the final post
-#            del(img['res'])
-#
-#    return soup.renderContents()
-#
 
 ################################################################################
 # 
@@ -918,7 +901,6 @@ def main():
     # now process the postfile, if any
     bt.doFilelist()
 
-    print 'Done.'
     sys.exit()
 
 ################################################################################
