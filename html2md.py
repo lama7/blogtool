@@ -67,6 +67,9 @@ class html2md:
 
                 self._tag_exit(e.tag)
 
+        if len(self.links) != 0:
+            self._outAppend("\n\n%s" % self.reflinkText())
+
         return self.out
  
     def _outAppend(self, s):
