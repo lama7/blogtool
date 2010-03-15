@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+import sys
+import re
+
 from StringIO import StringIO
 
 try:
@@ -13,179 +16,251 @@ except ImportError:
 class html2md:
     def __init__(self):
 
-        self.out = ''
-        self._tags = []  # holds nested tags- not the same as the last
-                         # processed tag since tags are removed from the list
-                         # when the end of the tag is reached
-        self._start_tags = [] # tracks all opened tags
-        self._last_processed = None  # last tag that was close- basically the
-                                     # previous top of _tags stack
-        self.bq = ''
-        self.ol_tag = 1
-        self.reflinks = 0
-        self.links = []
-        self.start_handlers = dict(
+        # the blocklist is what will be returned as a joined string
+        self._blocklist = []
+        self._block = ''    # for handling elements that can be nested
+        self._reflinks = 0
+        self._links = []
+        self._tagstack = []
+        self._listchars = []
+        self._listblock= []
+        self._blockHandlers = dict(
                                    [
-                                    ('a', self.a_start),
-                                    ('p', self.p_start),
-                                    ('blockquote', self.bq_start),
-                                    ('code', self.code_start),
-                                    ('em', self.em_start),
-                                    ('strong', self.strong_start),
-                                    ('li', self.li_start),
-                                    ('ul', self.ul_start),
-                                    ('ol', self.ol_start)
+                                    ('p', self._p),
+                                    ('blockquote', self._blockquote),
+                                    ('li', self._li),
+                                    ('ul', self._listCommon),
+                                    ('ol', self._listCommon),
+                                    ('img', self._img),
+                                    ('pre', self._pre),
+                                    ('code', self. _codeBlock),
+                                    ('post', self._p),
                                    ]
                                   )
-        self.end_handlers = dict (
-                                  [
-                                   ('a', self.a_end),
-                                   ('p', self.p_end),
-                                   ('blockquote', self.bq_end),
-                                   ('li', self.li_end),
-                                   ('ul', self.ul_end),
-                                   ('ol', self.ol_end)
-                                  ] 
-                                 )
+        self._inlineHandlers = dict(
+                                    [
+                                     ('a', self._a),
+                                     ('code', self._code),
+                                     ('em', self._em),
+                                     ('strong', self._strong),
+                                     ('br', self._br),
+                                    ]
+                                   )
+
 
     def convert(self, html):
         events = ('start', 'end')
-        for action, e in etree.iterparse(StringIO("<post>%s</post>" % html),
-                                         events = events):
-            if action == 'start':
-                self._tag_enter(e.tag)
-                if e.tag in self.start_handlers.keys():
-                    self.start_handlers[e.tag](e)
-                else:
-                    self.generic_start_handler(e)
-            
-            if action == 'end':
-                if e.tag in self.end_handlers.keys():
-                    self.end_handlers[e.tag](e)
-                else:
-                    self.generic_end_handler(e)
+        self._htmlIter = etree.iterparse(StringIO("<post>%s</post>" % html),
+                                         events = events)
 
-                self._tag_exit(e.tag)
+        for event, e in self._htmlIter:
+            if (e.tag == 'post' and 
+                (not e.text or e.text.isspace())):
+                continue
+                
+            # we don't need to process start events for everything,
+            # just block elements that can nest
+            if event == 'start':
+                # build stack to track nesting
+                self._tagstack.append(e.tag)
+                if e.tag == 'ul':
+                    self._listchars.insert(0, '*')
+                elif e.tag == 'ol':
+                    self._listchars.insert(0, 1)
+                continue
 
-        if len(self.links) != 0:
-            self._outAppend("\n\n%s" % self.reflinkText())
+            # process endtags because everything is available at that point
+           
+            # determine the nesting level, if we're back to the intial level
+            # then we'll go ahead and process
+            self._tagstack.pop()
+            if len(self._tagstack) != 0:
+                continue
 
-        return self.out
- 
-    def _outAppend(self, s):
-        # if we're in a blockquote, then prepend the '> '
-        if 'blockquote' in self._tags:
-            self.out += self.bq
+            # back to the first level, start processing with the current 
+            # block tag
+            if e.tag in self._blockHandlers.keys():
+                text = self._blockHandlers[e.tag](e, '')
+                self._blocklist.append(text)
+                e.clear() # don't need this anymore
 
-        # make sure that there is text- if the tag starts with, say, a link
-        # then text will be None
-        if s:
-            self.out += s
+                # see if we created any links, if so add them now
+                if len(self._links):
+                    self._blocklist.append(self._reflinkText())
 
-    def generic_start_handler(self, e):
-        if e.text:
-            self.out += (e.text.lstrip()).rstrip('\n')
+        return '\n'.join(self._blocklist)
 
-    def generic_end_handler(self, e):
-        pass
+    def _p(self, p, text):
+        # return all text contained in p-tag and it's subelements
+        if p.text and not p.text.isspace():
+            if text:
+                text += '\n'
+            text += p.text
 
-    def p_start(self, p):
-        # if the p-tag occurs within a list, then remove the 
-        # trailing '\n' because it will get added on by the p-tag
-        # processing
-        if self._last_tag() == 'li':
-            if self._start_tags[-2] == 'p':
-                self.out += '    '
-            else:
-                self.out = self.out[:-1]
+        # luckily, p-tags cannot be nested.  As a matter of fact, no other
+        # block-tags can be nested in p-tags
+        # now process subelements of p
+        if len(p):
+            for se in p:
+                text += self._inlineHandlers[se.tag](se)
 
-        self._outAppend(p.text)
+        # if text already has a trailing '\n' then return it, otherwise
+        # append a '\n'
+        if text.endswith('\n'):
+            return text
+        else:
+            return text + '\n'
 
-    def p_end(self, p):
-        if len(self.links) != 0:
-            self._outAppend("\n\n%s" % self.reflinkText())
+    def _blockquote(self, bq, text):
+        # we need to accomodate nesting here- but also the simplest case 
+        # of just a single line of text
+        # There are uses where text can be associated with the blockquotes
+        # themselves, as opposed to buried in p-tags and what not
+        bq_text = ''
+        if bq.text and not bq.text.isspace():
+            bq_text = bq.text 
+
+        # now handle all child tags
+        if len(bq):
+            bq_text = self._processChildren(bq, bq_text)
+        # make sure the text string is terminated with a newline
+        if bq_text and not bq_text.isspace() and not bq_text.endswith('\n'):
+            bq_text += '\n'
+
+        bq_text = bq_text.rstrip() + '\n'
+        # return text with a '> ' prepended to each line
+        return text + self._prepend(bq_text, '> ')
+
+    def _listCommon(self, listtypetag, text):
+        # this is the entry function to process lists
+        # the children will be the list items in li-tags
+        # for now, we'll assume no text is associated with these tags
+        # we'll have to see, but for now I'm assuming that the children
+        # are li-tags
+        text = self._processChildren(listtypetag, text)
+        if not text.endswith('\n'):
+            text += '\n'
+
+        # for nested lists, the inner list will complete processing 
+        # before outer lists, even though processing STARTS with outer
+        # lists, therefore by the time we return to the outer most list
+        # the _listchars should be empty but for the last list, so popping
+        # should be ok
+        self._listchars.pop(-1)
+
+        return text
+
+    def _li(self, li, text):
+        # get list prepend character and nesting depth
+        if self._listchars[-1] == '*':
+            li_pre = '*   '
+        else:
+            li_pre = '%s.' % self._listchars[-1]
+            li_pre += ' '*(4 - len(li_pre))
+            self._listchars[-1] += 1
+        li_level = self._getnestLevel(li.getparent())
+
+        # be sure to separate list item from previous list item or text
+        if text and not text.endswith('\n'):
+            text += '\n'
+
+        # now figure out the list text itself
+        li_text = ''
+        if li.text and not li.text.isspace():
+            li_text = li.text
+
+        # two possibilities- the li text has children that need processing
+        # or the li is comprised of child elements (perhaps even starting with
+        # an inline tag, in which case the text will likely be picked up
+        # as a child of the inline tag)
+        if len(li):
+            li_text = self._processChildren(li, li_text)
+
+        # li_text is set, now we need to 
+        for line in li_text.splitlines():
+            if li_pre:
+                text += "%s%s%s" % (' '*4*li_level, li_pre, line)
+                li_pre = ''
+            elif not line.isspace():
+                text += "%s%s\n" % (' '*4*(li_level + 1), line)
+
+        return text
+
+    def _pre(self, pre, text):
+        return self._processChildren(pre, text)
+
+    def _img(self, img, text):
+        # processes img tag if it's on it's own
+        return "%s\n" % etree.tostring(img)
+           
+    def _a(self, a):
+        # build return string based on anchor tag
+        s = ''
+        if a.text and not a.text.isspace():
+            s = a.text
+
+        # see if there are any subelements
+        if len(a):
+            for se in a:
+                s += self._inlineHandlers[se.tag](se)
+
+        # now that we have all the text, format it in markdown syntax
+        s = "[%s][%s]" % (s, self._reflinks)
         
-        self.out += '\n'
-        self._outAppend('\n')
-
-    def bq_start(self, bqe):
-        self.bq += '> '
-
-    def bq_end(self, bqe):
-        self.bq = self.bq[2:]
-        self.out = self.out[:-4]
-        
-        self.out += '\n'
-        if not self.bq:
-            self.out += '\n'
-
-    def a_start(self, a):
-        pass
-
-    def a_end(self, a):
-        # first, put the text together
-        self._outAppend("[%s][%s]" % (a.text, self.reflinks))
-        self._outAppend(self._checktail(a))
-
-        # now, save off reflink and link itself
+        # save the reflinks
         if 'title' not in a.attrib.keys():
             a.set('title', '')
+        self._links.append((self._reflinks, 
+                            a.attrib['href'],
+                            a.attrib['title']))
+        self._reflinks += 1
+            
+        s += self._checktail(a)
 
-        self.links.append((self.reflinks, a.attrib['href'], a.attrib['title']))
-        self.reflinks += 1
+        return s
 
-    def code_start(self, code):
-        last_tag = self._last_tag()
-        if last_tag == 'p':
-            self._outAppend(self.convert_inline(code, '`'))
-        elif last_tag == 'pre':
-            for line in code.text.split('\n'):
-                self._outAppend('    %s\n' % line)
+    def _em(self, em):
+        # return emphasis string- in markdown there are no sub elements of
+        # em tags
+        return self._convertInline(em, '*')
 
-    def em_start(self, em):
-        # if the text ends with a space, then add it after the *
-        self._outAppend(self.convert_inline(em, '*'))
+    def _br(self, br):
+        return '  \n'
 
-    def strong_start(self, strong):
-        self._outAppend(self.convert_inline(strong, '**'))
+    def _strong(self, strong):
+        return self._convertInline(strong, '**')
 
-    def li_start(self, li):
-        last_tag = self._last_tag()
-        if last_tag == 'ul':
-            self._outAppend('* %s' % li.text)
-        elif last_tag == 'ol':
-            self._outAppend('%s.  %s' % (self.ol_tag, li.text))
-            self.ol_tag += 1
+    def _code(self, code):
+        # for handling code tags that occur in p-tags and the like
+        return self._convertInline(code, '`')
 
-    def li_end(self, li):
-        # we don't need to advance the line if we are in a list and 
-        # processing a p-tag- the p-tag processing will add linefeeds
-        if (self._start_tags[-2] not in [ 'ul', 'ol' ] and
-            self._last_processed == 'p'):
-            pass
-        else:
-            # advance line for next list item
-            self.out += '\n'
+    def _codeBlock(self, code, text):
+        # for handling code tags that occur after pre-tags
+        return self._prepend(code.text, '    ')
 
-    def ol_start(self, ol):
-        pass
+    def _processChildren(self, e, text):
+        for child in e:
+            if child in self._inlineHandlers.keys():
+                text += self._inlineHandlers[child.tag](child)
+            else:
+                # when switching from inline tags to block tags, add
+                # a linefeed
+                if text and not text.endswith('\n'):
+                    text += '\n'
+                text = self._blockHandlers[child.tag](child, text)
+                if child.tag == 'p':
+                    text += '\n'
 
-    def ol_end(self, ol):
-        if ol.tail and not ol.tail.isspace():
-            self._outAppend(ol.tail)
-        if self._start_tags[-1] != 'p':
-            self._outAppend('\n')
-        self.ol_tag = 1
+        return text
 
-    def ul_start(self, ul):
-        pass
+    def _prepend(self, text, pretext):
+        rtext = ''
+        for line in text.splitlines():
+            rtext += "%s%s\n" % (pretext, line)
 
-    def ul_end(self, ul):
-        if ul.tail and not ul.tail.isspace():
-            self._outAppend(ul.tail)
-        self._outAppend('\n')
+        return rtext
 
-    def convert_inline(self, e, c):
+    def _convertInline(self, e, c):
         addspace = False
         if e.text.endswith(' '):
             addspace = True
@@ -198,52 +273,36 @@ class html2md:
 
         return text
 
-    def _checktail(self, element):
-        if element.tail and not element.tail.isspace():
-            return element.tail
-        else:
-            return ''
+    def _getnestLevel(self, e):
+        # this function determines the amount of nesting for a tag
+        nest = 0
+        loop_e = e.getparent()
+        while loop_e.tag != 'post':
+            # naturally, lists are a little trickier
+            if ((e.tag in ['ul', 'ol'] and loop_e.tag in ['ul', 'ol']) or
+                loop_e.tag == e.tag):
+                nest += 1
+            loop_e = loop_e.getparent()
 
-    def reflinkText(self):
+        return nest
+
+    def _reflinkText(self):
         text = ''
-        for ref in self.links:
+        for ref in self._links:
             text += "[%s]: %s" % (ref[0], ref[1])
             if ref[2]:
                 text += ''' "%s"''' % (ref[2])
             text += '\n'
 
-        del self.links[:]
+        del self._links[:]
 
-        return text.rstrip()
+        return text
 
-    def _tag_enter(self, t):
-        self._tags.append(t)
-        self._start_tags.append(t)
-
-    def _tag_exit(self, t):
-        if self._current_tag() != t:
-            print "Stack Error: %s versus current %s" % (self._current_tag, t)
-            print self._tags
-            sys.exit()
+    def _checktail(self, element):
+        if element.tail and not element.tail.isspace():
+            return element.tail
         else:
-            self._last_processed = self._tags.pop()  # remove current tag
-
-    def _current_tag(self):
-        ntags = len(self._tags)
-        if ntags > 0:
-            return self._tags[ntags - 1]
-        else:
-            return None
-
-    def _last_tag(self):
-        ntags = len(self._tags)
-        if ntags > 1:
-            return self._tags[ntags - 2]
-        else:
-            return None
-
-    def _last_opened(self):
-        return self._start_tags[-2]
+            return ''
 
 ################################################################################
 #
