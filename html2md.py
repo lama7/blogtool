@@ -47,7 +47,6 @@ class html2md:
                                     ]
                                    )
 
-
     def convert(self, html):
         events = ('start', 'end')
         self._htmlIter = etree.iterparse(StringIO("<post>%s</post>" % html),
@@ -216,7 +215,6 @@ class html2md:
         self._reflinks += 1
             
         s += self._checktail(a)
-
         return s
 
     def _em(self, em):
