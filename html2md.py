@@ -18,7 +18,6 @@ class html2md:
 
         # the blocklist is what will be returned as a joined string
         self._blocklist = []
-        self._block = ''    # for handling elements that can be nested
         self._reflinks = 0
         self._links = []
         self._tagstack = []
@@ -128,6 +127,8 @@ class html2md:
 
         bq_text = bq_text.rstrip() + '\n'
         # return text with a '> ' prepended to each line
+        # we only want to prepend to the text associated with this bq, text
+        # passed in here from previous operations should not be prepended
         return text + self._prepend(bq_text, '> ')
 
     def _listCommon(self, listtypetag, text):
