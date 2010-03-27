@@ -54,6 +54,7 @@ class html2md:
             nhtml = str(unicodedata.normalize('NFKD', html))
         except TypeError:
             nhtml = html
+#        print nhtml
         self._htmlIter = etree.iterparse(StringIO("<post>%s</post>" % nhtml),
                                          events = events)
 
@@ -269,7 +270,8 @@ class html2md:
 
     def _processChildren(self, e, text):
         for child in e:
-            if child.tag in self._inlineHandlers:
+            if child.tag in self._inlineHandlers and \
+               child.getparent().tag != 'pre':
                 text += self._inlineHandlers[child.tag](child)
             elif child.text.find('more') != -1:
                 text = text.rstrip() + "\n\n<!--more-->\n\n"
