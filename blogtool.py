@@ -472,10 +472,16 @@ class blogtool():
 #        print repr(post['description'])
 #        print repr(post['mt_text_more'])
 
-        text = html2md.convert(post['description'])
         if post['mt_text_more']:
-            text += "<!--more-->\n\n"
-            text += html2md.convert(post['mt_text_more'])
+            text = html2md.convert("%s%s%s" % (post['description'], 
+                                               "<!--more-->",
+                                               post['mt_text_more']))
+        else:
+            text = html2md.convert(post['description'])
+
+#        if post['mt_text_more']:
+#            text += "<!--more-->\n\n"
+#            text += html2md.convert(post['mt_text_more'])
 
         print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
                self.bc.name, 
