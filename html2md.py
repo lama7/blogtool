@@ -44,7 +44,6 @@ class html2md:
                                      ('strong', self._strong),
                                      ('br', self._br),
                                      ('img', self._img),
-                                     ('comment', self._comment),
                                     ]
                                    )
 
@@ -83,10 +82,19 @@ class html2md:
             if len(self._tagstack) != 0:
                 continue
 
+            # the 'page break' in a post is a comment- <!--more-->
+            # catch that here if it exists
+            if event == 'comment':
+                self._blocklist.append('<!--more-->\n')
             # back to the first level, start processing with the current 
             # block tag
-            if e.tag in self._blockHandlers.keys():
+            elif e.tag in self._blockHandlers:
                 text = self._blockHandlers[e.tag](e, '')
+                # text can possibly return with multiple appended '\n'
+                # we can safely fix that here by stripping and appending a 
+                # single '\n'- the join below will add the second one to the 
+                # final text
+                text = text.rstrip() + '\n'
                 self._blocklist.append(text)
                 e.clear() # don't need this anymore
 
@@ -99,7 +107,7 @@ class html2md:
     def _p(self, p, text):
         # return all text contained in p-tag and it's subelements
         if p.text and not p.text.isspace():
-            if text:
+            if text and not text.endswith('\n'):
                 text += '\n'
             text += p.text
 
@@ -110,7 +118,12 @@ class html2md:
             # 'post' tags use the same handler and the CAN have block
             # elements...
             if p.tag == 'post':
-                text = self._processChildren(p, text)
+                # this is all the text at the beginning of the post
+                # we need to append a '\n' to make sure it is separated from
+                # it's children.  Normally, the p tag processing would tak
+                # care of this, but we can't rely on that here because all the
+                # text that's normally in p tags is here in post.
+                text = self._processChildren(p, text + '\n')
             else:
                 for se in p:
                     if se.tag in self._inlineHandlers:
@@ -149,6 +162,9 @@ class html2md:
             bq_text += '\n'
 
         bq_text = bq_text.rstrip() + '\n'
+        # if this blockquote is a child of the 'post' tag, then the only
+        # way to pick up other text that belongs at the 'post' level is to
+        # check this tags tail
         tail = self._checktail(bq)
         if tail:
             tail = '\n' + tail.lstrip()
@@ -203,19 +219,19 @@ class html2md:
         if len(li):
             li_text = self._processChildren(li, li_text)
 
-        # li_text is set, now we need to 
-        for line in li_text.splitlines():
+        # this loop handles 1 item in a list.  It will iterate multiple times
+        # for linebreaks and multiple paragraphs
+        for line in li_text.splitlines(1):
             if li_pre:
                 text += "%s%s%s" % (' '*4*li_level, li_pre, line)
                 li_pre = ''
             elif not line.isspace():
-                text += "%s%s\n" % (' '*4*(li_level + 1), line)
+                text += "%s%s" % (' '*4*(li_level + 1), line)
+            else:
+                # most likely a linefeed...
+                text += line
 
         return text
-
-    def _comment(self, comment):
-        print etree.tostring(comment)
-        sys.exit()
 
     def _pre(self, pre, text):
         return self._processChildren(pre, text)
@@ -273,16 +289,16 @@ class html2md:
             if child.tag in self._inlineHandlers and \
                child.getparent().tag != 'pre':
                 text += self._inlineHandlers[child.tag](child)
-            elif child.text.find('more') != -1:
+            elif child.text and child.text.find('more') != -1:
                 text = text.rstrip() + "\n\n<!--more-->\n\n"
             else:
                 # when switching from inline tags to block tags, add
                 # a linefeed
-                if text:
-                    text = text.rstrip() + '\n\n'
+                if text and not text.endswith('\n'):
+                    text += '\n'
                 text = self._blockHandlers[child.tag](child, text)
                 if child.tag == 'p':
-                    text += '\n'
+                    text = text.rstrip() + '\n\n'
 
         return text
 
