@@ -244,44 +244,26 @@ class blogtoolRetry(blogtoolError):
 #    a fairly significant refactor of the original code which had function that
 #    passed around blog information like the name or the class itself.
 #
+#    While the first refactor resulted in the creation of this class, this 
+#    refactor is about cleaning it up.  The purpose here is to more clearly
+#    define a 'blogtool' object.  This will entail removing the option
+#    processing as well as the dependency on the config parser.  All of that
+#    code will be moved to the 'main' function where it properly belongs.
+#    The idea will be to whittle down the blogtool class to it's essence- a
+#    wrapper around the xmlrpc function calls.
+#
 class blogtool():
 
     ############################################################################ 
-    def __init__(self, argv):
-        # create config parser object
-        self.btconfig = btconfigparser.bt_config()
-        self.filename = ''
-
-        # create option parser object
-        parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
-        for o in options:
-            # o is a dict
-            if 'optstr_short' not in o.keys():
-                parser.add_option(o['optstr_long'], 
-                                  action = o['action'],
-                                  dest = o['dest'],
-                                  default = o['default'],
-                                  help = o['help'])
-            else:
-                parser.add_option(o['optstr_short'],
-                                  o['optstr_long'], 
-                                  action = o['action'],
-                                  dest = o['dest'],
-                                  help = o['help'])
-        (self.opts, self.filelist) = parser.parse_args(argv)
-
-        # process any configuration files 
-        # do this NOW because option processing requires blog related info
-        # like xmlrpc, passwords, etc.
-        cf_str = configfile(self.opts.configfile)
-        if cf_str == None:
-            self.cf_config = None
-        else:
-            try:
-                self.cf_config = self.btconfig.parse(cf_str)
-            except btconfigparser.btParseError, err_str:
-                print err_str
-                sys.exit()
+    def __init__(self, blogname = None, 
+                       addpostcats = False, 
+                       posttime = None,
+                       publish = True ):
+        self.blogproxy = None
+        self.blogname = blogname
+        self.addpostcats = False
+        self.posttime = posttime
+        self.publish = publish
 
     ############################################################################ 
     def doPreOptions(self):
@@ -316,41 +298,25 @@ class blogtool():
             self.doOptionGetPost()
 
     ############################################################################ 
-    def doFilelist(self):
-        for filename in self.filelist:
-            if self.filename != filename:
-                self.filename = filename
-                print "Processing post file %s..." % self.filename
+    def setBlogProxy(self, xmlrpc, username, password):
+        if self.blogproxy:
+            del self.blogproxy
 
-            try:
-                self.doPostFile()
-            except blogtoolRetry:
-                self.filelist.insert(0, self.filename)
-                continue
-            except (blogtoolPostFileError, blogtoolHeaderError), err_msg:
-                print err_msg
-                print "The post in %s cannot be sent to blog." % self.filename
-                continue
-
-            for bpc in self.post_config:
-                self.bc = bpc
-                if self.pushPost():
-                    print 'Update post file...'
-                    self.updateFile()
+        self.blogproxy = blogapi.blogproxy(xmlrpc, username, password)
 
     ############################################################################ 
-    def setBlogConfig(self):
+    def setBlogConfig(self, config):
         # this function sets the working blog config
-        if self.cf_config == None:
+        if cf_config == None:
            raise blogtoolNoConfig() 
 
-        if len(self.cf_config) == 1:
-            self.bc = self.cf_config[0]
+        if len(cf_config) == 1:
+            self.bc = cf_config[0]
         else:
-            if not self.opts.blogname:
+            if not self.blogname:
                 raise blogtoolNoBlogName()
-            for bc in self.cf_config:
-                if bc.name == self.opts.blogname:
+            for bc in cf_config:
+                if bc.name == self.blogname:
                     self.bc = bc
                     break
             else:
@@ -362,7 +328,7 @@ class blogtool():
                                            self.bc.password)
 
     ############################################################################ 
-    def addCategory(self, c, substart, parentId):
+    def _addCategory(self, c, substart, parentId):
         # subcategories are demarked by '.'
         newcatlist = c.split('.')
 
@@ -456,7 +422,7 @@ class blogtool():
             print "Attempting to add %s category to %s" % (self.opts.newcat,
                                                            self.bc.name)
             # the '*' is the unpacking operator
-            self.addCategory(self.opts.newcat, *t)
+            self._addCategory(self.opts.newcat, *t)
 
     ############################################################################ 
     def doOptionGetPost(self):
@@ -486,7 +452,6 @@ class blogtool():
             print 'TAGS: %s' % ', '.join(post['mt_keywords'])
 
         print '\n' + text
-        sys.exit()
 
     ############################################################################ 
     def procPost(self):
@@ -494,10 +459,6 @@ class blogtool():
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
 
-        sys.exit()
-
-    ############################################################################ 
-    def procPost(self):
         # when we run the text through markdown, it will preserve the linefeeds of 
         # the original text.  This is a problem when publishing because the blog
         # software turns the linefeeds within the 'p' tags to 'br' tags which
@@ -565,14 +526,14 @@ class blogtool():
         # see if there were any unrecognized categories
         if len(nonCats) == 0:
             print "Post categories OK"
-        elif self.opts.addcats:
+        elif self.opts.addpostcats:
             # since the addcat option is processed prior to post processing,
             # we should be able to get away with coopting the opts.blogname
             # and setting it to the current bc.name value without any 
             # repercussions- but check here when some kind of potential funny
             # business starts
             self.opts.blogname = self.bc.name
-            [ self.addCategory(*ct) for ct in nonCats ]
+            [ self._addCategory(*ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
             print "Category '%s' is not a valid category for %s so it is being\n\
@@ -655,8 +616,8 @@ class blogtool():
         try:
             post = blogapi.buildPost(self.bc,
                                      posthtml,
-                                     timestamp = self.opts.posttime,
-                                     publish = self.opts.publish )
+                                     timestamp = self.posttime,
+                                     publish = self.publish )
         except blogapi.timeFormatError, timestr:
             print timestr
             sys.exit()
@@ -903,18 +864,77 @@ def main():
     # file generated by the editor, otherwise, proceed normally
     if len(sys.argv) == 1:
         fd = NamedTemporaryFile()
-        if edit(fd, "TITLE: \nCATEGORIES: \n") != None:
-            bt = blogtool([fd.name])
-        else:
+        if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
             print "Nothing to do, exiting."
     else:
-        bt = blogtool(sys.argv[1:])
+        # create option parser object
+        parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
+        # add command line options to parser
+        for o in options:
+            # o is a dict
+            if 'optstr_short' not in o.keys():
+                parser.add_option(o['optstr_long'], 
+                                  action = o['action'],
+                                  dest = o['dest'],
+                                  default = o['default'],
+                                  help = o['help'])
+            else:
+                parser.add_option(o['optstr_short'],
+                                  o['optstr_long'], 
+                                  action = o['action'],
+                                  dest = o['dest'],
+                                  help = o['help'])
+        (opts, filelist) = parser.parse_args(sys.argv[1:])
 
-    # process option that are independent of post files
-    bt.doPreOptions()
+    # create the blogtool object
+    bt = blogtool(blogname = opts.blogname,
+                  addpostcats = opts.addcats,
+                  posttime = opts.posttime,
+                  publish = opts.publish)
 
-    # now process the postfile, if any
-    bt.doFilelist()
+    # create header parse object
+    btconfig = btconfigparser.bt_config()
+
+    ###########################################################################
+    # process any configuration files 
+    # do this NOW because option processing requires blog related info
+    # like xmlrpc, passwords, etc.
+    cf_str = configfile(opts.configfile)
+    if cf_str == None:
+        cf_config = None
+    else:
+        try:
+            cf_config = btconfig.parse(cf_str)
+        except btconfigparser.btParseError, err_str:
+            print err_str
+            sys.exit()
+
+    # set the xmlrpc parms before processing options
+    bt.setBlogConfig(cf_config)
+     
+
+    ###########################################################################
+    for filename in filelist:
+        if self.filename != filename:
+            self.filename = filename
+            print "Processing post file %s..." % self.filename
+
+        try:
+            self.doPostFile()
+        except blogtoolRetry:
+            self.filelist.insert(0, self.filename)
+            continue
+        except (blogtoolPostFileError, blogtoolHeaderError), err_msg:
+            print err_msg
+            print "The post in %s cannot be sent to blog." % self.filename
+            continue
+
+        for bpc in self.post_config:
+            self.bc = bpc
+            if self.pushPost():
+                print 'Update post file...'
+                self.updateFile()
+
 
     sys.exit()
 
