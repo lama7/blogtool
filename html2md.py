@@ -2,6 +2,7 @@
 
 import sys
 import re
+import unicodedata
 
 from StringIO import StringIO
 
@@ -30,7 +31,6 @@ class html2md:
                                     ('li', self._li),
                                     ('ul', self._listCommon),
                                     ('ol', self._listCommon),
-                                    ('img', self._img),
                                     ('pre', self._pre),
                                     ('code', self. _codeBlock),
                                     ('post', self._p),
@@ -43,12 +43,18 @@ class html2md:
                                      ('em', self._em),
                                      ('strong', self._strong),
                                      ('br', self._br),
+                                     ('img', self._img),
                                     ]
                                    )
 
     def convert(self, html):
-        events = ('start', 'end')
-        self._htmlIter = etree.iterparse(StringIO("<post>%s</post>" % html),
+        events = ('start', 'end', 'comment')
+        try:
+            nhtml = str(unicodedata.normalize('NFKD', html))
+        except TypeError:
+            nhtml = html
+#        print nhtml
+        self._htmlIter = etree.iterparse(StringIO("<post>%s</post>" % nhtml),
                                          events = events)
 
         for event, e in self._htmlIter:
@@ -71,14 +77,24 @@ class html2md:
            
             # determine the nesting level, if we're back to the intial level
             # then we'll go ahead and process
-            self._tagstack.pop()
+            if event == 'end':
+                self._tagstack.pop()
             if len(self._tagstack) != 0:
                 continue
 
+            # the 'page break' in a post is a comment- <!--more-->
+            # catch that here if it exists
+            if event == 'comment':
+                self._blocklist.append('<!--more-->\n')
             # back to the first level, start processing with the current 
             # block tag
-            if e.tag in self._blockHandlers.keys():
+            elif e.tag in self._blockHandlers:
                 text = self._blockHandlers[e.tag](e, '')
+                # text can possibly return with multiple appended '\n'
+                # we can safely fix that here by stripping and appending a 
+                # single '\n'- the join below will add the second one to the 
+                # final text
+                text = text.rstrip() + '\n'
                 self._blocklist.append(text)
                 e.clear() # don't need this anymore
 
@@ -91,7 +107,7 @@ class html2md:
     def _p(self, p, text):
         # return all text contained in p-tag and it's subelements
         if p.text and not p.text.isspace():
-            if text:
+            if text and not text.endswith('\n'):
                 text += '\n'
             text += p.text
 
@@ -99,8 +115,28 @@ class html2md:
         # block-tags can be nested in p-tags
         # now process subelements of p
         if len(p):
-            for se in p:
-                text += self._inlineHandlers[se.tag](se)
+            # 'post' tags use the same handler and the CAN have block
+            # elements...
+            if p.tag == 'post':
+                # this is all the text at the beginning of the post
+                # we need to append a '\n' to make sure it is separated from
+                # it's children.  Normally, the p tag processing would tak
+                # care of this, but we can't rely on that here because all the
+                # text that's normally in p tags is here in post.
+                text = self._processChildren(p, text + '\n')
+            else:
+                for se in p:
+                    if se.tag in self._inlineHandlers:
+                        text += self._inlineHandlers[se.tag](se)
+                    elif se.text.find('more') != -1:
+                        if text: 
+                            text = text.rstrip() + '\n\n'
+                        text += "<!--more-->\n\n"
+                    else:
+                        print "Error:"
+                        print etree.tostring(se)
+                        print se.tag
+                        sys.exit()
 
         # if text already has a trailing '\n' then return it, otherwise
         # append a '\n'
@@ -126,10 +162,17 @@ class html2md:
             bq_text += '\n'
 
         bq_text = bq_text.rstrip() + '\n'
+        # if this blockquote is a child of the 'post' tag, then the only
+        # way to pick up other text that belongs at the 'post' level is to
+        # check this tags tail
+        tail = self._checktail(bq)
+        if tail:
+            tail = '\n' + tail.lstrip()
+
         # return text with a '> ' prepended to each line
         # we only want to prepend to the text associated with this bq, text
         # passed in here from previous operations should not be prepended
-        return text + self._prepend(bq_text, '> ')
+        return text + self._prepend(bq_text, '> ') + tail
 
     def _listCommon(self, listtypetag, text):
         # this is the entry function to process lists
@@ -176,20 +219,24 @@ class html2md:
         if len(li):
             li_text = self._processChildren(li, li_text)
 
-        # li_text is set, now we need to 
-        for line in li_text.splitlines():
+        # this loop handles 1 item in a list.  It will iterate multiple times
+        # for linebreaks and multiple paragraphs
+        for line in li_text.splitlines(1):
             if li_pre:
                 text += "%s%s%s" % (' '*4*li_level, li_pre, line)
                 li_pre = ''
             elif not line.isspace():
-                text += "%s%s\n" % (' '*4*(li_level + 1), line)
+                text += "%s%s" % (' '*4*(li_level + 1), line)
+            else:
+                # most likely a linefeed...
+                text += line
 
         return text
 
     def _pre(self, pre, text):
         return self._processChildren(pre, text)
 
-    def _img(self, img, text):
+    def _img(self, img):
         # processes img tag if it's on it's own
         return "%s\n" % etree.tostring(img)
            
@@ -239,8 +286,11 @@ class html2md:
 
     def _processChildren(self, e, text):
         for child in e:
-            if child in self._inlineHandlers.keys():
+            if child.tag in self._inlineHandlers and \
+               child.getparent().tag != 'pre':
                 text += self._inlineHandlers[child.tag](child)
+            elif child.text and child.text.find('more') != -1:
+                text = text.rstrip() + "\n\n<!--more-->\n\n"
             else:
                 # when switching from inline tags to block tags, add
                 # a linefeed
@@ -248,7 +298,7 @@ class html2md:
                     text += '\n'
                 text = self._blockHandlers[child.tag](child, text)
                 if child.tag == 'p':
-                    text += '\n'
+                    text = text.rstrip() + '\n\n'
 
         return text
 
