@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import blogapi
-import btconfigparser
+import headerparse
 import html2md
 
 from optparse import OptionParser
@@ -249,7 +249,7 @@ class blogtool():
     ############################################################################ 
     def __init__(self, argv):
         # create config parser object
-        self.btconfig = btconfigparser.bt_config()
+        self.hdr = headerparse.headerParse()
         self.filename = ''
 
         # create option parser object
@@ -278,8 +278,8 @@ class blogtool():
             self.cf_config = None
         else:
             try:
-                self.cf_config = self.btconfig.parse(cf_str)
-            except btconfigparser.btParseError, err_str:
+                self.cf_config = self.hdr.parse(cf_str)
+            except headerparse.headerParseError, err_str:
                 print err_str
                 sys.exit()
 
@@ -635,9 +635,9 @@ class blogtool():
         # now that we have the post header processed, we need to reconcile it
         # with anything from a config file
         try:
-            self.post_config = reconcile(self.btconfig.parse(self.header),
+            self.post_config = reconcile(self.hdr.parse(self.header),
                                          self.cf_config)
-        except btconfigparser.btParseError, err_str:
+        except headerparse.headerParseError, err_str:
             print err_str
             raise blogtoolHeaderError()
 

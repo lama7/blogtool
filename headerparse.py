@@ -9,50 +9,49 @@ this stuff so cut me some slack.
 
 ################################################################################
 #
-#
-class btParseError(Exception):
-    pass
+#  base class for header parsing errors
+class headerParseError(Exception):
+    # each error class will override the __init__
+    def __init__(self):
+        self.message = ''
+
+    # just returns a message 
+    def __str__(self):
+        return self.message
 
 ################################################################################
 #
 #
-class btNoKeyword(btParseError):
+class NoKeyword(headerParseError):
     def __init__(self, string):
         self.message = "Expected keyword, found none: %s" % string
-    def __str__(self):
-        return self.message
 
 ################################################################################
 #
 #
-class btKeywordError(btParseError):
+class KeywordError(headerParseError):
     def __init__(self, keyword):
         self.message = "Invalid keyword: %s" % keyword
-    def __str__(self):
-        return self.message
     
 ################################################################################
 #
 #
-class btValueError(btParseError):
+class HeaderValueError(headerParseError):
     def __init__(self, string):
         self.message = "Could not parse keyword value: %s" % string
-    def __str__(self):
-        return self.message
 
 ################################################################################
 #
 #
-class btInterpError(btParseError):
+class InterpError(headerParseError):
     def __init__(self, key, value):
         self.message = "Value '%s' not valid for key '%s'" % (value, key)
-    def __str__(self):
-        return self.message
 
 ################################################################################
 #
+# Class defining a header structure
 #
-class btPostSettings():
+class header():
     def __init__(self):
         
         self.title = ''
@@ -101,13 +100,7 @@ class keyword():
 
 ################################################################################
 #
-#  define a config class- this will hide some ugliness
-#
-#  This version of the parser uses a different technique to make approach a
-#  "truer" parser- that is, the ability to parse a series of lines according
-#                  to a set of rules
-#
-#  The rules for this new version are as follows:
+#  The rules are as follows:
 #  -  the largest element I'll call a ASSIGNMENT- consisting of a KEYWORD followed
 #     ':', followed by an element
 #  -  the parser starts by finding a KEYWORD, which is a capitalized word
@@ -132,7 +125,7 @@ class keyword():
 #  Another limitation is that there is NO reason to allow groups to be 
 #  nested.   
 #
-class bt_config():
+class headerParse():
     __hdr_value = re.compile('([^\n,]+)\s*(.*)', re.DOTALL)
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
@@ -173,7 +166,7 @@ class bt_config():
         # determine how many configs we need by finding the length of the 
         # longest list in the AST
         numconfigs = max(map(lambda x: len(ast[x]), ast.keys()))
-        postconfig = [ btPostSettings() for x in range(numconfigs) ]
+        postconfig = [ header() for x in range(numconfigs) ]
 
         return self.__interpAST(ast, postconfig)
 
@@ -181,11 +174,11 @@ class bt_config():
     def __parseAssignment(self, parsestring):
         m = self.__hdr_keyword.match(parsestring)
         if m == None:
-            raise btNoKeyword(parsestring)
+            raise NoKeyword(parsestring)
 
         keyword, parsestring = m.group(1,2)
         if keyword not in self.__kw_tbl:
-            raise btKeywordError(keyword)
+            raise KeywordError(keyword)
 
         val, parsestring = self.__parseElement(parsestring)
 
@@ -207,7 +200,7 @@ class bt_config():
     def __parseValue(self, parsestring):
         m = self.__hdr_value.match(parsestring)
         if m == None:
-            raise btValueError(parsestring)
+            raise HeaderValueError(parsestring)
 
         # if next character is a comma, then we have a list otherwise
         # it's a single value assignment
@@ -249,11 +242,11 @@ class bt_config():
         # single value keyword are just that- and no groups
         if (kwtype == self.KTYPE_SINGLEVAL and
             (len(val) > 1 or type(val[0]) == types.DictType)):
-            raise btInterpError(keyword, val)
+            raise InterpError(keyword, val)
         # multival can't have any groups in the list
         elif (kwtype == self.KTYPE_MULTIVAL and
               len([ v for v in val if type(v) == types.DictType ]) != 0):
-            raise btInterpError(keyword, val)
+            raise InterpError(keyword, val)
 
         # build AST using keyword value pairs
         if keyword not in ast:
@@ -287,7 +280,7 @@ class bt_config():
                     # within a BLOG group, the only setting that can have more
                     # than 1 value are CATEGORIES and TAGS
                     if len(v) != 1:
-                        raise btInterpError(k, v)
+                        raise InterpError(k, v)
 
                     config.set(k, v.pop())
             del ast['BLOG']
