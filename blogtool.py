@@ -140,8 +140,14 @@ a file capture could be used for updating with blogtool.
 ################################################################################
 #   
 #  define base class for errors
-class blogtoolError(Exception):
-    pass
+class blogtoolError(Exception): 
+    # to be overriden by the subclass
+    def __init__(self):
+        self.message = ''
+
+    # this is typically all that's done with the __str__ method
+    def __str__(self):
+        return self.message
 
 ################################################################################
 #   
@@ -153,9 +159,6 @@ There are multple blogs in the config file.  Use the '-b' option to specify
 which to use.
 """
 
-    def __str__(self):
-        return self.message
-
 ################################################################################
 #   
 #
@@ -164,9 +167,6 @@ class blogtoolBadName(blogtoolError):
         self.message = """
 The blog name provided does not match anything in the configuration file.
 """
-
-    def __str__(self):
-        return self.message
 
 ################################################################################
 #   
@@ -181,9 +181,6 @@ To perform any optional operations (deleting posts, retrieving recent titles,
 etc.) please create a ~/.btconfig file.
 """
 
-    def __str__(self):
-        return self.message
-
 ################################################################################
 #   
 #
@@ -193,9 +190,6 @@ class blogtoolPostFileError(blogtoolError):
 Post file must have a blank line separating header and post text.
 """
 
-    def __str__(self):
-        return self.message
-
 ################################################################################
 #   
 #
@@ -203,8 +197,6 @@ class blogtoolDeletePostError(blogtoolError):
     def __init__(self, postid, blogname):
         self.message = "Unable to delete post %s from %s" % (postid, blogname)
     
-    def __str__(self):
-        return self.message
 
 ################################################################################
 #   
@@ -212,9 +204,6 @@ class blogtoolDeletePostError(blogtoolError):
 class blogtoolFNFError(blogtoolError):
     def __init__(self, filename):
         self.message = "File not found: %s" % filename
-
-    def __str__(self):
-        return self.message
 
 ################################################################################
 #   
@@ -224,9 +213,6 @@ class blogtoolHeaderError(blogtoolError):
         self.message = """
 The post file has an invalid header.
 """
-
-    def __str__(self):
-        return self.message
         
 ################################################################################
 #   
@@ -245,6 +231,8 @@ class blogtoolRetry(blogtoolError):
 #    passed around blog information like the name or the class itself.
 #
 class blogtool():
+
+    EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
     ############################################################################ 
     def __init__(self, argv):
@@ -479,10 +467,6 @@ class blogtool():
         else:
             text = html2md.convert(post['description'])
 
-#        if post['mt_text_more']:
-#            text += "<!--more-->\n\n"
-#            text += html2md.convert(post['mt_text_more'])
-
         print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
                self.bc.name, 
                self.opts.get_postid, 
@@ -500,13 +484,36 @@ class blogtool():
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
 
+        # look for EXTENDED_ENTRY marker
+        m = self.EXTENDED_ENTRY_RE.search(self.posttext)
+        if m:
+            description = self.posttext[:m.start()]
+            extended = self.posttext[m.end():]
+        else:
+            description = self.posttext
+            extended = ''
+
+        # create markdown object
+        self.md = markdown.Markdown()
+        html_desc = self._procText(description)
+        if extended:
+            html_ext = self._procText(extended)
+        else:
+            html_ext = ''
+
+        del self.md
+
+        return html_desc, html_ext
+
+    ############################################################################ 
+    def _procText(self, text):
         # when we run the text through markdown, it will preserve the linefeeds of 
         # the original text.  This is a problem when publishing because the blog
         # software turns the linefeeds within the 'p' tags to 'br' tags which
         # defeats the formatting powers of HTML.  So we'll remove all of the
         # linefeeds in the 'p' tags.  Towards this end, we'll use Beautiful Soup
         # because it streamlines what would otherwise be a tedious process
-        tree = etree.XML('<post>%s</post>' % markdown.markdown(self.posttext))
+        tree = etree.XML('<post>%s</post>' % self.md.convert(text))
         for e in tree.getiterator():
             if e.text and e.tag not in ['pre', 'code', 'comment']:
                 e.text = e.text.replace('\n', u' ')
@@ -628,7 +635,7 @@ class blogtool():
         if len(lines) < 3:
             raise blogtoolPostFileError()
 
-        self.header, self.posttext = getHeaderandPostText(lines)
+        self.header, self.posttext = self._getHeaderandPostText(lines)
 
         del lines  # no longer needed
 
@@ -648,7 +655,7 @@ class blogtool():
                                            self.bc.username,
                                            self.bc.password)
 
-        posthtml = self.procPost()
+        html_desc, html_ext = self.procPost()
 
         print "Checking post categories..."
         self.bc.categories = self.procPostCategories()
@@ -656,7 +663,8 @@ class blogtool():
         # now build a post structure
         try:
             post = blogapi.buildPost(self.bc,
-                                     posthtml,
+                                     html_desc,
+                                     html_ext,
                                      timestamp = self.opts.posttime,
                                      publish = self.opts.publish )
         except blogapi.timeFormatError, timestr:
@@ -759,6 +767,17 @@ class blogtool():
         else:
             f.close()
 
+    ############################################################################
+    def _getHeaderandPostText(self, linelist):
+        # find first blank line so we can split the list
+        for line in linelist:
+            if line.isspace():
+                i = linelist.index(line)
+                break
+
+        return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
+
+
 ################################################################################
 # 
 # Checks for and processes a config file for blogtool 
@@ -857,20 +876,6 @@ def reconcile(pcl, cfcl):
                 pc.set(k, newv)
 
     return pcl
-
-################################################################################
-#
-# split the file into 2 sections- the header and the post
-# divider is the first blank line encountered
-#
-def getHeaderandPostText(linelist):
-    # find first blank line so we can split the list
-    for line in linelist:
-        if line.isspace():
-            i = linelist.index(line)
-            break
-
-    return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
 
 ################################################################################

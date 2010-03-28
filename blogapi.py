@@ -226,7 +226,7 @@ class blogproxy(xmlrpclib.ServerProxy):
 #
 # returns a post dictionary suitable for publishing
 #
-def buildPost(hdrobj, content, timestamp = None, publish = True):
+def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
 
     time_fmts = [
                   "%Y%m%dT%H:%M",        #YYYYMMDDThh:mm
@@ -246,11 +246,11 @@ def buildPost(hdrobj, content, timestamp = None, publish = True):
     postStruct['title'] = hdrobj.title
     postStruct['categories'] = hdrobj.categories
     postStruct['mt_keywords'] = hdrobj.tags
-    postStruct['description'] = content
+    postStruct['description'] = desc
     postStruct['mt_excerpt'] = ''
     postStruct['mt_allow_commands'] = 1
     postStruct['mt_allow_pings'] = 1
-    postStruct['mt_text_more'] = ''
+    postStruct['mt_text_more'] = more
     postStruct['mt_convert_breaks'] = 1
 
     if publish:
