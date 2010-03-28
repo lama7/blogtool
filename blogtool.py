@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import blogapi
-import btconfigparser
+import headerparse
 import html2md
 
 from optparse import OptionParser
@@ -265,37 +265,8 @@ class blogtool():
         self.posttime = posttime
         self.publish = publish
 
-    ############################################################################ 
-    def doPreOptions(self):
-        # option processing to be done independent of post files
-        if not (self.opts.del_postid or 
-                self.opts.num_recent_t or 
-                self.opts.getcats or
-                self.opts.newcat or
-                self.opts.get_postid):
-            return
-
-        # setup bc and blogproxy for option processing
-        self.setBlogConfig()
-
-        # now actually check for options to process
-        if self.opts.del_postid:
-            try:
-                self.doOptionDelPost()
-            except blogtoolDeletePostError, err_str:
-                print err_str
-
-        if self.opts.num_recent_t:
-            self.doOptionGetRecent()
-
-        if self.opts.getcats:
-            self.doOptionGetCategories()
-
-        if self.opts.newcat:
-            self.doOptionAddBlogCategory()
-
-        if self.opts.get_postid:
-            self.doOptionGetPost()
+        # create a header parsing object
+        self.hdr = headerparse.headerParse()
 
     ############################################################################ 
     def setBlogProxy(self, xmlrpc, username, password):
@@ -328,46 +299,27 @@ class blogtool():
                                            self.bc.password)
 
     ############################################################################ 
-    def _addCategory(self, c, substart, parentId):
-        # subcategories are demarked by '.'
-        newcatlist = c.split('.')
-
-        # the isBlogCategory returns a tuple containing the first cat/
-        # subcat that is not on the blog.  We cannot assume that the
-        # first entry in the list matches the cat returned in the tuple
-        # so we'll remove categories/subcats that already exist on
-        # the blog
-        while substart != newcatlist[0]:
-            newcatlist.pop(0)
-     
-        # now add the categories as needed- init the parent ID field
-        # using the value from the tuple returned above
-        for c in newcatlist:
-            print "Adding %s with parent %s" % (c, parentId)
-            parentId = self.blogproxy.newCategory(self.opts.blogname, c, parentId)
-
-    ############################################################################ 
-    def doOptionDelPost(self):
+    def DelPost(self, postid):
         # delete post option processing
     
         # We need a blog to delete from.  If there are multiple blogs specified
         # in the config file, then bail and instruct the user to use the -b
         # option.  If only 1, then use it regardless.  Oh- if multiples, then
         # check if a blog was specified.
-        print "Deleting post %s" % self.opts.del_postid
+        print "Deleting post %s" % postid
 
-        postid = self.blogproxy.deletePost(self.opts.del_postid)
+        postid = self.blogproxy.deletePost(postid)
         if postid == None:
-            raise blogtoolDeletePostError(self.opts.del_postid, self.bc.name)
+            raise blogtoolDeletePostError(postid, self.bc.name)
 
 
     ############################################################################ 
-    def doOptionGetRecent(self):
+    def GetRecentTitlesAbbr(self, num_recent_t):
         # recent post summary option processing
-        print "Retrieving %s most recent posts from %s.\n" % (self.opts.num_recent_t,
+        print "Retrieving %s most recent posts from %s.\n" % (num_recent_t,
                                                               self.bc.name)
 
-        recent = self.blogproxy.getRecentTitles(self.bc.name, self.opts.num_recent_t)
+        recent = self.blogproxy.getRecentTitles(self.bc.name, num_recent_t)
         print "POSTID\tTITLE                               \tDATE CREATED"
         print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
         for post in recent:
@@ -381,7 +333,7 @@ class blogtool():
         del recent
 
     ############################################################################ 
-    def doOptionGetCategories(self):
+    def GetCategoryList(self):
         # list blog categories
         print "Retrieving category list for %s." % self.bc.name
 
@@ -404,7 +356,7 @@ class blogtool():
         del cat_list
 
     ############################################################################ 
-    def doOptionAddBlogCategory(self):
+    def AddBlogCategory(self, newcat):
         # add a new category
         print "Checking if category already exists on %s..." % (self.bc.name)
 
@@ -413,25 +365,25 @@ class blogtool():
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
         t = blogapi.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
-                                   self.opts.newcat)
+                                   newcat)
         if t == None:
             print "The category specified alread exists on the blog."
         else:
             # t is a tuple with the first NEW category from the category string
             # specified and it's parentId.  Start adding categories from here
-            print "Attempting to add %s category to %s" % (self.opts.newcat,
+            print "Attempting to add %s category to %s" % (newcat,
                                                            self.bc.name)
             # the '*' is the unpacking operator
-            self._addCategory(self.opts.newcat, *t)
+            self._addCategory(newcat, *t)
 
     ############################################################################ 
-    def doOptionGetPost(self):
+    def GetPost(self, postid):
         if not html2md.LXML_PRESENT:
             print "Option not supported without python-lxml library."
             return
 
         # retrieve a post from blog
-        post = self.blogproxy.getPost(self.opts.get_postid)
+        post = self.blogproxy.getPost(postid)
 # the following lines are for debug purposes
 #        for k,v in post.iteritems():
 #            print "%s : %s" % (k, v)
@@ -445,19 +397,38 @@ class blogtool():
         else:
             text = html2md.convert(post['description'])
 
-#        if post['mt_text_more']:
-#            text += "<!--more-->\n\n"
-#            text += html2md.convert(post['mt_text_more'])
-
         print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
                self.bc.name, 
-               self.opts.get_postid, 
+               postid, 
                post['title'], 
                ', '.join(post['categories']))
         if post['mt_keywords']:
             print 'TAGS: %s' % ', '.join(post['mt_keywords'])
 
         print '\n' + text
+
+    ###
+    ### methods after here are private to blogtool class
+    ###
+
+    ############################################################################ 
+    def _addCategory(self, c, substart, parentId):
+        # subcategories are demarked by '.'
+        newcatlist = c.split('.')
+
+        # the isBlogCategory returns a tuple containing the first cat/
+        # subcat that is not on the blog.  We cannot assume that the
+        # first entry in the list matches the cat returned in the tuple
+        # so we'll remove categories/subcats that already exist on
+        # the blog
+        while substart != newcatlist[0]:
+            newcatlist.pop(0)
+     
+        # now add the categories as needed- init the parent ID field
+        # using the value from the tuple returned above
+        for c in newcatlist:
+            print "Adding %s with parent %s" % (c, parentId)
+            parentId = self.blogproxy.newCategory(self.opts.blogname, c, parentId)
 
     ############################################################################ 
     def procPost(self):
@@ -898,9 +869,6 @@ def main():
                   posttime = opts.posttime,
                   publish = opts.publish)
 
-    # create header parse object
-    btconfig = btconfigparser.bt_config()
-
     ###########################################################################
     # process any configuration files 
     # do this NOW because option processing requires blog related info
@@ -910,14 +878,32 @@ def main():
         cf_config = None
     else:
         try:
-            cf_config = btconfig.parse(cf_str)
+            cf_config = bt.hdr.parse(cf_str)
         except btconfigparser.btParseError, err_str:
             print err_str
             sys.exit()
 
     # set the xmlrpc parms before processing options
     bt.setBlogConfig(cf_config)
-     
+
+    # now actually check for options to process
+    if opts.del_postid:
+        try:
+            self.doOptionDelPost(opts.del_postid)
+        except blogtoolDeletePostError, err_str:
+            print err_str
+
+    if opts.num_recent_t:
+        bt.GetRecentTitlesAbbr(opts.num_recent_t)
+
+    if opts.getcats:
+        bt.GetCategoryList()
+
+    if opts.newcat:
+        bt.AddBlogCategory(opts.newcat)
+
+    if opts.get_postid:
+        bt.GetPost(opts.get_postid)
 
     ###########################################################################
     for filename in filelist:
