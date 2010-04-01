@@ -50,86 +50,106 @@ Also, this annoying message will be displayed everytime you run blogtool.
 # bt_options- for processing command line arguments
 #
 options = [
-            {    'optstr_short' : '-a',
-                 'optstr_long'  : '--add-categories',
+            (
+              ('-a', '--add-categories'),
+              {
                  'action' : 'store_true',
                  'dest' : 'addcats',
                  'help' : """
 Categories specified for the post will be added to the blog's category list if
 they do not already exist.
 """
-            },
+              }
+            ),
             
-            {    'optstr_short' : '-b',
-                 'optstr_long'  : '--blog',
+            (
+              ('-b','--blog'),
+              {
                  'action' : 'store',
                  'dest' : "blogname",
                  'help' : """
 Blog name for operations on blog.  The name must correspond to a name in
 ~/.btconfig or a config file specified on the command line.
-""" 
-            },
+"""  
+              }
+            ),
              
-            {    'optstr_short' : "-c", 
-                 'optstr_long'  : "--config", 
+            (
+              ('-c', '--config'),
+              { 
                  'action' : 'store',
                  'dest' : "configfile", 
                  'help' : "specify a config file" 
-            },
+              }
+            ),
             
-            {    'optstr_short' : "-d", 
-                 'optstr_long' : '--delete',
+            (
+              ('-d', '--delete'),
+              {
                  'action' : 'store',
                  'dest' : "del_postid", 
                  'help' : "delete a post" 
-            },
+              }
+            ),
             
-            {    'optstr_short' : "-C",
-                 'optstr_long'  : "--Categories",
+            ( 
+              ('-C', '--Categories'),
+              {
                  'action' : "store_true",
                  'dest' : "getcats",
                  'help' : "Get a list of catgories for a blog" 
-            },
+              }
+            ),
 
-            {
-                 'optstr_short' : '-g',
-                 'optstr_long'  : '--getpost',
+            (
+              ('-g', '--getpost'),
+              {
                  'action' : 'store',
                  'dest' : 'get_postid',
                  'help' : """
 Retrieves a blog post and writes it to STDOUT.  Certain HTML tags are stripped
 and an attempt is made to format the text.  A header is also created, meaning
 a file capture could be used for updating with blogtool.  
-"""                     
-            },
+"""            
+              }
+            ),
             
-            {    'optstr_short' : "-s",
-                 'optstr_long'  : "--schedule",
+            ( 
+              ('-s', '--schedule'),
+              {
                  'action' : 'store',
                  'dest' : "posttime",
                  'help' : "Time to publish post in YYYYmmddHHMMSS format" 
-            },
+              }
+            ),
             
-            {    'optstr_short' : "-t",
-                 'optstr_long'  : "--recent-titles",
+            (    
+              ('-t', '--recent-titles'),
+              {
                  'action' : 'store',
                  'dest' : "num_recent_t",
                  'help' : "rettrieve recent posts from a blog" 
-            },
+              }
+            ),
             
-            {    'optstr_short' : "-n",
-                 'optstr_long'  : "--new-categories",
+            (  
+              ('-n', '--new-categories'),
+              {
                  'action' : 'store',
                  'dest' : "newcat",
                  'help' : "Add a new category to a blog" 
-            },
+              }
+            ),
             
-            {    'optstr_long' : "--draft",
+            (  
+               ('--draft', ),
+               {
                  'action' : "store_false",
                  'dest' : "publish",
                  'default' : True,
                  'help' : "Do not publish post.  Hold it as a draft." 
-            },
+               }
+            ),
         ]
 
 ################################################################################
@@ -573,7 +593,7 @@ class blogtool():
         try:
             self.post_config = reconcile(self.btconfig.parse(self.header),
                                          self.cf_config)
-        except btconfigparser.btParseError, err_str:
+        except headerparse.headerParseError, err_str:
             print err_str
             raise blogtoolHeaderError()
 
@@ -847,21 +867,15 @@ def main():
         # create option parser object
         parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
         # add command line options to parser
-        for o in options:
-            # o is a dict
-            if 'optstr_short' not in o.keys():
-                parser.add_option(o['optstr_long'], 
-                                  action = o['action'],
-                                  dest = o['dest'],
-                                  default = o['default'],
-                                  help = o['help'])
-            else:
-                parser.add_option(o['optstr_short'],
-                                  o['optstr_long'], 
-                                  action = o['action'],
-                                  dest = o['dest'],
-                                  help = o['help'])
+        for t in options:
+            # t is a tuple consisting of a tuple for the option arguments , t[0]
+            # and a dict specifying actions, help, etc.- t[1]
+            parser.add_option(*t[0], **t[1])    
         (opts, filelist) = parser.parse_args(sys.argv[1:])
+
+    for k in opts:
+        print k
+    sys.exit()
 
     # create the blogtool object
     bt = blogtool(blogname = opts.blogname,
@@ -879,7 +893,7 @@ def main():
     else:
         try:
             cf_config = bt.hdr.parse(cf_str)
-        except btconfigparser.btParseError, err_str:
+        except headerparse.headerParseError, err_str:
             print err_str
             sys.exit()
 
