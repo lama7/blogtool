@@ -411,7 +411,7 @@ class blogtool():
                post['title'], 
                ', '.join(post['categories']))
         if post['mt_keywords']:
-            print 'TAGS: %s' % ', '.join(post['mt_keywords'])
+            print 'TAGS: %s' % post['mt_keywords']
 
         print '\n' + text
 
