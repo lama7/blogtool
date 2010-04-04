@@ -3,6 +3,7 @@
 import blogapi
 import headerparse
 import html2md
+import options
 
 from optparse import OptionParser
 from tempfile import NamedTemporaryFile
@@ -44,58 +45,6 @@ Also, this annoying message will be displayed everytime you run blogtool.
 """
     raw_input('Press <ENTER> to continue...')
     MARKDOWN_PRESENT = False
-
-#################################################################################
-#
-# bt_options- for processing command line arguments
-#
-options = [
-            (
-              ('-a', '--add-categories'),
-              {
-                 'action' : 'store_true',
-                 'dest' : 'addcats',
-                 'help' : """
-Categories specified for the post will be added to the blog's category list if
-they do not already exist.
-"""
-              }
-            ),
-            
-            (
-              ('-b','--blog'),
-              {
-                 'action' : 'store',
-                 'dest' : "blogname",
-                 'help' : """
-Blog name for operations on blog.  The name must correspond to a name in
-~/.btconfig or a config file specified on the command line.
-"""  
-              }
-            ),
-             
-            (
-            ),
-            
-            ( 
-              ('-s', '--schedule'),
-              {
-                 'action' : 'store',
-                 'dest' : "posttime",
-                 'help' : "Time to publish post in YYYYmmddHHMMSS format" 
-              }
-            ),
-
-            (  
-               ('--draft', ),
-               {
-                 'action' : "store_false",
-                 'dest' : "publish",
-                 'default' : True,
-                 'help' : "Do not publish post.  Hold it as a draft." 
-               }
-            ),
-        ]
 
 ################################################################################
 #   
@@ -187,295 +136,6 @@ class blogtoolRetry(blogtoolError):
 
 ################################################################################
 #
-#  Base Class for handling command line options
-#
-class btOption:
-    opt_args = ()  # to be overridden by the option
-    opts_kwargs = {}  # to be overriden by the option
-
-    # this method should check the relevant option and return True if the 
-    # option should be processed, False otherwise
-    # the 'opts' arg is the Values object returned by the OptParse parser.
-    # if the option is present and stores a value that is needed when the option
-    # is run, then the value should be squirreled away in an instance attribute
-    def check(self, opts):
-        pass
-
-    # this method performs the actual option processing.  It does not return any
-    # error codes- any errors should raise the btOptionError exception
-    # the 'opts' arg will be the Values object returned by the OptParse parser.
-    # the 'proxy' arg will be a proxy object for communicating with the blog
-    # if necessary 
-    def run(self, proxy, blogname):
-        pass
-        
-################################################################################
-'''
-    btOptionDeletePost
-
-        Define class to handle deleting posts from a blog.
-
-'''
-class btOptionDeletePost(btOption):
-    opt_args = ('-d', '--delete')
-    opt_kwargs = {
-                   'action' : 'store',
-                   'dest' : "del_postid", 
-                   'help' : "delete a post" 
-                 }
-
-    ############################################################################ 
-    def check(self, opts):
-        if opts.del_postid:
-            self.postid = opts.del_postid
-            return True
-
-        return False
-
-    ############################################################################ 
-    def run(self, proxy, blogname):
-        print "Deleting post %s" % opts.del_postid
-
-        # We need a blog to delete from.  If there are multiple blogs specified
-        # in the config file, then bail and instruct the user to use the -b
-        # option.  If only 1, then use it regardless.  Oh- if multiples, then
-        # check if a blog was specified.
-        postid = proxy.deletePost(opts.del_postid)
-        if postid == None:
-            raise btOptionError('Delete Post', opts.del_postid, postid)
-
-################################################################################
-'''
-    btOptionGetRecentTitles
-
-        Define class to handle retrieving recent blog post info and displaying
-        it to stdout.
-'''
-class btOptionGetRecentTitles(btOption):
-    opt_args = ('-t', '--recent-titles')
-    opt_kwargs = {
-                   'action' : 'store',
-                   'dest' : "num_recent_t",
-                   'help' : "rettrieve recent posts from a blog" 
-                 }
-
-    ############################################################################ 
-    def check(self, opts):
-        if opts.num_recent_t:
-            self.count = opts.num_recent_t
-            return True
-
-        return False
-
-    ############################################################################ 
-    def run(self, proxy, blogname):
-        print "Retrieving %s most recent posts from %s.\n" % (self.count,
-                                                              blogname)
-
-        # this does the heavy lifting
-        recent = proxy.getRecentTitles(blogname, self.count)
-
-        # now do some formatting of the returned info prior to printing
-        print "POSTID\tTITLE                               \tDATE CREATED"
-        print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
-        for post in recent:
-            t_converted = datetime.datetime.strptime(post['dateCreated'].value,
-                                                     "%Y%m%dT%H:%M:%S")
-            padding = ' '*(35 - len(post['title']))
-            print "%s\t%s\t%s" % (post['postid'],
-                                  post['title'] + padding,
-                                  t_converted.strftime("%b %d, %Y at %H:%M"))
-
-################################################################################
-'''
-    btOptionGetCategories
-
-        Define class to handle retrieving category list from a blog and 
-        displaying is to stdout.
-
-'''
-class btOptionGetCategories(btOption):
-    opt_args = ('-C', '--Categories')
-    opt_kwargs = {
-                  'action' : "store_true",
-                  'dest' : "getcats",
-                  'help' : "Get a list of catgories for a blog" 
-                 }
-
-    ############################################################################ 
-    def check(self, opts):
-        return bool(opts.getcats)
-
-    ############################################################################ 
-    def run(self, proxy, blogname):
-        # list blog categories
-        print "Retrieving category list for %s." % blogname
-
-        cat_list = proxy.getCategories(blogname)
-        
-        print "Category       \tParent        \tDescription"
-        print "%s\t%s\t%s" % ('='*14, '='*14, '='*35)
-        for cat in cat_list:
-           parent = [ c['categoryName'] for c in cat_list 
-                                        if cat['parentId'] == c['categoryId'] ]
-           str = cat['categoryName'] + ' '*(16 - len(cat['categoryName']))
-           if len(parent) == 0:
-               str += ' '*16
-           else:
-               str += parent[0] + ' '*(16 - len(parent[0]))
-
-           str += cat['categoryDescription']
-           print str
-
-################################################################################
-''' btOptionAddCategory
-
-        Define class to handle adding a category to a blog
-
-'''
-class btOptionAddCategory(btOption):
-    opt_args = ('-n', '--new-categories')
-    opt_kwargs = {
-                  'action' : 'store',
-                  'dest' : "newcat",
-                  'help' : "Add a new category to a blog" 
-                 }
-
-    ############################################################################ 
-    def check(self, opts):
-        if opts.newcat:
-            self.catname = opts.newcat
-            return True
-
-        return False
-
-    ############################################################################ 
-    def run(self, proxy, blogame):
-        # add a new category
-        print "Checking if category already exists on %s..." % (blogname)
-
-        # this will check the category string to see if it is a valid blog
-        # category, or partially valid if sub-categories are specified.
-        # If the category exists on the blog, processing stops, otherwise
-        # the first part that is not on the blog is returned
-        t = blogapi.isBlogCategory(proxy.getCategories(blogname), 
-                                   self.catname)
-        if t == None:
-            print "The category specified alread exists on the blog."
-        else:
-            # t is a tuple with the first NEW category from the category string
-            # specified and it's parentId.  Start adding categories from here
-            print "Attempting to add %s category to %s" % (self.catname,
-                                                           blogname)
-            # the '*' is the unpacking operator
-            self.addCategory(proxy, blogname, newcat, *t)
-
-    ############################################################################ 
-    def addCategory(self, proxy, blogname, c, substart, parentId):
-        # subcategories are demarked by '.'
-        newcatlist = c.split('.')
-
-        # the isBlogCategory returns a tuple containing the first cat/
-        # subcat that is not on the blog.  We cannot assume that the
-        # first entry in the list matches the cat returned in the tuple
-        # so we'll remove categories/subcats that already exist on
-        # the blog
-        while substart != newcatlist[0]:
-            newcatlist.pop(0)
-     
-        # now add the categories as needed- init the parent ID field
-        # using the value from the tuple returned above
-        for c in newcatlist:
-            print "Adding %s with parent %s" % (c, parentId)
-            parentId = proxy.newCategory(blogname, c, parentId)
-
-################################################################################
-'''
-    btOptionGetPost
-       
-        Define class to handle retrieving a post from a blog given the post's
-        ID and printing the result to stdout.
-     
-'''
-class btOptionGetPost(btOption):
-    opt_args = ('-g', '--getpost')
-    opt_kwargs = {
-                  'action' : 'store',
-                  'dest' : 'get_postid',
-                  'help' : """
-Retrieves a blog post and writes it to STDOUT.  Certain HTML tags are stripped
-and an attempt is made to format the text.  A header is also created, meaning
-a file capture could be used for updating with blogtool.  
-"""            
-                 }
-
-    
-    ############################################################################ 
-    def check(self, opts):
-        if opts.get_postid:
-            self.postid = opts.get_postid
-            return True
-
-        return False
-
-    ############################################################################ 
-    def run(self, proxy, blogname):
-        if not html2md.LXML_PRESENT:
-            print "Option not supported without python-lxml library."
-            return
-
-        # retrieve a post from blog
-        post = proxy.getPost(self.postid)
-# the following lines are for debug purposes
-#        for k,v in post.iteritems():
-#            print "%s : %s" % (k, v)
-#        print repr(post['description'])
-#        print repr(post['mt_text_more'])
-
-        if post['mt_text_more']:
-            text = html2md.convert("%s%s%s" % (post['description'], 
-                                               "<!--more-->",
-                                               post['mt_text_more']))
-        else:
-            text = html2md.convert(post['description'])
-
-        print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
-               self.bc.name, 
-               postid, 
-               post['title'], 
-               ', '.join(post['categories']))
-        if post['mt_keywords']:
-            print 'TAGS: %s' % post['mt_keywords']
-
-        print '\n' + text
-
-################################################################################
-'''
-    btOptionSetConfigFile
-
-        Define class to handle parsing of a config file for blogtool.
-
-'''
-class btOptionSetConfigFile(btOption):
-    opt_args = ('-c', '--config')
-    opt_kwargs = { 
-                  'action' : 'store',
-                  'dest' : "configfile", 
-                  'help' : "specify a config file" 
-                 }
-
-    def check(self, opts):
-        if opts.configfile:
-            self.configfile = opts.configfile
-            return True
-
-        return False
-
-    def run(self, proxy, blogname):
-        pass
-
-################################################################################
-#
 # blogtool class
 #
 #    Define the blogtool class.  This pulls a bunch of related functions and
@@ -496,18 +156,22 @@ class blogtool():
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
     ############################################################################ 
-    def __init__(self, blogname = None, 
-                       addpostcats = False, 
-                       posttime = None,
-                       publish = True ):
-        self.blogproxy = None
-        self.blogname = blogname
-        self.addpostcats = False
-        self.posttime = posttime
-        self.publish = publish
-
+    def __init__(self):
+                      
         # create a header parsing object
         self.hdr = headerparse.headerParse()
+
+        self.options = []
+        self.options.append(options.btOptionSetConfigFile())
+        self.options.append(options.btOptionSetBlognasme())
+        self.options.append(options.btOptionSetAddCategory())
+        self.options.append(options.btOptionSetNoPublish())
+        self.options.append(options.btOptionSetPosttime())
+        self.options.append(options.btOptionDeletePost())
+        self.options.append(options.btOptionGetRecentTitles())
+        self.options.append(options.btOptionGetCategories())
+        self.options.append(options.btOptionAddCategory())
+        self.options.append(options.btOptionGetPost())
 
     ############################################################################ 
     def setBlogProxy(self, xmlrpc, username, password):
@@ -538,6 +202,50 @@ class blogtool():
         self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
                                            self.bc.username,
                                            self.bc.password)
+
+    ############################################################################ 
+    def doPostFile(self):
+        # since we'll be processing all of this from memory, just read everything
+        # into a list.  We won't need it after we process it anyway
+        try:
+            f = open(self.filename, 'r')
+            lines = f.readlines()
+
+        # hopefully, this isn't too clever.  The assumption is that file
+        # failed to opend because it doesn't exist.  In this case, open
+        # it and launch and editor.  When the editor exits, insert the file
+        # to argv list we are iterating over and go back to the top
+        except IOError:
+            try:
+                f = open(self.filename, 'w')
+            except IOError, err:
+                print err
+                sys.exit()
+
+            edit(f, "TITLE: \nCATEGORIES: \n")
+            raise blogtoolRetry()
+
+        # executed if no exceptions raised
+        else:
+            f.close()
+
+        # technically, there needs to be at least 3 lines in the file- one for the
+        # header, one blank line, one line for post text
+        if len(lines) < 3:
+            raise blogtoolPostFileError()
+
+        self.header, self.posttext = self._getHeaderandPostText(lines)
+
+        del lines  # no longer needed
+
+        # now that we have the post header processed, we need to reconcile it
+        # with anything from a config file
+        try:
+            self.post_config = reconcile(self.hdr.parse(self.header),
+                                         self.cf_config)
+        except headerparse.headerParseError, err_str:
+            print err_str
+            raise blogtoolHeaderError()
 
     ############################################################################ 
     ###
@@ -670,50 +378,6 @@ class blogtool():
         else:
             return list(set(reduce(lambda l1, l2: l1 + l2, 
                                [c.split('.') for c in self.bc.categories])))
-
-    ############################################################################ 
-    def doPostFile(self):
-        # since we'll be processing all of this from memory, just read everything
-        # into a list.  We won't need it after we process it anyway
-        try:
-            f = open(self.filename, 'r')
-            lines = f.readlines()
-
-        # hopefully, this isn't too clever.  The assumption is that file
-        # failed to opend because it doesn't exist.  In this case, open
-        # it and launch and editor.  When the editor exits, insert the file
-        # to argv list we are iterating over and go back to the top
-        except IOError:
-            try:
-                f = open(self.filename, 'w')
-            except IOError, err:
-                print err
-                sys.exit()
-
-            edit(f, "TITLE: \nCATEGORIES: \n")
-            raise blogtoolRetry()
-
-        # executed if no exceptions raised
-        else:
-            f.close()
-
-        # technically, there needs to be at least 3 lines in the file- one for the
-        # header, one blank line, one line for post text
-        if len(lines) < 3:
-            raise blogtoolPostFileError()
-
-        self.header, self.posttext = self._getHeaderandPostText(lines)
-
-        del lines  # no longer needed
-
-        # now that we have the post header processed, we need to reconcile it
-        # with anything from a config file
-        try:
-            self.post_config = reconcile(self.hdr.parse(self.header),
-                                         self.cf_config)
-        except headerparse.headerParseError, err_str:
-            print err_str
-            raise blogtoolHeaderError()
 
     ############################################################################ 
     def pushPost(self):
