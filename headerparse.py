@@ -63,6 +63,7 @@ class header():
         self.name = ''
         self.postid = ''
         self.posttime = ''
+        self.blogtype = ''
 
     def set(self, attr, val):
         # this is bad form, but until we learn better we'll assume good
@@ -90,6 +91,7 @@ class header():
         print self.name
         print self.postid
         print self.posttime
+        print self.blogtype
 
 ################################################################################
 #
@@ -148,7 +150,8 @@ class headerParse():
                               ( 'USERNAME', keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'PASSWORD', keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'TAGS',  keyword(self.KTYPE_MULTIVAL) ),
-                              ( 'POSTTIME',  keyword(self.KTYPE_SINGLEVAL) ) 
+                              ( 'POSTTIME',  keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'BLOGTYPE', keyword(self.KTYPE_SINGLEVAL) )
                              ]
                             )
 

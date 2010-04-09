@@ -347,7 +347,7 @@ class blogtool():
                 # the name provided does not match anything in the config file
                 raise blogtoolBadName()
 
-        self.blogproxy = getProxy('wp',
+        self.blogproxy = getProxy(self.bc.blogtype,
                                   self.bc.xmlrpc, 
                                   self.bc.username,
                                   self.bc.password)
@@ -697,7 +697,7 @@ class blogtool():
     ############################################################################ 
     def pushPost(self):
         # this handles pushing a post up to a blog
-        self.blogproxy = getProxy('wp',
+        self.blogproxy = getProxy(self.bc.blogtype,
                                   self.bc.xmlrpc, 
                                   self.bc.username,
                                   self.bc.password)
