@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-import blogapi
+from xmlproxy import getProxy
+import blogutils
 import headerparse
 import html2md
 
@@ -345,9 +346,10 @@ class blogtool():
                 # the name provided does not match anything in the config file
                 raise blogtoolBadName()
 
-        self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
-                                           self.bc.username,
-                                           self.bc.password)
+        self.blogproxy = getProxy('wp',
+                                  self.bc.xmlrpc, 
+                                  self.bc.username,
+                                  self.bc.password)
 
     ############################################################################ 
     def addCategory(self, c, substart, parentId):
@@ -434,7 +436,7 @@ class blogtool():
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
-        t = blogapi.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
+        t = blogutils.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
                                    self.opts.newcat)
         if t == None:
             print "The category specified alread exists on the blog."
@@ -566,7 +568,7 @@ class blogtool():
         # post's category list
         nonCats = []
         for c in self.bc.categories:
-            t = blogapi.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
+            t = blogutils.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
                                        c)
             if t != None:
                 nonCats.append((c,) + t)
@@ -651,9 +653,10 @@ class blogtool():
     ############################################################################ 
     def pushPost(self):
         # this handles pushing a post up to a blog
-        self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
-                                           self.bc.username,
-                                           self.bc.password)
+        self.blogproxy = getProxy('wp',
+                                  self.bc.xmlrpc, 
+                                  self.bc.username,
+                                  self.bc.password)
 
         html_desc, html_ext = self.procPost()
 
@@ -662,12 +665,12 @@ class blogtool():
 
         # now build a post structure
         try:
-            post = blogapi.buildPost(self.bc,
-                                     html_desc,
-                                     html_ext,
-                                     timestamp = self.opts.posttime,
-                                     publish = self.opts.publish )
-        except blogapi.timeFormatError, timestr:
+            post = blogutils.buildPost(self.bc,
+                                       html_desc,
+                                       html_ext,
+                                       timestamp = self.opts.posttime,
+                                       publish = self.opts.publish )
+        except blogutilsError, timestr:
             print timestr
             sys.exit()
 
