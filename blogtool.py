@@ -347,10 +347,15 @@ class blogtool():
                 # the name provided does not match anything in the config file
                 raise blogtoolBadName()
 
-        self.blogproxy = getProxy(self.bc.blogtype,
-                                  self.bc.xmlrpc, 
-                                  self.bc.username,
-                                  self.bc.password)
+        try:
+            self.blogproxy = getProxy(self.bc.blogtype,
+                                      self.bc.xmlrpc, 
+                                      self.bc.username,
+                                      self.bc.password)
+
+        except ValueError:
+            print "Invalid blogtype specified: %s" % self.bc.blogtype
+            sys.exit()
 
     ############################################################################ 
     def addCategory(self, c, substart, parentId):
@@ -697,10 +702,14 @@ class blogtool():
     ############################################################################ 
     def pushPost(self):
         # this handles pushing a post up to a blog
-        self.blogproxy = getProxy(self.bc.blogtype,
-                                  self.bc.xmlrpc, 
-                                  self.bc.username,
-                                  self.bc.password)
+        try:
+            self.blogproxy = getProxy(self.bc.blogtype,
+                                      self.bc.xmlrpc, 
+                                      self.bc.username,
+                                      self.bc.password)
+
+        except ValueError:
+            print "Invalid blogtype specified: %s" % self.bc.blogtype
 
         html_desc, html_ext = self.procPost()
 

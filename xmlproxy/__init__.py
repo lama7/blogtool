@@ -26,6 +26,6 @@ os.chdir(os.path.abspath(cwd))
 ################################################################################
 def getProxy(blogtype, url, user, password):
     if blogtype not in modules:
-        return None
+        raise ValueError
 
     return modules[blogtype].getInst(url, user, password)
