@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from xmlproxy import getProxy
+from xmlproxy.proxybase import proxyError
 import blogutils
 import headerparse
 import html2md
@@ -368,7 +369,12 @@ class blogtool():
         # using the value from the tuple returned above
         for c in newcatlist:
             print "Adding %s with parent %s" % (c, parentId)
-            parentId = self.blogproxy.newCategory(self.opts.blogname, c, parentId)
+            try:
+                parentId = self.blogproxy.newCategory(self.opts.blogname, c, parentId)
+            
+            except proxyError, err:
+                print err
+                sys.exit()
 
     ############################################################################ 
     def doOptionDelPost(self):
@@ -380,8 +386,10 @@ class blogtool():
         # check if a blog was specified.
         print "Deleting post %s" % self.opts.del_postid
 
-        postid = self.blogproxy.deletePost(self.opts.del_postid)
-        if postid == None:
+        try:
+            postid = self.blogproxy.deletePost(self.opts.del_postid)
+        
+        except proxyError:
             raise blogtoolDeletePostError(self.opts.del_postid, self.bc.name)
 
 
@@ -391,7 +399,14 @@ class blogtool():
         print "Retrieving %s most recent posts from %s.\n" % (self.opts.num_recent_t,
                                                               self.bc.name)
 
-        recent = self.blogproxy.getRecentTitles(self.bc.name, self.opts.num_recent_t)
+        try:
+            recent = self.blogproxy.getRecentTitles(self.bc.name, 
+                                                    self.opts.num_recent_t)
+
+        except proxyError, err:
+            print err
+            sys.exit()
+
         print "POSTID\tTITLE                               \tDATE CREATED"
         print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
         for post in recent:
@@ -409,8 +424,13 @@ class blogtool():
         # list blog categories
         print "Retrieving category list for %s." % self.bc.name
 
-        cat_list = self.blogproxy.getCategories(self.bc.name)
+        try:
+            cat_list = self.blogproxy.getCategories(self.bc.name)
         
+        except proxyError, err:
+            print err
+            sys.exit()
+
         print "Category       \tParent        \tDescription"
         print "%s\t%s\t%s" % ('='*14, '='*14, '='*35)
         for cat in cat_list:
@@ -436,8 +456,14 @@ class blogtool():
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
-        t = blogutils.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
-                                   self.opts.newcat)
+        try:
+            cat_list = self.blogproxy.getCategories(self.bc.name)
+     
+        except proxyError, err:
+            print err
+            sys.exit()
+
+        t = blogutils.isBlogCategory(cat_list, self.opts.newcat)
         if t == None:
             print "The category specified alread exists on the blog."
         else:
@@ -455,7 +481,13 @@ class blogtool():
             return
 
         # retrieve a post from blog
-        post = self.blogproxy.getPost(self.opts.get_postid)
+        try:
+            post = self.blogproxy.getPost(self.opts.get_postid)
+        
+        except proxyError, err:
+            print err
+            sys.exit()
+
 # the following lines are for debug purposes
 #        for k,v in post.iteritems():
 #            print "%s : %s" % (k, v)
@@ -534,7 +566,13 @@ class blogtool():
 
                 # run it up the flagpole
                 print "Attempting to upload '%s'..." % ifile
-                res = self.blogproxy.upload(self.bc.name, ifile)
+                try:
+                    res = self.blogproxy.upload(self.bc.name, ifile)
+     
+                except proxyError, err:
+                    print err
+                    sys.exit()
+
                 if res == None:
                     print "Upload failed, proceeding...\n"
                     continue
@@ -568,8 +606,14 @@ class blogtool():
         # post's category list
         nonCats = []
         for c in self.bc.categories:
-            t = blogutils.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
-                                       c)
+            try:
+                cat_list = self.blogproxy.getCategories(self.bc.name)
+            
+            except proxyError, err:
+                print err
+                sys.exit()
+
+            t = blogutils.isBlogCategory(cat_list, c)
             if t != None:
                 nonCats.append((c,) + t)
 
@@ -677,7 +721,13 @@ class blogtool():
         # time to publish, or update...
         if self.bc.postid:
             print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
-            postid = self.blogproxy.editPost(self.bc.postid, post)
+            try:
+                postid = self.blogproxy.editPost(self.bc.postid, post)
+
+            except proxyError, err:
+                print err
+                sys.exit()
+
             return None
 
         # sending a new post
@@ -687,7 +737,13 @@ class blogtool():
             print "Publishing '%s' to '%s' as a draft" % (self.bc.title,
                                                           self.bc.name)
 
-        postid = self.blogproxy.publishPost(self.bc.name, post)
+        try:
+            postid = self.blogproxy.publishPost(self.bc.name, post)
+
+        except proxyError, err:
+            print err
+            sys.exit()
+
         if postid != None:
             header = self.updateHeader(postid)
             return 1                
