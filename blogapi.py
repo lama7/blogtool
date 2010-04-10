@@ -31,7 +31,6 @@ class blogproxy(xmlrpclib.ServerProxy):
         self.blogs = None
         self.categories = None
         self.postID = None
-        return None
 
     def getBlogID(self, blogname):
         # retrieves blogid given blogname from the blogs array
