@@ -10,7 +10,7 @@ modules = {}
 filefilter = re.compile("([a-zA-Z_]+)-proxy")
 
 # the following dynamically imports modules from the current directory
-cwd = os.curdir
+cwd = os.path.abspath(os.curdir)
 os.chdir(filepath)
 for f in os.listdir(os.curdir):
     modulename, ext = os.path.splitext(f)
@@ -20,7 +20,7 @@ for f in os.listdir(os.curdir):
             modules[m.group(1)] = __import__(modulename)
 
 
-os.chdir(os.path.abspath(cwd))
+os.chdir(cwd)
 
 
 ################################################################################
