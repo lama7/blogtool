@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
-import blogapi
+from xmlproxy import getProxy
+from xmlproxy.proxybase import proxyError
+import blogutils
 import headerparse
 import options
 
@@ -197,10 +199,39 @@ class blogtool():
                 # the name provided does not match anything in the config file
                 raise blogtoolBadName()
 
-        self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
-                                           self.bc.username,
-                                           self.bc.password)
+        try:
+            self.blogproxy = getProxy(self.bc.blogtype,
+                                      self.bc.xmlrpc, 
+                                      self.bc.username,
+                                      self.bc.password)
 
+        except ValueError:
+            print "Invalid blogtype specified: %s" % self.bc.blogtype
+            sys.exit()
+
+    ############################################################################ 
+    def addCategory(self, c, substart, parentId):
+        # subcategories are demarked by '.'
+        newcatlist = c.split('.')
+
+        # the isBlogCategory returns a tuple containing the first cat/
+        # subcat that is not on the blog.  We cannot assume that the
+        # first entry in the list matches the cat returned in the tuple
+        # so we'll remove categories/subcats that already exist on
+        # the blog
+        while substart != newcatlist[0]:
+            newcatlist.pop(0)
+     
+        # now add the categories as needed- init the parent ID field
+        # using the value from the tuple returned above
+        for c in newcatlist:
+            print "Adding %s with parent %s" % (c, parentId)
+            try:
+                parentId = self.blogproxy.newCategory(self.opts.blogname, c, parentId)
+            
+            except proxyError, err:
+                print err
+                sys.exit()
     ############################################################################ 
     def doPostFile(self):
         # since we'll be processing all of this from memory, just read everything
@@ -231,7 +262,6 @@ class blogtool():
         # header, one blank line, one line for post text
         if len(lines) < 3:
             raise blogtoolPostFileError()
-
         self.header, self.posttext = self._getHeaderandPostText(lines)
 
         del lines  # no longer needed
@@ -244,12 +274,6 @@ class blogtool():
         except headerparse.headerParseError, err_str:
             print err_str
             raise blogtoolHeaderError()
-
-    ############################################################################ 
-    ###
-    ### methods after here are private to blogtool class
-    ###
-    ############################################################################ 
 
     ############################################################################ 
     def procPost(self):
@@ -305,7 +329,13 @@ class blogtool():
 
                 # run it up the flagpole
                 print "Attempting to upload '%s'..." % ifile
-                res = self.blogproxy.upload(self.bc.name, ifile)
+                try:
+                    res = self.blogproxy.upload(self.bc.name, ifile)
+     
+                except proxyError, err:
+                    print err
+                    sys.exit()
+
                 if res == None:
                     print "Upload failed, proceeding...\n"
                     continue
@@ -339,8 +369,14 @@ class blogtool():
         # post's category list
         nonCats = []
         for c in self.bc.categories:
-            t = blogapi.isBlogCategory(self.blogproxy.getCategories(self.bc.name), 
-                                       c)
+            try:
+                cat_list = self.blogproxy.getCategories(self.bc.name)
+            
+            except proxyError, err:
+                print err
+                sys.exit()
+
+            t = blogutils.isBlogCategory(cat_list, c)
             if t != None:
                 nonCats.append((c,) + t)
 
@@ -380,9 +416,14 @@ class blogtool():
     ############################################################################ 
     def pushPost(self):
         # this handles pushing a post up to a blog
-        self.blogproxy = blogapi.blogproxy(self.bc.xmlrpc, 
-                                           self.bc.username,
-                                           self.bc.password)
+        try:
+            self.blogproxy = getProxy(self.bc.blogtype,
+                                      self.bc.xmlrpc, 
+                                      self.bc.username,
+                                      self.bc.password)
+
+        except ValueError:
+            print "Invalid blogtype specified: %s" % self.bc.blogtype
 
         html_desc, html_ext = self.procPost()
 
@@ -391,19 +432,25 @@ class blogtool():
 
         # now build a post structure
         try:
-            post = blogapi.buildPost(self.bc,
-                                     html_desc,
-                                     html_ext,
-                                     timestamp = self.opts.posttime,
-                                     publish = self.opts.publish )
-        except blogapi.timeFormatError, timestr:
+            post = blogutils.buildPost(self.bc,
+                                       html_desc,
+                                       html_ext,
+                                       timestamp = self.opts.posttime,
+                                       publish = self.opts.publish )
+        except blogutilsError, timestr:
             print timestr
             sys.exit()
 
         # time to publish, or update...
         if self.bc.postid:
             print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
-            postid = self.blogproxy.editPost(self.bc.postid, post)
+            try:
+                postid = self.blogproxy.editPost(self.bc.postid, post)
+
+            except proxyError, err:
+                print err
+                sys.exit()
+
             return None
 
         # sending a new post
@@ -413,7 +460,13 @@ class blogtool():
             print "Publishing '%s' to '%s' as a draft" % (self.bc.title,
                                                           self.bc.name)
 
-        postid = self.blogproxy.publishPost(self.bc.name, post)
+        try:
+            postid = self.blogproxy.publishPost(self.bc.name, post)
+
+        except proxyError, err:
+            print err
+            sys.exit()
+
         if postid != None:
             header = self.updateHeader(postid)
             return 1                

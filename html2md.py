@@ -271,7 +271,7 @@ class html2md:
         return self._convertInline(em, '*')
 
     def _br(self, br):
-        return '  \n'
+        return '  \n' + self._checktail(br)
 
     def _strong(self, strong):
         return self._convertInline(strong, '**')
