@@ -30,25 +30,30 @@ class blogproxy(xmlrpclib.ServerProxy):
         # for debugging info related to xmlrpc, add "verbose=True" to the 
         # __init__ argument list.
         xmlrpclib.ServerProxy.__init__(self, url)
-        self.username = user
-        self.password = password
-        self.blogs = None
-        self.categories = None
-        self.postID = None
+        self._username = user
+        self._password = password
+        self._blogs = None
+        self._categories = None
+
+    # this is just the minimal implementation, it's would be better to check the
+    # name for validity and raise an exception if it isn't a valid name for the
+    # blog
+    def setBlogname(self, blogname):
+        self._blogname = blogname
 
     # The following methods should all be overridden by the blog specific
     # implementation of the api
 
-    def getCategories(self, blogname):
+    def getCategories(self):
         pass
 
-    def newCategory(self, blogname, newcat, parent, slug='', desc=''):
+    def newCategory(self, newcat, parent, slug='', desc=''):
         pass
 
-    def getRecentTitles(self, blogname, number):
+    def getRecentTitles(self, number):
         pass
 
-    def publishPost(self, blogname, post):
+    def publishPost(self, post):
         pass
 
     def editPost(self, postid, post):
@@ -60,6 +65,6 @@ class blogproxy(xmlrpclib.ServerProxy):
     def deletePost(self, postid):
         pass
 
-    def upload(self, blogname, filename):
+    def upload(self, filename):
         pass
 

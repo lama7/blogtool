@@ -3,6 +3,8 @@ import xmlrpclib
 import mimetypes
 import os
 
+################################################################################
+# returns an instance of a wpproxy object
 def getInst(url, user, password):
    wp = wpproxy(url, user, password)
    return wp
@@ -16,23 +18,23 @@ def getInst(url, user, password):
 #
 class wpproxy(proxybase.blogproxy):
     ############################################################################ 
-    def getCategories(self, blogname):
-        blogid = self._getBlogID(blogname)
+    def getCategories(self):
+        blogid = self._getBlogID()
 
-        if self.categories == None:
+        if self._categories == None:
             try:
-                self.categories = self.metaWeblog.getCategories(blogid,
-                                                                self.username,
-                                                                self.password)
+                self._categories = self.metaWeblog.getCategories(blogid,
+                                                                self._username,
+                                                                self._password)
 
             except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
                 raise proxybase.proxyError("wp.getCategories", error)
 
-        return self.categories
+        return self._categories
 
     ############################################################################ 
-    def newCategory(self, blogname, newcat, parent, slug='', desc=''):
-        blogid = self._getBlogID(blogname)
+    def newCategory(self, newcat, parent, slug='', desc=''):
+        blogid = self._getBlogID()
  
         newcStruct = {}
 
@@ -43,8 +45,8 @@ class wpproxy(proxybase.blogproxy):
 
         try:
             id = self.wp.newCategory(blogid,
-                                     self.username,
-                                     self.password,
+                                     self._username,
+                                     self._password,
                                      newcStruct)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
@@ -53,12 +55,12 @@ class wpproxy(proxybase.blogproxy):
         return id
 
     ############################################################################ 
-    def getRecentTitles(self, blogname, number):
-        blogid = self._getBlogID(blogname)
+    def getRecentTitles(self, number):
+        blogid = self._getBlogID()
         try:
             recent = self.mt.getRecentPostTitles(blogid,
-                                                 self.username,
-                                                 self.password,
+                                                 self._username,
+                                                 self._password,
                                                  number)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
@@ -67,15 +69,15 @@ class wpproxy(proxybase.blogproxy):
         return recent
 
     ############################################################################ 
-    def publishPost(self, blogname, post):
+    def publishPost(self, post):
         # this code is based on the similar blogtk2.0 code that performs 
         # a similar task
-        blogid = self._getBlogID(blogname)
+        blogid = self._getBlogID()
 
         try:
             postid = self.metaWeblog.newPost(blogid,
-                                             self.username,
-                                             self.password,
+                                             self._username,
+                                             self._password,
                                              post,
                                              post['publish'])
 
@@ -88,8 +90,8 @@ class wpproxy(proxybase.blogproxy):
     def editPost(self, postid, post):
         try:
             self.metaWeblog.editPost(postid,
-                                     self.username,
-                                     self.password,
+                                     self._username,
+                                     self._password,
                                      post,
                                      post['publish'] )
 
@@ -101,7 +103,9 @@ class wpproxy(proxybase.blogproxy):
     ############################################################################ 
     def getPost(self, postid):
         try:
-            post = self.metaWeblog.getPost(postid, self.username, self.password)
+            post = self.metaWeblog.getPost(postid, 
+                                           self._username, 
+                                           self._password)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.proxyError("wp.getPost", error)
@@ -113,8 +117,8 @@ class wpproxy(proxybase.blogproxy):
         try:
             postdelete = self.blogger.deletePost('',
                                                  postid,
-                                                 self.username,
-                                                 self.password,
+                                                 self._username,
+                                                 self._password,
                                                  True)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
@@ -123,10 +127,10 @@ class wpproxy(proxybase.blogproxy):
         return postdelete
 
     ############################################################################ 
-    def upload(self, blogname, filename):
+    def upload(self, filename):
         mediaStruct = {}
 
-        blogid = self._getBlogID(blogname)
+        blogid = self._getBlogID()
 
         # see if user supplied full path name
         if os.path.isfile(filename) != 1:
@@ -149,8 +153,8 @@ class wpproxy(proxybase.blogproxy):
             mediaStruct['bits'] = xmlrpclib.Binary(mediaData)
         
             res = self.metaWeblog.newMediaObject(blogid,
-                                                 self.username,
-                                                 self.password,
+                                                 self._username,
+                                                 self._password,
                                                  mediaStruct )
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
@@ -162,28 +166,25 @@ class wpproxy(proxybase.blogproxy):
     ### START PRIVATE METHODS 
 
     ############################################################################ 
-    def _getBlogID(self, blogname):
+    def _getBlogID(self):
         # retrieves blogid given blogname from the blogs array
         # make sure it's been initialized
         self._getUsersBlogs()
 
-        for blog in self.blogs:
-            if blogname == blog['blogName']:
+        for blog in self._blogs:
+            if self._blogname == blog['blogName']:
                 return blog['blogid']
 
-        # blog name not found
-        return None
+        raise proxybase.proxyError("wp._getBlogID", 
+                                   'bad name: %s' % self._blogname)
 
     ############################################################################ 
     def _getUsersBlogs(self):
         # a little trick to avoid repeatedly calling the xmlrpc method
         # it may not be necessary, we'll figure that out later
-        if self.blogs == None:
+        if self._blogs == None:
             try:
-                self.blogs = self.wp.getUsersBlogs(self.username, self.password)
+                self._blogs = self.wp.getUsersBlogs(self._username, 
+                                                    self._password)
             except (xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-                return None
-
-        return self.blogs
-
-
+                raise proxybase.proxyError('wp._getUsersBlogs', error)
