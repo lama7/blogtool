@@ -1,5 +1,5 @@
 import html2md
-
+import blogutils
 import datetime
 
 ################################################################################
@@ -187,8 +187,8 @@ class AddCategory(btOption):
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
-        t = blogapi.isBlogCategory(proxy.getCategories(blogname), 
-                                   self.catname)
+        t = blogutils.isBlogCategory(proxy.getCategories(blogname), 
+                                     self.catname)
         if t == None:
             print "The category specified alread exists on the blog."
         else:
@@ -197,26 +197,7 @@ class AddCategory(btOption):
             print "Attempting to add %s category to %s" % (self.catname,
                                                            blogname)
             # the '*' is the unpacking operator
-            self.addCategory(proxy, blogname, newcat, *t)
-
-    ############################################################################ 
-    def addCategory(self, proxy, blogname, c, substart, parentId):
-        # subcategories are demarked by '.'
-        newcatlist = c.split('.')
-
-        # the isBlogCategory returns a tuple containing the first cat/
-        # subcat that is not on the blog.  We cannot assume that the
-        # first entry in the list matches the cat returned in the tuple
-        # so we'll remove categories/subcats that already exist on
-        # the blog
-        while substart != newcatlist[0]:
-            newcatlist.pop(0)
-     
-        # now add the categories as needed- init the parent ID field
-        # using the value from the tuple returned above
-        for c in newcatlist:
-            print "Adding %s with parent %s" % (c, parentId)
-            parentId = proxy.newCategory(blogname, c, parentId)
+            blogutils.addCategory(proxy, blogname, self.catname, *t)
 
 ################################################################################
 '''

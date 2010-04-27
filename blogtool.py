@@ -232,6 +232,7 @@ class blogtool():
             except proxyError, err:
                 print err
                 sys.exit()
+
     ############################################################################ 
     def doPostFile(self):
         # since we'll be processing all of this from memory, just read everything
@@ -390,7 +391,7 @@ class blogtool():
             # repercussions- but check here when some kind of potential funny
             # business starts
             self.opts.blogname = self.bc.name
-            [ self._addCategory(*ct) for ct in nonCats ]
+            [ blogutils.addCategory(*ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
             print "Category '%s' is not a valid category for %s so it is being\n\

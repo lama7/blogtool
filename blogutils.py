@@ -1,5 +1,7 @@
 from xmlrpclib import DateTime
+from xmlproxy.proxybase import proxyError
 import time
+import sys
 
 ################################################################################
 class blogutilsError(Exception):
@@ -105,3 +107,29 @@ def isBlogCategory(blogcats, postcat):
             return (cat, p_id)
 
     return None
+
+###############################################################################
+#
+#  handle the actual addition of a category to a blog.
+#
+def addCategory(self, proxy, blogname, c, substart, parentId):
+    # subcategories are demarked by '.'
+    newcatlist = c.split('.')
+
+    # the isBlogCategory returns a tuple containing the first cat/
+    # subcat that is not on the blog.  We cannot assume that the
+    # first entry in the list matches the cat returned in the tuple
+    # so we'll remove categories/subcats that already exist on
+    # the blog
+    while substart != newcatlist[0]:
+        newcatlist.pop(0)
+ 
+    # now add the categories as needed- init the parent ID field
+    # using the value from the tuple returned above
+    for c in newcatlist:
+        print "Adding %s with parent %s" % (c, parentId)
+        try:
+            parentId = proxy.newCategory(blogname, c, parentId)
+        except proxyError, e:
+            print e
+            sys.exit()
