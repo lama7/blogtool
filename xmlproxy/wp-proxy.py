@@ -167,8 +167,6 @@ class wpproxy(proxybase.blogproxy):
 
     ############################################################################ 
     def _getBlogID(self):
-        # retrieves blogid given blogname from the blogs array
-        # make sure it's been initialized
         self._getUsersBlogs()
 
         for blog in self._blogs:

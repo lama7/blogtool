@@ -4,16 +4,6 @@ import datetime
 
 ################################################################################
 #
-#
-class btOptionError(Exception):
-    def __init__(self, msg):
-        self.message = msg
-
-    def __str__(self):
-        return self.message
-
-################################################################################
-#
 #  Base Class for handling command line options
 #
 class btOption:
@@ -68,9 +58,6 @@ class DeletePost(btOption):
         # option.  If only 1, then use it regardless.  Oh- if multiples, then
         # check if a blog was specified.
         postid = proxy.deletePost(opts.del_postid)
-        if postid == None:
-            raise btOptionError('Delete Post %s Error: %s' % (opts.del_postid,
-                                                              postid))
 
 ################################################################################
 '''
@@ -273,9 +260,41 @@ class SetConfigFile(btOption):
         if opts.configfile:
             self.configfile = opts.configfile
             return True
-
+ 
         return False
 
+    ############################################################################ 
+    def run(self, proxy, blogname):
+        # cfile will be a filename or None
+        if not hasattr(self, 'configfile'): 
+            cfile = os.path.join(os.path.expanduser('~'), '.btconfig')    
+            if os.path.isfile(self.configfile) != 1:
+                return None
+        else:
+           # it's possible the user supplied a fully qualified path, so check if
+           # the file exists
+           if os.path.isfile(self.configfile) != 1:
+               # try anchoring file to the user's home directory       
+               cfile = os.path.join(os.path.expanduser('~'), self.configfile)
+               if os.path.isfile(self.configfile) != 1:
+                   print "Unable to open config file: %s"
+                   sys.exit(1)
+
+        # open the file
+        try:
+            f = open(self.configfile, 'r')
+            # config file format is identical to header, so convert file lines
+            # to a string and then return a config objct
+            config_str = ''.join(f.readlines())
+        except IOError:
+            print "Unable to open config file: %s" % self.configfile
+            sys.exit(1)
+        else:
+            f.close()
+
+        return config_str 
+
+   
 ################################################################################
 '''
     SetAddCatgory
@@ -313,7 +332,7 @@ class SetBlogname(btOption):
                   'action' : 'store',
                   'dest' : "blogname",
                   'help' : """
-Blog name for operations on blog.  The name must correspond to a name in
+Blog namconfigfilee for operations on blog.  The name must correspond to a name in
 ~/.btconfig or a config file specified on the command line.
 """  
                  }
@@ -367,4 +386,22 @@ class SetNoPublish(btOption):
     def check(self, opts):
         return bool(opts.publish)
 
+################################################################################
+#
+#  function to return a list of option objects
+#
+#  For new options, simply append an instance to the list
+def getOptions():
+    o_list = []
+    o_list.append(SetConfigFile())
+    o_list.append(SetBlogname())
+    o_list.append(SetAddCategory())
+    o_list.append(SetNoPublish())
+    o_list.append(SetPosttime())
+    o_list.append(DeletePost())
+    o_list.append(GetRecentTitles())
+    o_list.append(GetCategories())
+    o_list.append(AddCategory())
+    o_list.append(GetPost())
 
+    return o_list
