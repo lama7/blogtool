@@ -20,82 +20,108 @@ class headerParseError(Exception):
         return self.message
 
 ################################################################################
-#
-#
 class NoKeyword(headerParseError):
     def __init__(self, string):
         self.message = "Expected keyword, found none: %s" % string
 
 ################################################################################
-#
-#
 class KeywordError(headerParseError):
     def __init__(self, keyword):
         self.message = "Invalid keyword: %s" % keyword
     
 ################################################################################
-#
-#
 class HeaderValueError(headerParseError):
     def __init__(self, string):
         self.message = "Could not parse keyword value: %s" % string
 
 ################################################################################
-#
-#
 class InterpError(headerParseError):
     def __init__(self, key, value):
         self.message = "Value '%s' not valid for key '%s'" % (value, key)
 
+
 ################################################################################
+# 
+# base class for data storage classes related to header info
 #
-# Class defining a header structure
-#
-class header():
-    def __init__(self):
+class hdrdata():
+    def set(self, name, val):
+        # the try-except is a debug tool- the except should NEVER occur
+        try:
+            getattr(self, name)
+        except AttributeError:
+            sys.exit("headerparse.py error: bad set attribute %s" % name)
+            
+        setattr(self, name, val)
+
+    def get(self, name):
+        # the try-except is for debug purposes- this except should NEVER happen
+        try:
+            rval = getattr(self, name)
+        except AttributeError:
+            sys.exit("headerparse.py error: bad get attribut %s" %
+                              name)
         
-        self.title = ''
-        self.username = ''
-        self.password = ''
-        self.xmlrpc = ''
-        self.categories = []
-        self.tags = []
-        self.name = ''
-        self.postid = ''
-        self.posttime = ''
-        self.blogtype = ''
-
-    def set(self, attr, val):
-        # this is bad form, but until we learn better we'll assume good
-        # intentions by the caller
-        setattr(self, attr, val)
-
-    def get(self, attr):
-        rval = getattr(self, attr)
-
-        if attr == 'categories' or attr == 'tags':
+        if type(name) == types.ListType:
             if len(rval) == 0:
                 return None
         elif rval == '':
             return None
-            
+
         return rval
 
-    def debug(self):
-        print self.title
-        print self.username
-        print self.password
-        print self.xmlrpc
-        print self.categories
-        print self.tags
-        print self.name
-        print self.postid
-        print self.posttime
-        print self.blogtype
+    # implemented so 'in' operator can be used
+    def __contains__(self, item):
+        # this is naive- but effective.  For instance, 'set', and 'get' are 
+        # are part of self.__dict__
+        if item in self.__dict__:
+            return True
+
+        return False
 
 ################################################################################
-#
-#
+class postmeta(hdrdata):
+    title = ''
+    categories = []
+    tags = []
+    postid = ''
+    posttime = ''
+
+    # for debugging
+    def __str__(self):
+        return """
+title:      %s
+categories: %s
+tags:       %s
+postid:     %s
+posttime:   %s""" % ( self.title,
+                        self.categories,
+                        self.tags,
+                        self.postid,
+                        self.posttime )
+
+################################################################################
+class xmlrpcsettings(hdrdata):
+    name = ''
+    blogtype = ''
+    xmlrpc_location = ''
+    username = ''
+    password = ''
+
+    # for debugging
+    def __str__(self):
+        return """
+name =            %s
+blogtype =        %s
+xmlrpc_location = %s
+username =        %s
+password =        %s""" % ( self.name,
+                            self.blogtype
+                            self.xmlrpc_location
+                            self.username
+                            self.password )
+
+################################################################################
 class keyword():
     def __init__(self, kwtype):
         self.kwtype = kwtype
@@ -259,7 +285,7 @@ class headerParse():
         # in the case of CATEGORIES or TAGS, a list IS the object that
         # is needed, rather than a text string for other case so append
         # the list itself
-        if keyword == 'CATEGORIES' or keyword == 'TAGS':
+        if keyword in ['CATEGORIES', 'TAGS']:
             ast[keyword].append(val)
         else:
             ast[keyword].extend(val)
