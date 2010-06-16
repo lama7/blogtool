@@ -1,50 +1,40 @@
+from xmlproxy import getProxy
+
 import re
 import types
 import sys
-
-''' Start by defining a bunch of exception classes for various parse errors.
-Admittedly, this is likely a naive implementaion, but I'm still learning about
-this stuff so cut me some slack.
-'''
 
 ################################################################################
 #
 #  base class for header parsing errors
 class headerParseError(Exception):
-    # each error class will override the __init__
-    def __init__(self):
-        self.message = ''
+    def __init__(self, msg):
+        self.message = "headerParseError: %s" % msg
 
-    # just returns a message 
     def __str__(self):
         return self.message
 
 ################################################################################
-class NoKeyword(headerParseError):
-    def __init__(self, string):
-        self.message = "Expected keyword, found none: %s" % string
+class headerError(Exception):
+    def __init__(self, msg):
+        self.message = "headerError: %s" % msg
+
+    def __str__(self):
+        return self.message
 
 ################################################################################
-class KeywordError(headerParseError):
-    def __init__(self, keyword):
-        self.message = "Invalid keyword: %s" % keyword
-    
-################################################################################
-class HeaderValueError(headerParseError):
-    def __init__(self, string):
-        self.message = "Could not parse keyword value: %s" % string
+class hdrparms():
+    title = ''
+    categories = []
+    tags = []
+    postid = ''
+    posttime = ''
+    name = ''
+    blogtype = ''
+    xmlrpc = ''
+    username = ''
+    password = ''
 
-################################################################################
-class InterpError(headerParseError):
-    def __init__(self, key, value):
-        self.message = "Value '%s' not valid for key '%s'" % (value, key)
-
-
-################################################################################
-# 
-# base class for data storage classes related to header info
-#
-class hdrdata():
     def set(self, name, val):
         # the try-except is a debug tool- the except should NEVER occur
         try:
@@ -70,6 +60,19 @@ class hdrdata():
 
         return rval
 
+    def getPostMeta(self):
+        return (self.title, 
+                self.categories,
+                self.tags,
+                self.postid,
+                self.posttime)
+
+    def getXMLrpc(self):
+        return (self.blogtype,
+                self.xmlrpc,
+                self.username,
+                self.password)
+    
     # implemented so 'in' operator can be used
     def __contains__(self, item):
         # this is naive- but effective.  For instance, 'set', and 'get' are 
@@ -79,47 +82,27 @@ class hdrdata():
 
         return False
 
-################################################################################
-class postmeta(hdrdata):
-    title = ''
-    categories = []
-    tags = []
-    postid = ''
-    posttime = ''
-
-    # for debugging
     def __str__(self):
         return """
-title:      %s
-categories: %s
-tags:       %s
-postid:     %s
-posttime:   %s""" % ( self.title,
-                        self.categories,
-                        self.tags,
-                        self.postid,
-                        self.posttime )
-
-################################################################################
-class xmlrpcsettings(hdrdata):
-    name = ''
-    blogtype = ''
-    xmlrpc_location = ''
-    username = ''
-    password = ''
-
-    # for debugging
-    def __str__(self):
-        return """
-name =            %s
-blogtype =        %s
-xmlrpc_location = %s
-username =        %s
-password =        %s""" % ( self.name,
-                            self.blogtype
-                            self.xmlrpc_location
-                            self.username
-                            self.password )
+    title:           %s
+    categories:      %s
+    tags:            %s
+    postid:          %s
+    posttime:        %s
+    name:            %s
+    blogtype:        %s
+    xmlrpc_location: %s
+    username:        %s
+    password:        %s""" % ( self.title,
+                               self.categories,
+                               self.tags,
+                               self.postid,
+                               self.posttime,
+                               self.name,
+                               self.blogtype,
+                               self.xmlrpc,
+                               self.username,
+                               self.password )
 
 ################################################################################
 class keyword():
@@ -190,12 +173,12 @@ class headerParse():
         # turn into a config object
         while parsestring:
             (keyword, val, parsestring) = self.__parseAssignment(parsestring)
-            self.__addAST(ast, keyword, val)
+            self.__add2AST(ast, keyword, val)
 
         # determine how many configs we need by finding the length of the 
         # longest list in the AST
         numconfigs = max(map(lambda x: len(ast[x]), ast.keys()))
-        postconfig = [ header() for x in range(numconfigs) ]
+        postconfig = [ hdrparms() for x in range(numconfigs) ]
 
         return self.__interpAST(ast, postconfig)
 
@@ -203,11 +186,12 @@ class headerParse():
     def __parseAssignment(self, parsestring):
         m = self.__hdr_keyword.match(parsestring)
         if m == None:
-            raise NoKeyword(parsestring)
+            raise headerParseError("Expected keyword, found none: %s" %
+                                   parsestring)
 
         keyword, parsestring = m.group(1,2)
         if keyword not in self.__kw_tbl:
-            raise KeywordError(keyword)
+            raise headerParseError("Invalid keyword: %s" % keyword)
 
         val, parsestring = self.__parseElement(parsestring)
 
@@ -229,7 +213,8 @@ class headerParse():
     def __parseValue(self, parsestring):
         m = self.__hdr_value.match(parsestring)
         if m == None:
-            raise HeaderValueError(parsestring)
+            raise headerParseError( "Could not parse keyword value: %s" %
+                                    parsestring)
 
         # if next character is a comma, then we have a list otherwise
         # it's a single value assignment
@@ -245,7 +230,7 @@ class headerParse():
         while m == None:
             # continue processing within current group
             (keyword, val, parsestring) = self.__parseAssignment(parsestring)
-            self.__addAST(sub_ast, keyword, val)
+            self.__add2AST(sub_ast, keyword, val)
             
             # check for end of group
             m = self.__hdr_group_term.match(parsestring)
@@ -264,18 +249,20 @@ class headerParse():
             return vallist, parsestring
 
     # adds a key value pair into the ast as appropriate
-    def __addAST(self, ast, keyword, val):
+    def __add2AST(self, ast, keyword, val):
         # first, make sure the value is agreeable with the keyword type
         kwtype = self.__kw_tbl[keyword].kwtype
 
         # single value keyword are just that- and no groups
         if (kwtype == self.KTYPE_SINGLEVAL and
             (len(val) > 1 or type(val[0]) == types.DictType)):
-            raise InterpError(keyword, val)
+            raise headerParseError("Value '%s' not valid for key '%s'" % 
+                                   (value, key) )
         # multival can't have any groups in the list
         elif (kwtype == self.KTYPE_MULTIVAL and
               len([ v for v in val if type(v) == types.DictType ]) != 0):
-            raise InterpError(keyword, val)
+            raise headerParseError("Value '%s' not valid for key '%s'" % 
+                                   (value, key) )
 
         # build AST using keyword value pairs
         if keyword not in ast:
@@ -310,6 +297,8 @@ class headerParse():
                     # than 1 value are CATEGORIES and TAGS
                     if len(v) != 1:
                         raise InterpError(k, v)
+                        raise headerParseError("Value '%s' not valid for key '%s'" % 
+                                               (v, k) )
 
                     config.set(k, v.pop())
             del ast['BLOG']
@@ -364,3 +353,64 @@ class headerParse():
 #        sys.exit()
 
         return postconfig
+
+################################################################################
+class header():
+    _parser = headerParse()
+
+    def debug(self):
+        print self._blogname_parm
+
+    def setDefaults(self, hdrstr):
+        self._default_parms = self._parser.parse(hdrstr)
+        self._parms = self._default_parms
+
+    def addParms(self, hdrstr):
+        newparms = self._parser.parse(hdrstr)
+        self._reconcile(newparms)
+
+    def getParmByName(self, parm_name):
+        return getattr(self._active_parm, parm_name)
+
+    def setBlogParmsByName(self, name = ''):
+        for parm in self._parms:
+            if parm.name == name:
+                self._active_parm = parm
+                break
+        else:
+            raise headerError("""
+Blog %s not found in config header or post header
+""" % name)
+
+    def proxy(self):
+        if self._active_parm:
+            return getProxy(*self._active_parm.getXMLrpc())
+
+    def _reconcile(self, newparms):
+        for parmlist in newparms:
+            if parmlist.name:
+                for default_parmlist in self._default_parms:
+                    if default_parmlist.name == parmlist.name:
+                        break
+                else:
+                    continue
+            else:
+                i = parmlist.index(newparms)
+                if i >= len(self._default_parms):
+                    continue
+                default_parmlist = self._default_parms[i]
+
+            for (k, v) in parmlist.__dict__.iteritems():
+                if k in ['categories', 'tags']:
+                    if len(v) != 0:
+                        continue
+                elif v:
+                    continue
+
+                default = default_parmlist.get(k)
+                if default:
+                    parmlist.set(k, default)
+
+        self._parms = newparms
+
+

@@ -1,6 +1,7 @@
 import html2md
-import blogutils
+import utils
 import datetime
+import os
 
 ################################################################################
 #
@@ -23,7 +24,7 @@ class btOption:
     # the 'opts' arg will be the Values object returned by the OptParse parser.
     # the 'proxy' arg will be a proxy object for communicating with the blog
     # if necessary 
-    def run(self, proxy, blogname):
+    def run(self, header):
         pass
         
 ################################################################################
@@ -36,10 +37,10 @@ class btOption:
 class DeletePost(btOption):
     args = ('-d', '--delete')
     kwargs = {
-                   'action' : 'store',
-                   'dest' : "del_postid", 
-                   'help' : "delete a post" 
-                 }
+              'action' : 'store',
+              'dest' : "del_postid", 
+              'help' : "delete a post" 
+             }
 
     ############################################################################ 
     def check(self, opts):
@@ -50,14 +51,11 @@ class DeletePost(btOption):
         return False
 
     ############################################################################ 
-    def run(self, proxy, blogname):
-        print "Deleting post %s" % opts.del_postid
+    def run(self, header):
+        print "Deleting post %s" % self.del_postid
 
-        # We need a blog to delete from.  If there are multiple blogs specified
-        # in the config file, then bail and instruct the user to use the -b
-        # option.  If only 1, then use it regardless.  Oh- if multiples, then
-        # check if a blog was specified.
-        postid = proxy.deletePost(opts.del_postid)
+        proxy = header.proxy()
+        postid = proxy.deletePost(self.del_postid)
 
 ################################################################################
 '''
@@ -69,10 +67,10 @@ class DeletePost(btOption):
 class GetRecentTitles(btOption):
     args = ('-t', '--recent-titles')
     kwargs = {
-                   'action' : 'store',
-                   'dest' : "num_recent_t",
-                   'help' : "rettrieve recent posts from a blog" 
-                 }
+              'action' : 'store',
+              'dest' : "num_recent_t",
+              'help' : "rettrieve recent posts from a blog" 
+             }
 
     ############################################################################ 
     def check(self, opts):
@@ -83,10 +81,12 @@ class GetRecentTitles(btOption):
         return False
 
     ############################################################################ 
-    def run(self, proxy, blogname):
+    def run(self, header):
+        blogname = header.getParmByName('name')
         print "Retrieving %s most recent posts from %s.\n" % (self.count,
                                                               blogname)
 
+        proxy = header.proxy()
         # this does the heavy lifting
         recent = proxy.getRecentTitles(blogname, self.count)
 
@@ -112,20 +112,21 @@ class GetRecentTitles(btOption):
 class GetCategories(btOption):
     args = ('-C', '--Categories')
     kwargs = {
-                  'action' : "store_true",
-                  'dest' : "getcats",
-                  'help' : "Get a list of catgories for a blog" 
-                 }
+              'action' : "store_true",
+              'dest' : "getcats",
+              'help' : "Get a list of catgories for a blog" 
+             }
 
     ############################################################################ 
     def check(self, opts):
         return bool(opts.getcats)
 
     ############################################################################ 
-    def run(self, proxy, blogname):
-        # list blog categories
+    def run(self, header):
+        blogname = header.getParmByName('name')
         print "Retrieving category list for %s." % blogname
 
+        proxy = header.proxy()
         cat_list = proxy.getCategories(blogname)
         
         print "Category       \tParent        \tDescription"
@@ -152,10 +153,10 @@ class GetCategories(btOption):
 class AddCategory(btOption):
     args = ('-n', '--new-categories')
     kwargs = {
-                  'action' : 'store',
-                  'dest' : "newcat",
-                  'help' : "Add a new category to a blog" 
-                 }
+              'action' : 'store',
+              'dest' : "newcat",
+              'help' : "Add a new category to a blog" 
+             }
 
     ############################################################################ 
     def check(self, opts):
@@ -166,8 +167,9 @@ class AddCategory(btOption):
         return False
 
     ############################################################################ 
-    def run(self, proxy, blogame):
-        # add a new category
+    def run(self, header):
+        blogname = header.getParmByName('name')
+        proxy = header.proxy()
         print "Checking if category already exists on %s..." % (blogname)
 
         # this will check the category string to see if it is a valid blog
@@ -197,14 +199,14 @@ class AddCategory(btOption):
 class GetPost(btOption):
     args = ('-g', '--getpost')
     kwargs = {
-                  'action' : 'store',
-                  'dest' : 'get_postid',
-                  'help' : """
+              'action' : 'store',
+              'dest' : 'get_postid',
+              'help' : """
 Retrieves a blog post and writes it to STDOUT.  Certain HTML tags are stripped
 and an attempt is made to format the text.  A header is also created, meaning
 a file capture could be used for updating with blogtool.  
 """            
-                 }
+             }
 
     
     ############################################################################ 
@@ -216,12 +218,12 @@ a file capture could be used for updating with blogtool.
         return False
 
     ############################################################################ 
-    def run(self, proxy, blogname):
+    def run(self, header):
         if not html2md.LXML_PRESENT:
             print "Option not supported without python-lxml library."
             return
 
-        # retrieve a post from blog
+        proxy = header.proxy()
         post = proxy.getPost(self.postid)
         if post['mt_text_more']:
             text = html2md.convert("%s%s%s" % (post['description'], 
@@ -231,8 +233,8 @@ a file capture could be used for updating with blogtool.
             text = html2md.convert(post['description'])
 
         print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
-               self.bc.name, 
-               postid, 
+               header.getParmByName('name'), 
+               self.postid, 
                post['title'], 
                ', '.join(post['categories']))
         if post['mt_keywords']:
@@ -250,50 +252,45 @@ a file capture could be used for updating with blogtool.
 class SetConfigFile(btOption):
     args = ('-c', '--config')
     kwargs = { 
-                  'action' : 'store',
-                  'dest' : "configfile", 
-                  'help' : "specify a config file" 
-                 }
+              'action' : 'store',
+              'dest' : "configfile", 
+              'help' : "specify a config file" 
+             }
 
     ############################################################################ 
     def check(self, opts):
         if opts.configfile:
             self.configfile = opts.configfile
-            return True
- 
-        return False
+
+        # a hack- the run method here must always execute, so the check here 
+        # should always return True
+        return True
 
     ############################################################################ 
-    def run(self, proxy, blogname):
-        # cfile will be a filename or None
+    def run(self, header):
         if not hasattr(self, 'configfile'): 
-            cfile = os.path.join(os.path.expanduser('~'), '.btconfig')    
-            if os.path.isfile(self.configfile) != 1:
-                return None
+            rcf = os.path.join(os.path.expanduser('~'), '.btrc')    
+            if not os.path.isfile(rcf):
+                return 
         else:
-           # it's possible the user supplied a fully qualified path, so check if
-           # the file exists
-           if os.path.isfile(self.configfile) != 1:
-               # try anchoring file to the user's home directory       
-               cfile = os.path.join(os.path.expanduser('~'), self.configfile)
-               if os.path.isfile(self.configfile) != 1:
-                   print "Unable to open config file: %s"
+           rcf = self.configfile
+           if not os.path.isfile(rcf):
+               rcf = os.path.join(os.path.expanduser('~'), self.configfile)
+               if not os.path.isfile(rcf):
+                   print "Unable to open config file: %s" % self.configfile
                    sys.exit(1)
 
-        # open the file
         try:
-            f = open(self.configfile, 'r')
-            # config file format is identical to header, so convert file lines
-            # to a string and then return a config objct
-            config_str = ''.join(f.readlines())
+            f = open(rcf, 'r')
+            hdrstr = ''.join(f.readlines())
         except IOError:
             print "Unable to open config file: %s" % self.configfile
             sys.exit(1)
         else:
             f.close()
 
-        return config_str 
-
+        if hdrstr:
+            header.setDefaults(hdrstr)
    
 ################################################################################
 '''
@@ -306,19 +303,18 @@ class SetConfigFile(btOption):
 class SetAddCategory(btOption):
     args = ('-a', '--add-categories')
     kwargs = {
-                  'action' : 'store_true',
-                  'dest' : 'addcats',
-                  'help' : """
+              'action' : 'store_true',
+              'dest' : 'addcats',
+              'help' : """
 Categories specified for the post will be added to the blog's category list if
 they do not already exist.
 """
-                 }
+             }
 
     ############################################################################ 
     def check(self, opts):
         return bool(opts.addcats)
           
-
 ################################################################################
 '''
     SetBlogname
@@ -329,13 +325,13 @@ they do not already exist.
 class SetBlogname(btOption):
     args = ('-b','--blog')
     kwargs = {
-                  'action' : 'store',
-                  'dest' : "blogname",
-                  'help' : """
-Blog namconfigfilee for operations on blog.  The name must correspond to a name in
-~/.btconfig or a config file specified on the command line.
+              'action' : 'store',
+              'dest' : "blogname",
+              'help' : """
+Blog namconfigfilee for operations on blog.  The name must correspond to a name
+in ~/.btconfig or a config file specified on the command line.
 """  
-                 }
+             }
 
     ############################################################################ 
     def check(self, opts):
@@ -344,6 +340,9 @@ Blog namconfigfilee for operations on blog.  The name must correspond to a name 
             return True
 
         return False
+
+    def run(self, header):
+        header.setBlogParmsByName(self.blogname)
 
 ################################################################################
 '''
@@ -354,10 +353,10 @@ Blog namconfigfilee for operations on blog.  The name must correspond to a name 
 class SetPosttime(btOption):
     args = ('-s', '--schedule')
     kwargs = {
-                  'action' : 'store',
-                  'dest' : "posttime",
-                  'help' : "Time to publish post in YYYYmmddHHMMSS format" 
-                 }
+              'action' : 'store',
+              'dest' : "posttime",
+              'help' : "Time to publish post in YYYYmmddHHMMSS format" 
+             }
 
     ############################################################################ 
     def check(self, opts):
@@ -376,11 +375,11 @@ class SetPosttime(btOption):
 class SetNoPublish(btOption):
     args = ('--draft', )
     kwargs = {
-                  'action' : "store_false",
-                  'dest' : "publish",
-                  'default' : True,
-                  'help' : "Do not publish post.  Hold it as a draft." 
-                 }
+              'action' : "store_false",
+              'dest' : "publish",
+              'default' : True,
+              'help' : "Do not publish post.  Hold it as a draft." 
+             }
 
     ############################################################################ 
     def check(self, opts):
@@ -393,8 +392,8 @@ class SetNoPublish(btOption):
 #  For new options, simply append an instance to the list
 def getOptions():
     o_list = []
-    o_list.append(SetConfigFile())
-    o_list.append(SetBlogname())
+    o_list.append(SetConfigFile())  # should always be first in list
+    o_list.append(SetBlogname())    # should always be second in list
     o_list.append(SetAddCategory())
     o_list.append(SetNoPublish())
     o_list.append(SetPosttime())

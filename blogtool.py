@@ -208,13 +208,13 @@ class blogtool():
         text portion can be sent to the appropriate blogs.
 
     '''
-    def parsePostFile(self):
+    def parsePostFile(self, filename):
         try:
-            f = open(self.filename, 'r')
+            f = open(filename, 'r')
             lines = f.readlines()
         except IOError:
             try:
-                f = open(self.filename, 'w')
+                f = open(filename, 'w')
             except IOError, err:
                 print err
                 sys.exit()
@@ -301,6 +301,20 @@ class blogtool():
         if postid != None:
             header = self._updateHeader(postid)
             return 1                
+
+    ############################################################################ 
+    def updateFile(self, filename):
+        # alter the file name so we don't overwrite
+        filename += '.posted'
+        try:
+            f = open(filename, 'w')
+            f.write(self.header)
+            f.write('\n')
+            f.write(self.posttext)
+        except IOError:
+            print "Error writing updated post file %s" % file
+        else:
+            f.close()
 
     ############################################################################ 
     def _procPost(self):
@@ -485,20 +499,6 @@ class blogtool():
             current_state, procd_hdr, hdr_str = states[current_state](hdr_str)
             self.header += procd_hdr
 
-    ############################################################################ 
-    def _updateFile(self):
-        # alter the file name so we don't overwrite
-        self.filename += '.posted'
-        try:
-            f = open(self.filename, 'w')
-            f.write(self.header)
-            f.write('\n')
-            f.write(self.posttext)
-        except IOError:
-            print "Error writing updated post file %s" % file
-        else:
-            f.close()
-
     ############################################################################
     def _getHeaderandPostText(self, linelist):
         # find first blank line so we can split the list
@@ -508,49 +508,6 @@ class blogtool():
                 break
 
         return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
-
-
-################################################################################
-# 
-# Checks for and processes a config file for blogtool 
-#  Info in config file: anything that can appear in the header of a postfile
-#  Most likely for storing static blog related stuff like username, password,
-#  xmlrpc, and blog name- essentially it sets defaults that can be overridden
-#  by the postfile
-#
-#  12/4/09:  Now returns config_str which can be passed to a parser object.
-#            Previous had returned a config object.  This was eliminated so
-#            that the parser object did not need to be global
-#
-def getConfigFileStr(cfile):
-    # cfile will be a filename or None
-    if cfile == None:
-        cfile = os.path.join(os.path.expanduser('~'), '.btconfig')    
-        if os.path.isfile(cfile) != 1:
-            return None
-    else:
-       # it's possible the user supplied a fully qualified path, so check if
-       # the file exists
-       if os.path.isfile(cfile) != 1:
-           # try anchoring file to the user's home directory       
-           cfile = os.path.join(os.path.expanduser('~'), cfile)
-           if os.path.isfile(cfile) != 1:
-               print "Unable to open config file: %s"
-               sys.exit(1)
-
-    # open the file
-    try:
-        f = open(cfile, 'r')
-        # config file format is identical to header, so convert file lines
-        # to a string and then return a config objct
-        config_str = ''.join(f.readlines())
-    except IOError:
-        print "Unable to open config file: %s" % cfile
-        sys.exit(1)
-    else:
-        f.close()
-
-    return config_str 
 
 ##############################################################################
 #
@@ -566,45 +523,45 @@ def getConfigFileStr(cfile):
 # Any conflicts are resolved in favor of leaving post config- we assume the user
 # wanted to do something so we let them
 #
-def reconcile(pcl, cfcl):
-
-    if cfcl == None:
-        return pcl
-    
-    for pc in pcl:
-        cf = None
-        if pc.name != '':
-            for cfc in cfcl:
-                if cfc.name == pc.name:
-                    cf = cfc
-                    break
-            else:
-                continue  
-        else:
-            # without a name, we can only do take one other approach-
-            # match the indexes of configs and go from there.
-            i = pcl.index(pc)
-            if not i < len(cfcl):
-                continue
-            cf = cfcl[pcl.index(pc)]
-
-        # loop through the object attributes and plug in anything supplied
-        # by config that isn't alread set
-        for (k, v) in pc.__dict__.iteritems():
-            # if any values are already assigned, then skip them- config file
-            # values do NOT override post config values
-            if k == 'categories' or k == 'tags':
-                if len(v) != 0:
-                   continue
-            elif v != '':
-                continue
-
-            # value is not assigned already, see if config file assigns a value
-            newv = cf.get(k)
-            if newv != None:
-                pc.set(k, newv)
-
-    return pcl
+#def reconcile(pcl, cfcl):
+#
+#    if cfcl == None:
+#        return pcl
+#    
+#    for pc in pcl:
+#        cf = None
+#        if pc.name != '':
+#            for cfc in cfcl:
+#                if cfc.name == pc.name:
+#                    cf = cfc
+#                    break
+#            else:
+#                continue  
+#        else:
+#            # without a name, we can only do take one other approach-
+#            # match the indexes of configs and go from there.
+#            i = pcl.index(pc)
+#            if not i < len(cfcl):
+#                continue
+#            cf = cfcl[pcl.index(pc)]
+#
+#        # loop through the object attributes and plug in anything supplied
+#        # by config that isn't alread set
+#        for (k, v) in pc.__dict__.iteritems():
+#            # if any values are already assigned, then skip them- config file
+#            # values do NOT override post config values
+#            if k == 'categories' or k == 'tags':
+#                if len(v) != 0:
+#                   continue
+#            elif v != '':
+#                continue
+#
+#            # value is not assigned already, see if config file assigns a value
+#            newv = cf.get(k)
+#            if newv != None:
+#                pc.set(k, newv)
+#
+#    return pcl
 
 ################################################################################
 #
@@ -635,6 +592,7 @@ def edit(fh, hdr_string = ''):
 #
 def main():
     bt = blogtool()
+    header = headerparse.header()
 
     if len(sys.argv) == 1:
         fd = NamedTemporaryFile()
@@ -646,43 +604,30 @@ def main():
             parser.add_option(*option.args, **option.kwargs)
         (opts, filelist) = parser.parse_args(sys.argv[1:])
 
-    ###########################################################################
-    # process any configuration files 
-    # do this NOW because option processing requires blog related info
-    # like xmlrpc, passwords, etc.
-    cf_str = getConfigFileStr(opts.configfile)
-    if cf_str == None:
-        cf_config = None
-    else:
-        try:
-            cf_config = bt.hdr.parse(cf_str)
-        except headerparse.headerParseError, err_str:
-            print err_str
-            sys.exit()
-
-    bt.setBlogConfig(cf_config)
+    for option in bt.options:
+        if option.check(opts):
+            option.run(header)
 
     ###########################################################################
     for filename in filelist:
-        if self.filename != filename:
-            self.filename = filename
-            print "Processing post file %s..." % self.filename
+        if tmp_fn != filename:
+            tmp_fn = filename
+            print "Processing post file %s..." % filename
 
         try:
-            bt.parsePostFile()
+            bt.parsePostFile(filename)
         except blogtoolRetry:
-            filelist.insert(0, self.filename)
+            filelist.insert(0, filename)
             continue
         except (blogtoolPostFileError, blogtoolHeaderError), err_msg:
             print err_msg
-            print "The post in %s cannot be sent to blog." % self.filename
+            print "The post in %s cannot be sent to blog." % filename
             continue
 
         for bpc in self.post_config:
             if bt.pushPost(bpc):
                 print 'Update post file...'
-                self._updateFile()
-
+                bt.updateFile(filename)
 
     sys.exit()
 
