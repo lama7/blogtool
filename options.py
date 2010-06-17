@@ -1,7 +1,19 @@
+from headerparse import headerError
+
+import sys
 import html2md
 import utils
 import datetime
 import os
+
+def _getProxy(header):
+    try:
+        p = header.proxy()
+    except headerError, err:
+        print err
+        sys.exit()
+
+    return p
 
 ################################################################################
 #
@@ -54,7 +66,7 @@ class DeletePost(btOption):
     def run(self, header):
         print "Deleting post %s" % self.del_postid
 
-        proxy = header.proxy()
+        proxy = _getProxy(header)
         postid = proxy.deletePost(self.del_postid)
 
 ################################################################################
@@ -82,15 +94,12 @@ class GetRecentTitles(btOption):
 
     ############################################################################ 
     def run(self, header):
+        proxy = _getProxy(header)
         blogname = header.getParmByName('name')
-        print "Retrieving %s most recent posts from %s.\n" % (self.count,
-                                                              blogname)
-
-        proxy = header.proxy()
-        # this does the heavy lifting
+        print "Retrieving %s most recent posts from blog '%s'.\n" % (self.count,
+                                                                     blogname)
         recent = proxy.getRecentTitles(blogname, self.count)
 
-        # now do some formatting of the returned info prior to printing
         print "POSTID\tTITLE                               \tDATE CREATED"
         print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
         for post in recent:
@@ -123,10 +132,10 @@ class GetCategories(btOption):
 
     ############################################################################ 
     def run(self, header):
+        proxy = _getProxy(header)
         blogname = header.getParmByName('name')
-        print "Retrieving category list for %s." % blogname
+        print "Retrieving category list for '%s'." % blogname
 
-        proxy = header.proxy()
         cat_list = proxy.getCategories(blogname)
         
         print "Category       \tParent        \tDescription"
@@ -168,25 +177,25 @@ class AddCategory(btOption):
 
     ############################################################################ 
     def run(self, header):
+        proxy = _getProxy(header)
         blogname = header.getParmByName('name')
-        proxy = header.proxy()
-        print "Checking if category already exists on %s..." % (blogname)
+        print "Checking if category already exists on '%s'..." % (blogname)
 
         # this will check the category string to see if it is a valid blog
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
-        t = blogutils.isBlogCategory(proxy.getCategories(blogname), 
-                                     self.catname)
+        t = utils.isBlogCategory(proxy.getCategories(blogname), 
+                                 self.catname)
         if t == None:
             print "The category specified alread exists on the blog."
         else:
             # t is a tuple with the first NEW category from the category string
             # specified and it's parentId.  Start adding categories from here
-            print "Attempting to add %s category to %s" % (self.catname,
-                                                           blogname)
+            print "Attempting to add '%s' category to blo '%s'" % (self.catname,
+                                                                   blogname)
             # the '*' is the unpacking operator
-            blogutils.addCategory(proxy, blogname, self.catname, *t)
+            utils.addCategory(proxy, blogname, self.catname, *t)
 
 ################################################################################
 '''
@@ -223,7 +232,7 @@ a file capture could be used for updating with blogtool.
             print "Option not supported without python-lxml library."
             return
 
-        proxy = header.proxy()
+        proxy = _getProxy(header)
         post = proxy.getPost(self.postid)
         if post['mt_text_more']:
             text = html2md.convert("%s%s%s" % (post['description'], 
@@ -341,8 +350,13 @@ in ~/.btconfig or a config file specified on the command line.
 
         return False
 
+    ############################################################################ 
     def run(self, header):
-        header.setBlogParmsByName(self.blogname)
+        try:
+            header.setBlogParmsByName(self.blogname)
+        except headerError, err:
+            print err
+            sys.exit()
 
 ################################################################################
 '''

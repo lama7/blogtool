@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
-from xmlproxy import getProxy
 from xmlproxy.proxybase import proxyError
+from options import getOptions
+
 import utils
 import headerparse
-from options import getOptions
 
 from optparse import OptionParser
 from tempfile import NamedTemporaryFile
@@ -56,16 +56,13 @@ Also, this annoying message will be displayed everytime you run blogtool.
 #  define base class for errors
 class blogtoolError(Exception): 
     # to be overriden by the subclass
-    def __init__(self):
-        self.message = ''
+    def __init__(self, msg):
+        self.message = 'blogtoolError: %s' % msg
 
     # this is typically all that's done with the __str__ method
     def __str__(self):
         return self.message
 
-################################################################################
-#   
-#
 class blogtoolNoBlogName(blogtoolError):
     def __init__(self):
         self.message = """
@@ -110,7 +107,6 @@ Post file must have a blank line separating header and post text.
 class blogtoolDeletePostError(blogtoolError):
     def __init__(self, postid, blogname):
         self.message = "Unable to delete post %s from %s" % (postid, blogname)
-    
 
 ################################################################################
 #   
@@ -161,8 +157,6 @@ class blogtool():
                       
         # create a header parsing object
         self.hdr = headerparse.headerParse()
-
-#self.options = getOptions()
 
     ############################################################################ 
     def setBlogProxy(self, xmlrpc, username, password):

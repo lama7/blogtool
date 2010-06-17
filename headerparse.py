@@ -1,18 +1,8 @@
 from xmlproxy import getProxy
 
+import sys
 import re
 import types
-import sys
-
-################################################################################
-#
-#  base class for header parsing errors
-class headerParseError(Exception):
-    def __init__(self, msg):
-        self.message = "headerParseError: %s" % msg
-
-    def __str__(self):
-        return self.message
 
 ################################################################################
 class headerError(Exception):
@@ -21,6 +11,26 @@ class headerError(Exception):
 
     def __str__(self):
         return self.message
+
+################################################################################
+class headerParseError(Exception):
+    def __init__(self, msg):
+        self.message = "headerParseError: %s" % msg
+
+    def __str__(self):
+        return self.message
+
+################################################################################
+class headerErrorNoConfig(Exception):
+    def __init__(self, msg):
+        self.message = """
+A '~/.btrc' file was not found nor was a config file specified on the
+command line.  Without a configuration file, the only operation possible is
+posting.
+
+To perform any optional operations (deleting posts, retrieving recent titles,
+etc.) please create a ~/.btconfig file.
+"""
 
 ################################################################################
 class hdrparms():
@@ -358,33 +368,88 @@ class headerParse():
 class header():
     _parser = headerParse()
 
+    def __init__(self):
+        self._parm_index = None
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self._parm_index == None:
+            self._parm_index = 0
+        if self._parm_index < len(self._parms):
+            pl = self._parms[self._parm_index]
+            self._parm_index += 1
+            return pl
+        else:
+            raise StopIteration
+
     def debug(self):
-        print self._blogname_parm
+        if hasattr(self, '_named_parm'):
+            print "named_parm"
+            print self._named_parm
+        print "_parms:"
+        for parm in self._parms:
+            print parm
 
     def setDefaults(self, hdrstr):
-        self._default_parms = self._parser.parse(hdrstr)
+        try:
+            self._default_parms = self._parser.parse(hdrstr)
+        except headerParseError, err:
+            print err
+            sys.exit()
         self._parms = self._default_parms
 
     def addParms(self, hdrstr):
-        newparms = self._parser.parse(hdrstr)
+        try:
+            newparms = self._parser.parse(hdrstr)
+        except headerParseError, err:
+            print err
+            sys.exit()
+
         self._reconcile(newparms)
 
     def getParmByName(self, parm_name):
-        return getattr(self._active_parm, parm_name)
+        if hasattr(self, '_named_parm'):
+            return getattr(self._named_parm, parm_name)
+        else:
+            return getattr(self._parms[self._parm_index], parm_name)    
 
     def setBlogParmsByName(self, name = ''):
         for parm in self._parms:
             if parm.name == name:
-                self._active_parm = parm
+                self._named_parm = parm
                 break
         else:
             raise headerError("""
-Blog %s not found in config header or post header
+Blog '%s' not found in config header or post header
 """ % name)
 
+    def setBlogParmByIndex(self, new_index):
+        if new_index < len(self._parms):
+            self._parm_index = new_index
+
     def proxy(self):
-        if self._active_parm:
-            return getProxy(*self._active_parm.getXMLrpc())
+        if hasattr(self, '_named_parm'):
+            return getProxy(*self._named_parm.getXMLrpc())
+        parmlist_cnt = len(self._parms)
+        if parmlist_cnt == 0:
+            raise headerError("""
+A '~/.btrc' file was not found nor was a config file specified on the command
+line.  Without a configuration file, the only operation possible is posting.
+
+To perform any optional operations (deleting posts, retrieving recent titles,
+etc.) please create a ~/.btconfig file.
+""")
+        elif parmlist_cnt == 1:
+            return getProxy(*self._parms[0].getXMLrpc())
+        elif self._parm_index == None:
+            raise headerError("""
+The rc file supplied has multiple blogs defined.  Please specify one of them
+using the -b option.
+""")
+        else:
+            return getProxy(*self._parms[self._parm_index].getXMLrpc())
 
     def _reconcile(self, newparms):
         for parmlist in newparms:
@@ -412,5 +477,3 @@ Blog %s not found in config header or post header
                     parmlist.set(k, default)
 
         self._parms = newparms
-
-

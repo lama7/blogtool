@@ -22,10 +22,10 @@ for f in os.listdir(os.curdir):
 
 os.chdir(cwd)
 
-
 ################################################################################
 def getProxy(blogtype, url, user, password):
     if blogtype not in modules:
-        raise ValueError
+        print "Blogtype '%s' not supported." % blogtype
+        sys.exit()
 
     return modules[blogtype].getInst(url, user, password)
