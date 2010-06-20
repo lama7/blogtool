@@ -152,149 +152,15 @@ class blogtool():
     options = getOptions()
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
-    ############################################################################ 
-    def __init__(self):
-                      
-        # create a header parsing object
-        self.hdr = headerparse.headerParse()
+    ############################################################################
+    def _getHeaderandPostText(self, linelist):
+        # find first blank line so we can split the list
+        for line in linelist:
+            if line.isspace():
+                i = linelist.index(line)
+                break
 
-    ############################################################################ 
-    def setBlogProxy(self, xmlrpc, username, password):
-        if self.blogproxy:
-            del self.blogproxy
-
-        self.blogproxy = blogapi.blogproxy(xmlrpc, username, password)
-
-    ############################################################################ 
-    def setBlogConfig(self, config):
-        # this function sets the working blog config
-        if cf_config == None:
-           raise blogtoolNoConfig() 
-
-        if len(cf_config) == 1:
-            self.bc = cf_config[0]
-        else:
-            if not self.blogname:
-                raise blogtoolNoBlogName()
-            for bc in cf_config:
-                if bc.name == self.blogname:
-                    self.bc = bc
-                    break
-            else:
-                # the name provided does not match anything in the config file
-                raise blogtoolBadName()
-
-        try:
-            self.blogproxy = getProxy(self.bc.blogtype,
-                                      self.bc.xmlrpc, 
-                                      self.bc.username,
-                                      self.bc.password)
-
-        except ValueError:
-            print "Invalid blogtype specified: %s" % self.bc.blogtype
-            sys.exit()
-
-    ############################################################################ 
-    ''' parsePostFile
-
-        Attempts to read a post file.  If successful, then a header and text
-        portion are created.  The header portion can be parsed for so that he
-        text portion can be sent to the appropriate blogs.
-
-    '''
-    def parsePostFile(self, filename):
-        try:
-            f = open(filename, 'r')
-            lines = f.readlines()
-        except IOError:
-            try:
-                f = open(filename, 'w')
-            except IOError, err:
-                print err
-                sys.exit()
-
-            edit(f, "TITLE: \nCATEGORIES: \n")
-            raise blogtoolRetry()
-        else:
-            f.close()
-
-        # min of 1 line for header, a blank separator and a line of text = 3
-        if len(lines) < 3:
-            raise blogtoolPostFileError()
-        self.header, self.posttext = self._getHeaderandPostText(lines)
-
-        del lines
-
-        try:
-            self.post_config = reconcile(self.hdr.parse(self.header),
-                                         self.cf_config)
-        except headerparse.headerParseError, err_str:
-            print err_str
-            raise blogtoolHeaderError()
-
-    ############################################################################ 
-    '''
-        pushPost
-
-        Takes care of pushing a post up to a blog as defined by a header.
-        Creates a blogproxy, processes the blog categories and builds a post
-        object prior to determining if the post is just being updated or if it
-        is a new post.  If the post is successfully sent, the post file is
-        updated with the post ID assigned at the blog.
-    '''
-    def pushPost(self):
-        # this handles pushing a post up to a blog
-        try:
-            self.blogproxy = getProxy(self.bc.blogtype,
-                                      self.bc.xmlrpc, 
-                                      self.bc.username,
-                                      self.bc.password)
-
-        except ValueError:
-            print "Invalid blogtype specified: %s" % self.bc.blogtype
-
-        html_desc, html_ext = self._procPost()
-
-        print "Checking post categories..."
-        self.bc.categories = self._procPostCategories()
-
-        try:
-            post = utils.buildPost(self.bc,
-                                       html_desc,
-                                       html_ext,
-                                       timestamp = self.opts.posttime,
-                                       publish = self.opts.publish )
-        except utilsError, timestr:
-            print timestr
-            sys.exit()
-
-        if self.bc.postid:
-            print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
-            try:
-                postid = self.blogproxy.editPost(self.bc.postid, post)
-
-            except proxyError, err:
-                print err
-                sys.exit()
-
-            return None
-
-        if self.opts.publish:
-            print "Publishing '%s' to '%s'" % (self.bc.title,  self.bc.name) 
-        else:
-            print "Publishing '%s' to '%s' as a draft" % (self.bc.title,
-                                                          self.bc.name)
-
-        try:
-            postid = self.blogproxy.publishPost(self.bc.name, post)
-
-        except proxyError, err:
-            print err
-            sys.exit()
-
-        if postid != None:
-            header = self._updateHeader(postid)
-            return 1                
+        return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
     ############################################################################ 
     def updateFile(self, filename):
@@ -389,13 +255,13 @@ class blogtool():
         return (etree.tostring(tree).replace('<post>', '')).replace('</post>', '')
 
     ############################################################################ 
-    def _procPostCategories(self):
+    def _procPostCategories(self, categories):
         # first, build a list of catgories that aren't on the blog from the
         # post's category list
         nonCats = []
-        for c in self.bc.categories:
+        for c in categories:
             try:
-                cat_list = self.blogproxy.getCategories(self.bc.name)
+                cat_list = self._blogproxy.getCategories()
             
             except proxyError, err:
                 print err
@@ -493,69 +359,92 @@ class blogtool():
             current_state, procd_hdr, hdr_str = states[current_state](hdr_str)
             self.header += procd_hdr
 
-    ############################################################################
-    def _getHeaderandPostText(self, linelist):
-        # find first blank line so we can split the list
-        for line in linelist:
-            if line.isspace():
-                i = linelist.index(line)
-                break
+    ############################################################################ 
+    ''' parsePostFile
 
-        return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
+        Attempts to read a post file.  If successful, then a header and text
+        portion are created.  The header portion can be parsed for so that he
+        text portion can be sent to the appropriate blogs.
 
-##############################################################################
-#
-# reconcile- reconciles configuration info between config file and post 
-#            Roughly speaking, the post config contained in the header trumps
-#            any setting in the config file.
-#
-# This is not as difficult as it might at first seem.  
-# If there is a NAME in the post config, find the equivalent blog entry in the
-# config file and complete the config as required.
-# If no name, then blog entries are processed in order- that is, entry 1 in
-# post config is completed using entry 1 in config file, and so forth.
-# Any conflicts are resolved in favor of leaving post config- we assume the user
-# wanted to do something so we let them
-#
-#def reconcile(pcl, cfcl):
-#
-#    if cfcl == None:
-#        return pcl
-#    
-#    for pc in pcl:
-#        cf = None
-#        if pc.name != '':
-#            for cfc in cfcl:
-#                if cfc.name == pc.name:
-#                    cf = cfc
-#                    break
-#            else:
-#                continue  
-#        else:
-#            # without a name, we can only do take one other approach-
-#            # match the indexes of configs and go from there.
-#            i = pcl.index(pc)
-#            if not i < len(cfcl):
-#                continue
-#            cf = cfcl[pcl.index(pc)]
-#
-#        # loop through the object attributes and plug in anything supplied
-#        # by config that isn't alread set
-#        for (k, v) in pc.__dict__.iteritems():
-#            # if any values are already assigned, then skip them- config file
-#            # values do NOT override post config values
-#            if k == 'categories' or k == 'tags':
-#                if len(v) != 0:
-#                   continue
-#            elif v != '':
-#                continue
-#
-#            # value is not assigned already, see if config file assigns a value
-#            newv = cf.get(k)
-#            if newv != None:
-#                pc.set(k, newv)
-#
-#    return pcl
+    '''
+    def parsePostFile(self, filename):
+        try:
+            f = open(filename, 'r')
+            lines = f.readlines()
+        except IOError:
+            try:
+                f = open(filename, 'w')
+            except IOError, err:
+                print err
+                sys.exit()
+
+            edit(f, "TITLE: \nCATEGORIES: \n")
+            raise blogtoolRetry()
+        else:
+            f.close()
+
+        # min of 1 line for header, a blank separator and a line of text = 3
+        if len(lines) < 3:
+            raise blogtoolPostFileError()
+        return self._getHeaderandPostText(lines)
+
+    ############################################################################ 
+    '''
+        pushPost
+
+        Takes care of pushing a post up to a blog as defined by a header.
+        Creates a blogproxy, processes the blog categories and builds a post
+        object prior to determining if the post is just being updated or if it
+        is a new post.  If the post is successfully sent, the post file is
+        updated with the post ID assigned at the blog.
+    '''
+    def pushPost(self, post_text, header):
+        # this handles pushing a post up to a blog
+        self._blogproxy = header.proxy()
+
+        html_desc, html_ext = self._procPost()
+
+        print "Checking post categories..."
+        self._procPostCategories(header.getParmByName('categories'))
+
+        try:
+            post = utils.buildPost(self.bc,
+                                       html_desc,
+                                       html_ext,
+                                       timestamp = self.opts.posttime,
+                                       publish = self.opts.publish )
+        except utilsError, timestr:
+            print timestr
+            sys.exit()
+
+        if self.bc.postid:
+            print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
+            try:
+                postid = self.blogproxy.editPost(self.bc.postid, post)
+
+            except proxyError, err:
+                print err
+                sys.exit()
+
+            return None
+
+        if self.opts.publish:
+            print "Publishing '%s' to '%s'" % (self.bc.title,  self.bc.name) 
+        else:
+            print "Publishing '%s' to '%s' as a draft" % (self.bc.title,
+                                                          self.bc.name)
+
+        try:
+            postid = self.blogproxy.publishPost(self.bc.name, post)
+
+        except proxyError, err:
+            print err
+            sys.exit()
+
+        if postid != None:
+            header = self._updateHeader(postid)
+            return 1                
+
 
 ################################################################################
 #
@@ -609,7 +498,7 @@ def main():
             print "Processing post file %s..." % filename
 
         try:
-            bt.parsePostFile(filename)
+            header_text, post_text = bt.parsePostFile(filename)
         except blogtoolRetry:
             filelist.insert(0, filename)
             continue
@@ -618,11 +507,13 @@ def main():
             print "The post in %s cannot be sent to blog." % filename
             continue
 
-        for bpc in self.post_config:
-            if bt.pushPost(bpc):
-                print 'Update post file...'
-                bt.updateFile(filename)
+        header.addParms(header_text)
+        for hdr in header:
+            if bt.pushPost(post_text, header):
+                print 'Updating post file...'
+                bt.updateFile(filename, header_text, post_text) 
 
+    print "\nDone."
     sys.exit()
 
 ################################################################################

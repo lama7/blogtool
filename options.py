@@ -98,7 +98,7 @@ class GetRecentTitles(btOption):
         blogname = header.getParmByName('name')
         print "Retrieving %s most recent posts from blog '%s'.\n" % (self.count,
                                                                      blogname)
-        recent = proxy.getRecentTitles(blogname, self.count)
+        recent = proxy.getRecentTitles(self.count)
 
         print "POSTID\tTITLE                               \tDATE CREATED"
         print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
@@ -133,10 +133,10 @@ class GetCategories(btOption):
     ############################################################################ 
     def run(self, header):
         proxy = _getProxy(header)
-        blogname = header.getParmByName('name')
-        print "Retrieving category list for '%s'." % blogname
+        print "Retrieving category list for '%s'." % 
+                                                    header.getParmByName('name')
 
-        cat_list = proxy.getCategories(blogname)
+        cat_list = proxy.getCategories()
         
         print "Category       \tParent        \tDescription"
         print "%s\t%s\t%s" % ('='*14, '='*14, '='*35)
@@ -185,7 +185,7 @@ class AddCategory(btOption):
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
-        t = utils.isBlogCategory(proxy.getCategories(blogname), 
+        t = utils.isBlogCategory(proxy.getCategories(), 
                                  self.catname)
         if t == None:
             print "The category specified alread exists on the blog."

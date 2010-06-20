@@ -411,9 +411,17 @@ class header():
 
     def getParmByName(self, parm_name):
         if hasattr(self, '_named_parm'):
-            return getattr(self._named_parm, parm_name)
+            pl = self._named_parm
+        elif self._parm_index:
+            pl = self._parms[self._parm_index]    
+        elif len(self._parms) == 1:
+            pl = self._parms[0]
         else:
-            return getattr(self._parms[self._parm_index], parm_name)    
+            raise headerError("""
+Could not determine which header to pull the '%s' parameter from.
+""" % parm_name)
+
+        return getattr(pl, parm_name)
 
     def setBlogParmsByName(self, name = ''):
         for parm in self._parms:
@@ -430,10 +438,10 @@ Blog '%s' not found in config header or post header
             self._parm_index = new_index
 
     def proxy(self):
-        if hasattr(self, '_named_parm'):
-            return getProxy(*self._named_parm.getXMLrpc())
         parmlist_cnt = len(self._parms)
-        if parmlist_cnt == 0:
+        if hasattr(self, '_named_parm'):
+            pl = self._named_parm
+        elif parmlist_cnt == 0:
             raise headerError("""
 A '~/.btrc' file was not found nor was a config file specified on the command
 line.  Without a configuration file, the only operation possible is posting.
@@ -442,14 +450,18 @@ To perform any optional operations (deleting posts, retrieving recent titles,
 etc.) please create a ~/.btconfig file.
 """)
         elif parmlist_cnt == 1:
-            return getProxy(*self._parms[0].getXMLrpc())
+            pl = self._parms[0]
         elif self._parm_index == None:
             raise headerError("""
 The rc file supplied has multiple blogs defined.  Please specify one of them
 using the -b option.
 """)
         else:
-            return getProxy(*self._parms[self._parm_index].getXMLrpc())
+            pl = self._parms[self._parm_index]
+
+        p = getProxy(*pl.getXMLrpc())
+        p.setBlogname(pl.name)
+        return p
 
     def _reconcile(self, newparms):
         for parmlist in newparms:
@@ -457,10 +469,8 @@ using the -b option.
                 for default_parmlist in self._default_parms:
                     if default_parmlist.name == parmlist.name:
                         break
-                else:
-                    continue
             else:
-                i = parmlist.index(newparms)
+                i = newparms.index(parmlist)
                 if i >= len(self._default_parms):
                     continue
                 default_parmlist = self._default_parms[i]
@@ -476,4 +486,6 @@ using the -b option.
                 if default:
                     parmlist.set(k, default)
 
+        if hasattr(self, '_parms'):
+            del self._parms[:]
         self._parms = newparms
