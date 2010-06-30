@@ -163,20 +163,6 @@ class blogtool():
         return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
     ############################################################################ 
-    def updateFile(self, filename):
-        # alter the file name so we don't overwrite
-        filename += '.posted'
-        try:
-            f = open(filename, 'w')
-            f.write(self.header)
-            f.write('\n')
-            f.write(self.posttext)
-        except IOError:
-            print "Error writing updated post file %s" % file
-        else:
-            f.close()
-
-    ############################################################################ 
     def _procPost(self):
         if not MARKDOWN_PRESENT:
             print "Unable to publish post without python-markdown.  Sorry..."
@@ -228,7 +214,7 @@ class blogtool():
                 # run it up the flagpole
                 print "Attempting to upload '%s'..." % ifile
                 try:
-                    res = self.blogproxy.upload(self.bc.name, ifile)
+                    res = self._blogproxy.upload(self.bc.name, ifile)
                 except proxyError, err:
                     print err
                     sys.exit()
@@ -385,7 +371,9 @@ class blogtool():
 
         # min of 1 line for header, a blank separator and a line of text = 3
         if len(lines) < 3:
-            raise blogtoolPostFileError()
+            raise blogtoolError("""
+Post file must have a blank line separating header and post text.
+""" )
         return self._getHeaderandPostText(lines)
 
     ############################################################################ 
@@ -445,6 +433,19 @@ class blogtool():
             header = self._updateHeader(postid)
             return 1                
 
+    ############################################################################ 
+    def updateFile(self, filename):
+        # alter the file name so we don't overwrite
+        filename += '.posted'
+        try:
+            f = open(filename, 'w')
+            f.write(self.header)
+            f.write('\n')
+            f.write(self.posttext)
+        except IOError:
+            print "Error writing updated post file %s" % file
+        else:
+            f.close()
 
 ################################################################################
 #
@@ -502,7 +503,7 @@ def main():
         except blogtoolRetry:
             filelist.insert(0, filename)
             continue
-        except (blogtoolPostFileError, blogtoolHeaderError), err_msg:
+        except blogtoolError, err_msg:
             print err_msg
             print "The post in %s cannot be sent to blog." % filename
             continue
