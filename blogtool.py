@@ -150,6 +150,7 @@ class blogtoolRetry(blogtoolError):
 class blogtool():
 
     options = getOptions()
+
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
     ############################################################################
@@ -163,17 +164,17 @@ class blogtool():
         return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
     ############################################################################ 
-    def _procPost(self):
+    def _procPost(self, posttext):
         if not MARKDOWN_PRESENT:
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
 
-        m = self.EXTENDED_ENTRY_RE.search(self.posttext)
+        m = self.EXTENDED_ENTRY_RE.search(posttext)
         if m:
-            description = self.posttext[:m.start()]
-            extended = self.posttext[m.end():]
+            description = posttext[:m.start()]
+            extended = posttext[m.end():]
         else:
-            description = self.posttext
+            description = posttext
             extended = ''
 
         self.md = markdown.Markdown()
@@ -214,7 +215,7 @@ class blogtool():
                 # run it up the flagpole
                 print "Attempting to upload '%s'..." % ifile
                 try:
-                    res = self._blogproxy.upload(self.bc.name, ifile)
+                    res = self._blogproxy.upload(self._blogname, ifile)
                 except proxyError, err:
                     print err
                     sys.exit()
@@ -241,11 +242,11 @@ class blogtool():
         return (etree.tostring(tree).replace('<post>', '')).replace('</post>', '')
 
     ############################################################################ 
-    def _procPostCategories(self, categories):
+    def _procPostCategories(self, header):
         # first, build a list of catgories that aren't on the blog from the
         # post's category list
         nonCats = []
-        for c in categories:
+        for c in header.categories:
             try:
                 cat_list = self._blogproxy.getCategories()
             
@@ -260,14 +261,13 @@ class blogtool():
         # see if there were any unrecognized categories
         if len(nonCats) == 0:
             print "Post categories OK"
-        elif self.opts.addpostcats:
+        elif self.options[2].addpostcats:
             # since the addcat option is processed prior to post processing,
             # we should be able to get away with coopting the opts.blogname
             # and setting it to the current bc.name value without any 
             # repercussions- but check here when some kind of potential funny
             # business starts
-            self.opts.blogname = self.bc.name
-            [ utils.addCategory(*ct) for ct in nonCats ]
+            [ utils.addCategory(self._blogproxy, header.name, *ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
             print "Category '%s' is not a valid category for %s so it is being\n\
@@ -275,20 +275,20 @@ class blogtool():
                    \rUse the -a option if you wish to override this behavior or\n\
                    \rthe -n option to add it from the command line.\n" %\
                                                          (', '.join(rcats),
-                                                          self.bc.name)
-            [ self.bc.categories.remove(c) for c in rcats ]
+                                                          header.name)
+            [ header.categories.remove(c) for c in rcats ]
 
         # last bit of category processing- if there are any categories 
         # with subcategories, like 'cat.subcat', they need to be split
         # up so that the post is categorized properly
         # the 'list(set(...)) removes all duplicates 
-        if len(self.bc.categories) == 0:
+        if len(header.categories) == 0:
             print "This post has no valid categories, the default blog category\n\
                    \rwill be used.\n"
-            return self.bc.categories
+            return header.categories
         else:
             return list(set(reduce(lambda l1, l2: l1 + l2, 
-                                   [c.split('.') for c in self.bc.categories])))
+                                   [c.split('.') for c in header.categories])))
 
     ############################################################################ 
     '''
@@ -300,7 +300,7 @@ class blogtool():
         processed and the header string yet to be processed
 
     '''
-    def _updateHeader(self, postid):
+    def _updateHeader(self, hdr_text, postid):
 
         def findbloggroup(l):
             # it possible that BLOG will not appear in the header (blog info
@@ -339,17 +339,19 @@ class blogtool():
                   findendgroup ]
 
         current_state = states.index(findbloggroup)
-        hdr_str = self.header
-        self.header = ''
+        hdr_str = hdr_text
+        hdr_text = ''
         while current_state != None:
             current_state, procd_hdr, hdr_str = states[current_state](hdr_str)
-            self.header += procd_hdr
+            hdr_text += procd_hdr
+
+        return hdr_text
 
     ############################################################################ 
     ''' parsePostFile
 
         Attempts to read a post file.  If successful, then a header and text
-        portion are created.  The header portion can be parsed for so that he
+        portion are created.  The header portion can be parsed for so the
         text portion can be sent to the appropriate blogs.
 
     '''
@@ -389,26 +391,27 @@ Post file must have a blank line separating header and post text.
     def pushPost(self, post_text, header):
         # this handles pushing a post up to a blog
         self._blogproxy = header.proxy()
+        self._blogname = header.name
 
-        html_desc, html_ext = self._procPost()
+        html_desc, html_ext = self._procPost(post_text)
 
         print "Checking post categories..."
-        self._procPostCategories(header.getParmByName('categories'))
+        self._procPostCategories(header)
 
         try:
-            post = utils.buildPost(self.bc,
-                                       html_desc,
-                                       html_ext,
-                                       timestamp = self.opts.posttime,
-                                       publish = self.opts.publish )
-        except utilsError, timestr:
+            post = utils.buildPost(header,
+                                   html_desc,
+                                   html_ext,
+                                   timestamp = self.options[4].posttime,
+                                   publish = self.options[3].publish )
+        except utils.utilsError, timestr:
             print timestr
             sys.exit()
 
-        if self.bc.postid:
-            print "Updating '%s' on %s..." % (self.bc.title, self.bc.name)
+        if header.postid:
+            print "Updating '%s' on %s..." % (header.title, header.name)
             try:
-                postid = self.blogproxy.editPost(self.bc.postid, post)
+                postid = self._blogproxy.editPost(header.postid, post)
 
             except proxyError, err:
                 print err
@@ -416,32 +419,34 @@ Post file must have a blank line separating header and post text.
 
             return None
 
-        if self.opts.publish:
-            print "Publishing '%s' to '%s'" % (self.bc.title,  self.bc.name) 
+        if self.options[3].publish:
+            print "Publishing '%s' to '%s'" % (header.title,  header.name) 
         else:
-            print "Publishing '%s' to '%s' as a draft" % (self.bc.title,
-                                                          self.bc.name)
+            print "Publishing '%s' to '%s' as a draft" % (header.title,
+                                                          header.name)
 
         try:
-            postid = self.blogproxy.publishPost(self.bc.name, post)
+            postid = self._blogproxy.publishPost(post)
 
         except proxyError, err:
             print err
             sys.exit()
 
+        return postid
         if postid != None:
             header = self._updateHeader(postid)
             return 1                
 
     ############################################################################ 
-    def updateFile(self, filename):
+    def updateFile(self, filename, hdr_text, post_text, postid):
+        hdr_text = self._updateHeader(hdr_text, postid)
         # alter the file name so we don't overwrite
         filename += '.posted'
         try:
             f = open(filename, 'w')
-            f.write(self.header)
+            f.write(hdr_text)
             f.write('\n')
-            f.write(self.posttext)
+            f.write(post_text)
         except IOError:
             print "Error writing updated post file %s" % file
         else:
@@ -478,21 +483,26 @@ def main():
     bt = blogtool()
     header = headerparse.header()
 
+    parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
+    for option in bt.options:
+        parser.add_option(*option.args, **option.kwargs)
+    (opts, filelist) = parser.parse_args()
+ 
     if len(sys.argv) == 1:
         fd = NamedTemporaryFile()
         if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
             print "Nothing to do, exiting."
-    else:
-        parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
-        for option in bt.options:
-            parser.add_option(*option.args, **option.kwargs)
-        (opts, filelist) = parser.parse_args(sys.argv[1:])
+        filelist.append(fd.name)      
 
+    # make sure that this loop always executes, regardless of whether there 
+    # are actually options.  The config file is processed throught this loop
+    # and the program will break if that code does not run
     for option in bt.options:
         if option.check(opts):
             option.run(header)
 
     ###########################################################################
+    tmp_fn = None
     for filename in filelist:
         if tmp_fn != filename:
             tmp_fn = filename
@@ -510,9 +520,10 @@ def main():
 
         header.addParms(header_text)
         for hdr in header:
-            if bt.pushPost(post_text, header):
+            postid = bt.pushPost(post_text, hdr)
+            if postid:
                 print 'Updating post file...'
-                bt.updateFile(filename, header_text, post_text) 
+                bt.updateFile(filename, header_text, post_text, postid) 
 
     print "\nDone."
     sys.exit()

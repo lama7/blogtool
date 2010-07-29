@@ -34,16 +34,18 @@ etc.) please create a ~/.btconfig file.
 
 ################################################################################
 class hdrparms():
-    title = ''
-    categories = []
-    tags = []
-    postid = ''
-    posttime = ''
-    name = ''
-    blogtype = ''
-    xmlrpc = ''
-    username = ''
-    password = ''
+
+    def __init__(self):
+        self.title = ''
+        self.categories = []
+        self.tags = []
+        self.postid = ''
+        self.posttime = ''
+        self.name = ''
+        self.blogtype = ''
+        self.xmlrpc = ''
+        self.username = ''
+        self.password = ''
 
     def set(self, name, val):
         # the try-except is a debug tool- the except should NEVER occur
@@ -357,9 +359,9 @@ class headerParse():
 #                    # matches the list index for the value, then assign
 #                    if config.get(k) == None or v.index(o) == postconfig.index(config):
 #                        config.set(k, o)
-
+#
 #        for pc in postconfig:
-#            pc.debug()
+#            print pc.__dict__
 #        sys.exit()
 
         return postconfig
@@ -370,6 +372,22 @@ class header():
 
     def __init__(self):
         self._parm_index = None
+        self._named_parm = None
+
+    def __getattr__(self, name):
+        if self._named_parm:
+            pl = self._named_parm
+        elif self._parm_index:
+            pl = self._parms[self._parm_index]    
+        elif len(self._parms) == 1:
+            pl = self._parms[0]
+        else:
+            raise AttributeError
+
+        if name in pl.__dict__:
+            return pl.__dict__[name]
+        else:
+            raise AttributeError
 
     def __iter__(self):
         return self
@@ -377,15 +395,16 @@ class header():
     def next(self):
         if self._parm_index == None:
             self._parm_index = 0
-        if self._parm_index < len(self._parms):
-            pl = self._parms[self._parm_index]
+        elif self._parm_index + 1 < len(self._parms):
             self._parm_index += 1
-            return pl
         else:
+            self._parm_index = None
             raise StopIteration
 
+        return self
+
     def debug(self):
-        if hasattr(self, '_named_parm'):
+        if self._named_parm:
             print "named_parm"
             print self._named_parm
         print "_parms:"
@@ -409,20 +428,6 @@ class header():
 
         self._reconcile(newparms)
 
-    def getParmByName(self, parm_name):
-        if hasattr(self, '_named_parm'):
-            pl = self._named_parm
-        elif self._parm_index:
-            pl = self._parms[self._parm_index]    
-        elif len(self._parms) == 1:
-            pl = self._parms[0]
-        else:
-            raise headerError("""
-Could not determine which header to pull the '%s' parameter from.
-""" % parm_name)
-
-        return getattr(pl, parm_name)
-
     def setBlogParmsByName(self, name = ''):
         for parm in self._parms:
             if parm.name == name:
@@ -439,7 +444,7 @@ Blog '%s' not found in config header or post header
 
     def proxy(self):
         parmlist_cnt = len(self._parms)
-        if hasattr(self, '_named_parm'):
+        if self._named_parm:
             pl = self._named_parm
         elif parmlist_cnt == 0:
             raise headerError("""
@@ -489,3 +494,4 @@ using the -b option.
         if hasattr(self, '_parms'):
             del self._parms[:]
         self._parms = newparms
+

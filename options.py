@@ -66,10 +66,10 @@ class DeletePost(btOption):
 
     ############################################################################ 
     def run(self, header):
-        print "Deleting post %s" % self.del_postid
+        print "Deleting post %s" % self.postid
 
         proxy = _getProxy(header)
-        postid = proxy.deletePost(self.del_postid)
+        postid = proxy.deletePost(self.postid)
 
 ################################################################################
 '''
@@ -97,7 +97,7 @@ class GetRecentTitles(btOption):
     ############################################################################ 
     def run(self, header):
         proxy = _getProxy(header)
-        blogname = header.getParmByName('name')
+        blogname = header.name
         print "Retrieving %s most recent posts from blog '%s'.\n" % (self.count,
                                                                      blogname)
         recent = proxy.getRecentTitles(self.count)
@@ -135,8 +135,7 @@ class GetCategories(btOption):
     ############################################################################ 
     def run(self, header):
         proxy = _getProxy(header)
-        print "Retrieving category list for '%s'." % 
-                                                    header.getParmByName('name')
+        print "Retrieving category list for '%s'." % header.name
 
         cat_list = proxy.getCategories()
         
@@ -180,7 +179,7 @@ class AddCategory(btOption):
     ############################################################################ 
     def run(self, header):
         proxy = _getProxy(header)
-        blogname = header.getParmByName('name')
+        blogname = header.name
         print "Checking if category already exists on '%s'..." % (blogname)
 
         # this will check the category string to see if it is a valid blog
@@ -243,11 +242,10 @@ a file capture could be used for updating with blogtool.
         else:
             text = html2md.convert(post['description'])
 
-        print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % (
-               header.getParmByName('name'), 
-               self.postid, 
-               post['title'], 
-               ', '.join(post['categories']))
+        print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % ( header.name, 
+                                                                    self.postid, 
+                                                                  post['title'], 
+                                                  ', '.join(post['categories']))
         if post['mt_keywords']:
             print 'TAGS: %s' % post['mt_keywords']
 
@@ -305,7 +303,7 @@ class SetConfigFile(btOption):
    
 ################################################################################
 '''
-    SetAddCatgory
+    SetAddCategory
 
         Define class that sets flag indicating to add categories specified in
         blog post that are not on the blog.
@@ -324,8 +322,9 @@ they do not already exist.
 
     ############################################################################ 
     def check(self, opts):
-        return bool(opts.addcats)
-          
+        self.addpostcats = True
+        return False 
+
 ################################################################################
 '''
     SetBlogname
@@ -376,11 +375,9 @@ class SetPosttime(btOption):
 
     ############################################################################ 
     def check(self, opts):
-        if opts.posttime:
-            self.posttime = opts.posttime
-            return True
-
+        self.posttime = opts.posttime
         return False
+
 
 ################################################################################
 '''
@@ -399,7 +396,8 @@ class SetNoPublish(btOption):
 
     ############################################################################ 
     def check(self, opts):
-        return bool(opts.publish)
+        self.publish = opts.publish
+        return False
 
 ################################################################################
 #
