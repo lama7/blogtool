@@ -215,7 +215,7 @@ class blogtool():
                 # run it up the flagpole
                 print "Attempting to upload '%s'..." % ifile
                 try:
-                    res = self._blogproxy.upload(self._blogname, ifile)
+                    res = self._blogproxy.upload(ifile)
                 except proxyError, err:
                     print err
                     sys.exit()
