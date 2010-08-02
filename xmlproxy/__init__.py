@@ -2,7 +2,7 @@ import os, sys
 import re
 
 #filepath = '/usr/local/share/blogtool/lib/xmlproxy'
-filepath = '/home/gerry/python/blogtool/xmlproxy'
+filepath = os.path.expanduser('~/python/blogtool/xmlproxy')
 sys.path.insert(1, filepath)
 
 # a dict to hold imported modules

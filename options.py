@@ -338,8 +338,8 @@ class SetBlogname(btOption):
               'action' : 'store',
               'dest' : "blogname",
               'help' : """
-Blog namconfigfilee for operations on blog.  The name must correspond to a name
-in ~/.btconfig or a config file specified on the command line.
+Blog name in config file for operations on blog.  The name must correspond to a name
+in ~/.btrc or a config file specified on the command line.
 """  
              }
 

@@ -29,7 +29,7 @@ command line.  Without a configuration file, the only operation possible is
 posting.
 
 To perform any optional operations (deleting posts, retrieving recent titles,
-etc.) please create a ~/.btconfig file.
+etc.) please create a ~/.btrc file.
 """
 
 ################################################################################
@@ -371,6 +371,7 @@ class header():
     _parser = headerParse()
 
     def __init__(self):
+        self._default_parms = None
         self._parm_index = None
         self._named_parm = None
 
@@ -426,7 +427,10 @@ class header():
             print err
             sys.exit()
 
-        self._reconcile(newparms)
+        if self._default_parms:
+            self._reconcile(newparms)
+        else:
+            self._parms = newparms
 
     def setBlogParmsByName(self, name = ''):
         for parm in self._parms:
@@ -452,7 +456,7 @@ A '~/.btrc' file was not found nor was a config file specified on the command
 line.  Without a configuration file, the only operation possible is posting.
 
 To perform any optional operations (deleting posts, retrieving recent titles,
-etc.) please create a ~/.btconfig file.
+etc.) please create a ~/.btrc file.
 """)
         elif parmlist_cnt == 1:
             pl = self._parms[0]

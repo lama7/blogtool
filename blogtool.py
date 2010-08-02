@@ -63,71 +63,10 @@ class blogtoolError(Exception):
     def __str__(self):
         return self.message
 
-class blogtoolNoBlogName(blogtoolError):
-    def __init__(self):
-        self.message = """
-There are multple blogs in the config file.  Use the '-b' option to specify
-which to use.
-"""
-
 ################################################################################
 #   
 #
-class blogtoolBadName(blogtoolError):
-    def __init__(self):
-        self.message = """
-The blog name provided does not match anything in the configuration file.
-"""
-
-################################################################################
-#   
-#
-class blogtoolNoConfig(blogtoolError):
-    def __init__(self):
-        self.message = """
-A '~/.btconfig' file was not found nor was a config file specified on the command
-line.  Without a configuration file, the only operation possible is posting.
-
-To perform any optional operations (deleting posts, retrieving recent titles,
-etc.) please create a ~/.btconfig file.
-"""
-
-################################################################################
-#   
-#
-class blogtoolPostFileError(blogtoolError):
-    def __init__(self):
-        self.message = """
-Post file must have a blank line separating header and post text.
-"""
-
-################################################################################
-#   
-#
-class blogtoolDeletePostError(blogtoolError):
-    def __init__(self, postid, blogname):
-        self.message = "Unable to delete post %s from %s" % (postid, blogname)
-
-################################################################################
-#   
-#
-class blogtoolFNFError(blogtoolError):
-    def __init__(self, filename):
-        self.message = "File not found: %s" % filename
-
-################################################################################
-#   
-#
-class blogtoolHeaderError(blogtoolError):
-    def __init__(self):
-        self.message = """
-The post file has an invalid header.
-"""
-        
-################################################################################
-#   
-#
-class blogtoolRetry(blogtoolError):
+class blogtoolRetry(Exception):
     pass
 
 ################################################################################
@@ -160,6 +99,20 @@ class blogtool():
             if line.isspace():
                 i = linelist.index(line)
                 break
+
+        else:
+            raise blogtoolError("""
+Post file must have a blank line separating header and post text.
+""" )
+
+        if len(linelist[0:i]) == 0:
+            raise blogtoolError('''
+No header found, aborting.
+''')
+        elif len(linelist[i+1:]) == 0:
+            raise blogtoolError('''
+No text for post, aborting.
+''')
 
         return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
@@ -210,7 +163,9 @@ class blogtool():
                     if os.path.isfile(ifile) != 1:
                         ifile = os.path.join(os.path.expanduser('~'), ifile)
                         if os.path.isfile(ifile) != 1:
-                            raise blogtoolFNFError(e.attrib['src'])
+                            raise blogtoolError('''
+File not found: %s
+''' % e.attrib['src'])
 
                 # run it up the flagpole
                 print "Attempting to upload '%s'..." % ifile
@@ -371,11 +326,6 @@ class blogtool():
         else:
             f.close()
 
-        # min of 1 line for header, a blank separator and a line of text = 3
-        if len(lines) < 3:
-            raise blogtoolError("""
-Post file must have a blank line separating header and post text.
-""" )
         return self._getHeaderandPostText(lines)
 
     ############################################################################ 
@@ -483,6 +433,7 @@ def main():
     bt = blogtool()
     header = headerparse.header()
 
+    ###########################################################################
     parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
     for option in bt.options:
         parser.add_option(*option.args, **option.kwargs)
@@ -494,6 +445,7 @@ def main():
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
 
+    ###########################################################################
     # make sure that this loop always executes, regardless of whether there 
     # are actually options.  The config file is processed throught this loop
     # and the program will break if that code does not run
@@ -515,12 +467,16 @@ def main():
             continue
         except blogtoolError, err_msg:
             print err_msg
-            print "The post in %s cannot be sent to blog." % filename
             continue
 
         header.addParms(header_text)
         for hdr in header:
-            postid = bt.pushPost(post_text, hdr)
+            try:
+                postid = bt.pushPost(post_text, hdr)
+            except blogtoolError, err_msg:
+                print err_msg
+                sys.exit()
+
             if postid:
                 print 'Updating post file...'
                 bt.updateFile(filename, header_text, post_text, postid) 
