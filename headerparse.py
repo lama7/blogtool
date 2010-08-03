@@ -269,7 +269,7 @@ class headerParse():
         if (kwtype == self.KTYPE_SINGLEVAL and
             (len(val) > 1 or type(val[0]) == types.DictType)):
             raise headerParseError("Value '%s' not valid for key '%s'" % 
-                                   (val, key) )
+                                   (val, keyword) )
         # multival can't have any groups in the list
         elif (kwtype == self.KTYPE_MULTIVAL and
               len([ v for v in val if type(v) == types.DictType ]) != 0):
