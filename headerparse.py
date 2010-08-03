@@ -269,7 +269,7 @@ class headerParse():
         if (kwtype == self.KTYPE_SINGLEVAL and
             (len(val) > 1 or type(val[0]) == types.DictType)):
             raise headerParseError("Value '%s' not valid for key '%s'" % 
-                                   (value, key) )
+                                   (val, key) )
         # multival can't have any groups in the list
         elif (kwtype == self.KTYPE_MULTIVAL and
               len([ v for v in val if type(v) == types.DictType ]) != 0):
@@ -374,6 +374,7 @@ class header():
         self._default_parms = None
         self._parm_index = None
         self._named_parm = None
+        self._parms = None
 
     def __getattr__(self, name):
         if self._named_parm:
@@ -447,10 +448,9 @@ Blog '%s' not found in config header or post header
             self._parm_index = new_index
 
     def proxy(self):
-        parmlist_cnt = len(self._parms)
         if self._named_parm:
             pl = self._named_parm
-        elif parmlist_cnt == 0:
+        elif not self._parms:
             raise headerError("""
 A '~/.btrc' file was not found nor was a config file specified on the command
 line.  Without a configuration file, the only operation possible is posting.
@@ -458,7 +458,7 @@ line.  Without a configuration file, the only operation possible is posting.
 To perform any optional operations (deleting posts, retrieving recent titles,
 etc.) please create a ~/.btrc file.
 """)
-        elif parmlist_cnt == 1:
+        elif len(self._parms) == 1:
             pl = self._parms[0]
         elif self._parm_index == None:
             raise headerError("""
