@@ -61,13 +61,9 @@ class hdrparms():
         try:
             rval = getattr(self, name)
         except AttributeError:
-            sys.exit("headerparse.py error: bad get attribut %s" %
-                              name)
+            sys.exit("headerparse.py error: bad get attribute %s" % name)
         
-        if type(name) == types.ListType:
-            if len(rval) == 0:
-                return None
-        elif rval == '':
+        if rval == '' or (type(rval) == types.ListType and len(rval) == 0):
             return None
 
         return rval
