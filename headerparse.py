@@ -149,7 +149,7 @@ class keyword():
 #  nested.   
 #
 class headerParse():
-    __hdr_value = re.compile('([^\n,]+)\s*(.*)', re.DOTALL)
+    __hdr_value = re.compile('([^\n,}]+)\s*(.*)', re.DOTALL)
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
     __hdr_comma = re.compile(',\s*(.*)', re.DOTALL)
