@@ -193,10 +193,10 @@ class AddCategory(btOption):
         else:
             # t is a tuple with the first NEW category from the category string
             # specified and it's parentId.  Start adding categories from here
-            print "Attempting to add '%s' category to blo '%s'" % (self.catname,
+            print "Attempting to add '%s' category to blog '%s'" % (self.catname,
                                                                    blogname)
             # the '*' is the unpacking operator
-            utils.addCategory(proxy, blogname, self.catname, *t)
+            utils.addCategory(proxy, self.catname, *t)
 
 ################################################################################
 '''

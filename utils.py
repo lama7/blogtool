@@ -1,5 +1,5 @@
 from xmlrpclib import DateTime
-from xmlproxy.proxybase import proxyError
+import proxybase
 import time
 import sys
 
@@ -103,7 +103,7 @@ def isBlogCategory(blogcats, postcat):
     return None
 
 ###############################################################################
-def addCategory(proxy, blogname, c, substart, parentId):
+def addCategory(proxy, c, substart, parentId):
     # subcategories are demarked by '.'
     newcatlist = c.split('.')
 
@@ -118,7 +118,7 @@ def addCategory(proxy, blogname, c, substart, parentId):
     for c in newcatlist:
         print "Adding %s with parent %s" % (c, parentId)
         try:
-            parentId = proxy.newCategory(blogname, c, parentId)
-        except proxyError, e:
+            parentId = proxy.newCategory(c, parentId)
+        except proxybase.proxyError, e:
             print e
             sys.exit()

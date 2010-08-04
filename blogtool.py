@@ -217,7 +217,7 @@ File not found: %s
         if len(nonCats) == 0:
             print "Post categories OK"
         elif self.options[2].addpostcats:
-            [ utils.addCategory(self._blogproxy, header.name, *ct) for ct in nonCats ]
+            [ utils.addCategory(self._blogproxy, *ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
             print "Category '%s' is not a valid category for %s so it is being\n\
@@ -468,7 +468,6 @@ def main():
 
         header.addParms(header_text)
         for hdr in header:
-            print hdr._parm_index
             try:
                 postid = bt.pushPost(post_text, hdr)
             except blogtoolError, err_msg:
