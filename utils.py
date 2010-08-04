@@ -103,7 +103,7 @@ def isBlogCategory(blogcats, postcat):
     return None
 
 ###############################################################################
-def addCategory(self, proxy, blogname, c, substart, parentId):
+def addCategory(proxy, blogname, c, substart, parentId):
     # subcategories are demarked by '.'
     newcatlist = c.split('.')
 

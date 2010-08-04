@@ -217,11 +217,6 @@ File not found: %s
         if len(nonCats) == 0:
             print "Post categories OK"
         elif self.options[2].addpostcats:
-            # since the addcat option is processed prior to post processing,
-            # we should be able to get away with coopting the opts.blogname
-            # and setting it to the current bc.name value without any 
-            # repercussions- but check here when some kind of potential funny
-            # business starts
             [ utils.addCategory(self._blogproxy, header.name, *ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
@@ -439,19 +434,21 @@ def main():
         parser.add_option(*option.args, **option.kwargs)
     (opts, filelist) = parser.parse_args()
  
-    if len(sys.argv) == 1:
-        fd = NamedTemporaryFile()
-        if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
-            print "Nothing to do, exiting."
-        filelist.append(fd.name)      
-
     ###########################################################################
     # make sure that this loop always executes, regardless of whether there 
     # are actually options.  The config file is processed throught this loop
     # and the program will break if that code does not run
+    runeditor = False
     for option in bt.options:
         if option.check(opts):
-            option.run(header)
+            if option.run(header) == 'runeditor':
+                runeditor = True
+
+    if len(filelist) == 0 and runeditor:
+        fd = NamedTemporaryFile()
+        if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
+            print "Nothing to do, exiting."
+        filelist.append(fd.name)      
 
     ###########################################################################
     tmp_fn = None
@@ -471,6 +468,7 @@ def main():
 
         header.addParms(header_text)
         for hdr in header:
+            print hdr._parm_index
             try:
                 postid = bt.pushPost(post_text, hdr)
             except blogtoolError, err_msg:

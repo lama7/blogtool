@@ -322,8 +322,12 @@ they do not already exist.
 
     ############################################################################ 
     def check(self, opts):
-        self.addpostcats = True
-        return False 
+        self.addpostcats = opts.addcats
+        return opts.addcats
+
+    ############################################################################ 
+    def run(self, header):
+        return 'runeditor'
 
 ################################################################################
 '''
@@ -376,8 +380,14 @@ class SetPosttime(btOption):
     ############################################################################ 
     def check(self, opts):
         self.posttime = opts.posttime
-        return False
+        if opts.posttime:
+            return True
+        else:
+            return False
 
+    ############################################################################ 
+    def run(self, header):
+        return 'runeditor'
 
 ################################################################################
 '''
@@ -397,7 +407,14 @@ class SetNoPublish(btOption):
     ############################################################################ 
     def check(self, opts):
         self.publish = opts.publish
-        return False
+        if not opts.publish:
+            return True
+        else:
+            return False
+
+    ############################################################################ 
+    def run(self, header):
+        return 'runeditor'
 
 ################################################################################
 #
