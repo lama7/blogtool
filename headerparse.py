@@ -375,7 +375,7 @@ class header():
     def __getattr__(self, name):
         if self._named_parm:
             pl = self._named_parm
-        elif self._parm_index:
+        elif self._parm_index != None:
             pl = self._parms[self._parm_index]    
         elif len(self._parms) == 1:
             pl = self._parms[0]
