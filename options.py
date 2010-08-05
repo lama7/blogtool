@@ -1,4 +1,5 @@
 from headerparse import headerError
+from proxybase import proxyError
 
 import sys
 import html2md
@@ -69,7 +70,11 @@ class DeletePost(btOption):
         print "Deleting post %s" % self.postid
 
         proxy = _getProxy(header)
-        postid = proxy.deletePost(self.postid)
+        try:
+            postid = proxy.deletePost(self.postid)
+        except proxyError, err:
+            print err
+            sys.exit()
 
 ################################################################################
 '''
@@ -100,7 +105,11 @@ class GetRecentTitles(btOption):
         blogname = header.name
         print "Retrieving %s most recent posts from blog '%s'.\n" % (self.count,
                                                                      blogname)
-        recent = proxy.getRecentTitles(self.count)
+        try:
+            recent = proxy.getRecentTitles(self.count)
+        except proxyError, err:
+            print err
+            sys.exit()
 
         print "POSTID\tTITLE                               \tDATE CREATED"
         print "%s\t%s\t%s" % ('='*6, '='*35, '='*21)
@@ -137,8 +146,12 @@ class GetCategories(btOption):
         proxy = _getProxy(header)
         print "Retrieving category list for '%s'." % header.name
 
-        cat_list = proxy.getCategories()
-        
+        try:
+            cat_list = proxy.getCategories()
+        except proxyError, err:
+            print err
+            sys.exit()
+
         print "Category       \tParent        \tDescription"
         print "%s\t%s\t%s" % ('='*14, '='*14, '='*35)
         for cat in cat_list:
@@ -186,8 +199,13 @@ class AddCategory(btOption):
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
-        t = utils.isBlogCategory(proxy.getCategories(), 
-                                 self.catname)
+        try:
+            blogcats = proxy.getCategories()
+        except proxyError, err:
+            print err
+            sys.exit()
+
+        t = utils.isBlogCategory(blogcarts, self.catname)
         if t == None:
             print "The category specified alread exists on the blog."
         else:
@@ -234,7 +252,12 @@ a file capture could be used for updating with blogtool.
             return
 
         proxy = _getProxy(header)
-        post = proxy.getPost(self.postid)
+        try:
+            post = proxy.getPost(self.postid)
+        except proxyError, err:
+            print err
+            sys.exit()
+
         if post['mt_text_more']:
             text = html2md.convert("%s%s%s" % (post['description'], 
                                                "<!--more-->",

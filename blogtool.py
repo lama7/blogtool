@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from xmlproxy.proxybase import proxyError
+from proxybase import proxyError
 from options import getOptions
 
 import utils
@@ -204,7 +204,6 @@ File not found: %s
         for c in header.categories:
             try:
                 cat_list = self._blogproxy.getCategories()
-            
             except proxyError, err:
                 print err
                 sys.exit()
@@ -357,7 +356,6 @@ File not found: %s
             print "Updating '%s' on %s..." % (header.title, header.name)
             try:
                 postid = self._blogproxy.editPost(header.postid, post)
-
             except proxyError, err:
                 print err
                 sys.exit()
@@ -372,7 +370,6 @@ File not found: %s
 
         try:
             postid = self._blogproxy.publishPost(post)
-
         except proxyError, err:
             print err
             sys.exit()
