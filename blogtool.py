@@ -445,7 +445,7 @@ def main():
             if option.run(header) == 'runeditor':
                 runeditor = True
 
-    if len(filelist) == 0 and runeditor:
+    if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
         if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
             print "Nothing to do, exiting."
