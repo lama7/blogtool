@@ -73,6 +73,7 @@ class DeletePost(btOption):
         try:
             postid = proxy.deletePost(self.postid)
         except proxyError, err:
+            print "Caught in options.DeletePost.run:"
             print err
             sys.exit()
 
@@ -108,6 +109,7 @@ class GetRecentTitles(btOption):
         try:
             recent = proxy.getRecentTitles(self.count)
         except proxyError, err:
+            print "Caught in options.GetRecentTitles.run:"
             print err
             sys.exit()
 
@@ -149,6 +151,7 @@ class GetCategories(btOption):
         try:
             cat_list = proxy.getCategories()
         except proxyError, err:
+            print "Caught in options.GetCategories.run:"
             print err
             sys.exit()
 
@@ -202,6 +205,7 @@ class AddCategory(btOption):
         try:
             blogcats = proxy.getCategories()
         except proxyError, err:
+            print "Caught in options.AddCategory.run:"
             print err
             sys.exit()
 
@@ -255,6 +259,7 @@ a file capture could be used for updating with blogtool.
         try:
             post = proxy.getPost(self.postid)
         except proxyError, err:
+            print "Caught in options.GetPost.run:"
             print err
             sys.exit()
 

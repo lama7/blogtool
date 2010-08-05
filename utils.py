@@ -120,5 +120,6 @@ def addCategory(proxy, c, substart, parentId):
         try:
             parentId = proxy.newCategory(c, parentId)
         except proxyError, err:
+            print "Caught in utils.addCategory:"
             print err
             sys.exit()

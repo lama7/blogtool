@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from proxybase import proxyError
+from xmlproxy.proxybase import proxyError
 from options import getOptions
 
 import utils
@@ -172,6 +172,7 @@ File not found: %s
                 try:
                     res = self._blogproxy.upload(ifile)
                 except proxyError, err:
+                    print "Caught in blogtool.blogtool._procText:"
                     print err
                     sys.exit()
 
@@ -205,6 +206,7 @@ File not found: %s
             try:
                 cat_list = self._blogproxy.getCategories()
             except proxyError, err:
+                print "Caught in blogtool.blogtool._procPostCategories:"
                 print err
                 sys.exit()
 
@@ -357,6 +359,7 @@ File not found: %s
             try:
                 postid = self._blogproxy.editPost(header.postid, post)
             except proxyError, err:
+                print "Caught in blogtool.blogtool.pushPost:"
                 print err
                 sys.exit()
 
@@ -371,6 +374,7 @@ File not found: %s
         try:
             postid = self._blogproxy.publishPost(post)
         except proxyError, err:
+            print "Caught in blogtool.blogtool.pushPost:"
             print err
             sys.exit()
 
