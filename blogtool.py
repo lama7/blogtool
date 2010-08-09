@@ -236,10 +236,9 @@ File not found: %s
         if len(header.categories) == 0:
             print "This post has no valid categories, the default blog category\n\
                    \rwill be used.\n"
-            return header.categories
         else:
-            return list(set(reduce(lambda l1, l2: l1 + l2, 
-                                   [c.split('.') for c in header.categories])))
+            header.categories =  list(set(reduce(lambda l1, l2: l1 + l2, 
+                                      [c.split('.') for c in header.categories])))
 
     ############################################################################ 
     '''
