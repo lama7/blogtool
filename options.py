@@ -102,9 +102,20 @@ class GetRecentTitles(btOption):
 
     ############################################################################ 
     def run(self, header):
-        proxy = _getProxy(header)
+        try:
+            self._getRecentTitles(header)
+        except headerError, err:
+            if err.code != headerError.MULTIPLEBLOGS:
+                print err
+                sys.exit()
+            else:
+                for hdr in header:
+                    self._getRecentTitles(hdr)
+
+    def _getRecentTitles(self, header):
+        proxy = header.proxy()
         blogname = header.name
-        print "Retrieving %s most recent posts from blog '%s'.\n" % (self.count,
+        print "\nRetrieving %s most recent posts from blog '%s'.\n" % (self.count,
                                                                      blogname)
         try:
             recent = proxy.getRecentTitles(self.count)
@@ -122,6 +133,7 @@ class GetRecentTitles(btOption):
             print "%s\t%s\t%s" % (post['postid'],
                                   post['title'] + padding,
                                   t_converted.strftime("%b %d, %Y at %H:%M"))
+
 
 ################################################################################
 '''

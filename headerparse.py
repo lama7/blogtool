@@ -6,8 +6,26 @@ import types
 
 ################################################################################
 class headerError(Exception):
-    def __init__(self, msg):
-        self.message = "headerError: %s" % msg
+    NAMENOTFOUND = 0
+    NOCONFIGFILE = 1
+    MULTIPLEBLOGS = 2
+
+    ERR_STRINGS = [
+                   '''
+Blog name not found in config header or post header.''',
+                   '''
+A '~/.btrc' file was not found nor was a config file specified on the command
+line.  Without a configuration file, the only operation possible is posting.
+
+To perform any optional operations (deleting posts, retrieving recent titles,
+etc.) please create a ~/.btrc file.''',
+                   '''
+The rc file supplied has multiple blogs defined.  Please specify one of them
+using the -b option.''', 
+                  ]
+    def __init__(self, err_code):
+        self.message = "headerError: %s" % self.ERR_STRINGS[err_code]
+        self.code = err_code
 
     def __str__(self):
         return self.message
@@ -19,18 +37,6 @@ class headerParseError(Exception):
 
     def __str__(self):
         return self.message
-
-################################################################################
-class headerErrorNoConfig(Exception):
-    def __init__(self, msg):
-        self.message = """
-A '~/.btrc' file was not found nor was a config file specified on the
-command line.  Without a configuration file, the only operation possible is
-posting.
-
-To perform any optional operations (deleting posts, retrieving recent titles,
-etc.) please create a ~/.btrc file.
-"""
 
 ################################################################################
 class hdrparms():
@@ -430,14 +436,15 @@ class header():
             self._parms = newparms
 
     def setBlogParmsByName(self, name = ''):
+        if not self._parms:
+            raise headerError(headerError.NOCONFIGFILE)
+
         for parm in self._parms:
             if parm.name == name:
                 self._named_parm = parm
                 break
         else:
-            raise headerError("""
-Blog '%s' not found in config header or post header
-""" % name)
+             raise headerError(headerError.NAMENOTFOUND)
 
     def setBlogParmByIndex(self, new_index):
         if new_index < len(self._parms):
@@ -447,20 +454,11 @@ Blog '%s' not found in config header or post header
         if self._named_parm:
             pl = self._named_parm
         elif not self._parms:
-            raise headerError("""
-A '~/.btrc' file was not found nor was a config file specified on the command
-line.  Without a configuration file, the only operation possible is posting.
-
-To perform any optional operations (deleting posts, retrieving recent titles,
-etc.) please create a ~/.btrc file.
-""")
+            raise headerError(headerError.NOCONFIGFILE)
         elif len(self._parms) == 1:
             pl = self._parms[0]
         elif self._parm_index == None:
-            raise headerError("""
-The rc file supplied has multiple blogs defined.  Please specify one of them
-using the -b option.
-""")
+            raise headerError(headerError.MULTIPLEBLOGS)
         else:
             pl = self._parms[self._parm_index]
 
