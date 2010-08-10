@@ -414,7 +414,12 @@ class SetPosttime(btOption):
     kwargs = {
               'action' : 'store',
               'dest' : "posttime",
-              'help' : "Time to publish post in YYYYmmddHHMMSS format" 
+              'help' : """
+Time to publish post, a number of formats are supported:  YYYYMMDDThh:mm, 
+YYYYMMDDThh:mmAM/PM, YYYYMMDDThh:mm:ss, YYYYMMDDThh:mm:ssAM/PM,
+Month Day, Year hour:min, Month Day, Year hour:min AM/PM, MM/DD/YYYY hh:mm,
+MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
+""" 
              }
 
     ############################################################################ 
