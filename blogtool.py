@@ -180,7 +180,6 @@ File not found: %s
                 if res == None:
                     print "Upload failed, proceeding...\n"
                     continue
-                print "Done"
 
                 e.attrib['src'] = res['url']
                 if 'alt' not in e.keys():
@@ -478,7 +477,6 @@ def main():
                 print 'Updating post file...'
                 bt.updateFile(filename, header_text, post_text, postid) 
 
-    print "\nDone."
     sys.exit()
 
 ################################################################################
