@@ -221,7 +221,7 @@ class AddCategory(btOption):
             print err
             sys.exit()
 
-        t = utils.isBlogCategory(blogcarts, self.catname)
+        t = utils.isBlogCategory(blogcats, self.catname)
         if t == None:
             print "The category specified alread exists on the blog."
         else:
