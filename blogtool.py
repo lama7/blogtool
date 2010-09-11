@@ -465,7 +465,7 @@ def main():
             print err_msg
             continue
 
-        header.addParms(header_text)
+        header.addParms(header_text, bt.options[5].allblogs)
         for hdr in header:
             try:
                 postid = bt.pushPost(post_text, hdr)

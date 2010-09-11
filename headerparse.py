@@ -3,6 +3,7 @@ from xmlproxy import getProxy
 import sys
 import re
 import types
+import copy
 
 ################################################################################
 class headerError(Exception):
@@ -87,6 +88,9 @@ class hdrparms():
                 self.username,
                 self.password)
     
+    def getDict(self):
+        return self.__dict__
+
     # implemented so 'in' operator can be used
     def __contains__(self, item):
         # this is naive- but effective.  For instance, 'set', and 'get' are 
@@ -423,7 +427,7 @@ class header():
             sys.exit()
         self._parms = self._default_parms
 
-    def addParms(self, hdrstr):
+    def addParms(self, hdrstr, allblogs):
         try:
             newparms = self._parser.parse(hdrstr)
         except headerParseError, err:
@@ -431,6 +435,14 @@ class header():
             sys.exit()
 
         if self._default_parms:
+            if allblogs:
+                if len(self._default_parms) > len(newparms):
+                    for p in newparms:
+                        if p.name:
+                            break
+                    else:
+                        while len(self._default_parms) > len(newparms):
+                            newparms.append(copy.copy(newparms[0]))
             self._reconcile(newparms)
         else:
             self._parms = newparms
@@ -466,12 +478,37 @@ class header():
         p.setBlogname(pl.name)
         return p
 
+#    def generate(self):
+#        def add2dict(d, k, v):
+#            if k not in d:
+#                d[k] = list()
+#            elif d[k] == v:
+#                return
+#
+#            if k in ['categories','tags']:
+#                d[k].append(v)
+#            else:
+#                d[k].extend(v)
+#
+#        d = {}
+#        for parml in self._parms:
+#            for k,v in parml.getDict().iteritems():
+#                if k in ['categories','tags']:
+#                    if len(v) != 0:
+#                        add2dict(d, k, v)
+#                elif v != '':
+#                    add2dict(d, k, v)
+#
+
+
     def _reconcile(self, newparms):
         for parmlist in newparms:
             if parmlist.name:
                 for default_parmlist in self._default_parms:
                     if default_parmlist.name == parmlist.name:
                         break
+                else:
+                    continue
             else:
                 i = newparms.index(parmlist)
                 if i >= len(self._default_parms):

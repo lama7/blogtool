@@ -462,6 +462,30 @@ class SetNoPublish(btOption):
         return 'runeditor'
 
 ################################################################################
+class SetAllBlogs(btOption):
+    args = ('-A', '--allblogs')
+    kwargs = {
+              'action' : "store_true",
+              'dest' : "allblogs",
+              'default' : False,
+              'help' : """
+Will cause post to be published to all blogs listed in the rc file.
+"""
+             }
+
+    ############################################################################ 
+    def check(self, opts):
+        self.allblogs = opts.allblogs
+        if opts.allblogs:
+            return True
+        else:
+            return False
+
+    ############################################################################ 
+    def run(self, header):
+        return 'runeditor'
+
+################################################################################
 #
 #  function to return a list of option objects
 #
@@ -473,6 +497,7 @@ def getOptions():
     o_list.append(SetAddCategory())
     o_list.append(SetNoPublish())
     o_list.append(SetPosttime())
+    o_list.append(SetAllBlogs())
     o_list.append(DeletePost())
     o_list.append(GetRecentTitles())
     o_list.append(GetCategories())
