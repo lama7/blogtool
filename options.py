@@ -234,6 +234,40 @@ class AddCategory(btOption):
 
 ################################################################################
 '''
+    UploadMediaFile
+
+'''
+class UploadMediaFile(btOption):
+    args = ('-u', '--uploadmedia')
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'uploadfile',
+              'help' : "Upload a file to a blog"
+             }
+
+    ############################################################################ 
+    def check(self, opts):
+        if opts.uploadfile:
+            self.uploafile = opts.uploadfile
+            return True
+
+        return False
+
+    ############################################################################ 
+    def run(self, header):
+        try:
+            proxy = _getProxy(header)
+            uf = utils.chkFile(opts.uploadfile)
+            print "Attempting to upload '%s'..." % uf
+            res = proxy.upload(uf)
+        except utils.utilsError, err:
+            print "File not found: %s" % err
+        except proxyError, err:
+            print "Caught in options.UploadMediaFile"
+            print err
+
+################################################################################
+'''
     GetPost
        
         Define class to handle retrieving a post from a blog given the post's
@@ -322,12 +356,11 @@ class SetConfigFile(btOption):
             if not os.path.isfile(rcf):
                 return 
         else:
-           rcf = self.configfile
-           if not os.path.isfile(rcf):
-               rcf = os.path.join(os.path.expanduser('~'), self.configfile)
-               if not os.path.isfile(rcf):
-                   print "Unable to open config file: %s" % self.configfile
-                   sys.exit(1)
+           try:
+               rcf = utils.chkFile(self.configfile)
+           except utils.utilsError, err:
+               print "Config file not found: %s" % self.configfile
+               sys.exit(1)
 
         try:
             f = open(rcf, 'r')
@@ -503,5 +536,6 @@ def getOptions():
     o_list.append(GetCategories())
     o_list.append(AddCategory())
     o_list.append(GetPost())
+    o_list.append(UploadMediaFile())
 
     return o_list

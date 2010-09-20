@@ -159,18 +159,14 @@ No text for post, aborting.
                 if ifile.find("http://") != -1:
                     # web resource defined, nothing to do
                     continue
-                else:
-                    if os.path.isfile(ifile) != 1:
-                        ifile = os.path.join(os.path.expanduser('~'), ifile)
-                        if os.path.isfile(ifile) != 1:
-                            raise blogtoolError('''
-File not found: %s
-''' % e.attrib['src'])
 
-                # run it up the flagpole
-                print "Attempting to upload '%s'..." % ifile
                 try:
+                    ifile = utils.chkFile(ifile)
+                    print "Attempting to upload '%s'..." % ifile
                     res = self._blogproxy.upload(ifile)
+                except utils.utilsError, err:
+                    print "File not found: %s" % err
+                    sys.exit(1)
                 except proxyError, err:
                     print "Caught in blogtool.blogtool._procText:"
                     print err

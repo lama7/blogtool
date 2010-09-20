@@ -2,6 +2,7 @@ from xmlrpclib import DateTime
 from proxybase import proxyError
 import time
 import sys
+import os
 
 ################################################################################
 class utilsError(Exception):
@@ -10,6 +11,16 @@ class utilsError(Exception):
 
     def __str__(self):
         return self.message
+
+################################################################################
+def chkfile(file):
+    tmpfile = file
+    if not os.path.isfile(tmpfile):
+        tmpfile = os.path.join(os.path.expanduser('~', tmpfile))
+        if not os.path.isfile(tmpfile):
+            raise utilsError(file)
+
+    return tmpfile
 
 ################################################################################
 #
