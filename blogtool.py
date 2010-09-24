@@ -70,25 +70,17 @@ class blogtoolRetry(Exception):
     pass
 
 ################################################################################
-#
-# blogtool class
-#
-#    Define the blogtool class.  This pulls a bunch of related functions and
-#    leverages some of the niceties of classes to streamline the code.  It is 
-#    a fairly significant refactor of the original code which had function that
-#    passed around blog information like the name or the class itself.
-#
-#    While the first refactor resulted in the creation of this class, this 
-#    refactor is about cleaning it up.  The purpose here is to more clearly
-#    define a 'blogtool' object.  This will entail removing the option
-#    processing as well as the dependency on the config parser.  All of that
-#    code will be moved to the 'main' function where it properly belongs.
-#    The idea will be to whittle down the blogtool class to it's essence- a
-#    wrapper around the xmlrpc function calls.
-#
-class blogtool():
+'''
+    FileProcessor Class
 
-    options = getOptions()
+    This class contains methods to process a file for posting to a blog.
+
+'''
+class FileProcessor():
+
+
+    if MARKDOWN_PRESENT:
+        md = markdown.Markdown(extensions=['typed_list'])
 
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
@@ -130,7 +122,7 @@ No text for post, aborting.
             description = posttext
             extended = ''
 
-        self.md = markdown.Markdown()
+#        self.md = markdown.Markdown(extensions=['typed_list'])
         html_desc = self._procText(description)
         if extended:
             html_ext = self._procText(extended)
@@ -417,12 +409,9 @@ def edit(fh, hdr_string = ''):
 #
 #
 def main():
-    bt = blogtool()
-    header = headerparse.header()
-
-    ###########################################################################
+    options = getOptions()
     parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
-    for option in bt.options:
+    for option in options:
         parser.add_option(*option.args, **option.kwargs)
     (opts, filelist) = parser.parse_args()
  
@@ -430,12 +419,14 @@ def main():
     # make sure that this loop always executes, regardless of whether there 
     # are actually options.  The config file is processed throught this loop
     # and the program will break if that code does not run
+    header = headerparse.header()
     runeditor = False
-    for option in bt.options:
+    for option in options:
         if option.check(opts):
             if option.run(header) == 'runeditor':
                 runeditor = True
 
+    fp = FileProcessor()
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
         if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
@@ -450,7 +441,7 @@ def main():
             print "Processing post file %s..." % filename
 
         try:
-            header_text, post_text = bt.parsePostFile(filename)
+            header_text, post_text = fp.parsePostFile(filename)
         except blogtoolRetry:
             filelist.insert(0, filename)
             continue
@@ -468,7 +459,7 @@ def main():
 
             if postid:
                 print 'Updating post file...'
-                bt.updateFile(filename, header_text, post_text, postid) 
+                fp.updateFile(filename, header_text, post_text, postid) 
 
     sys.exit()
 
