@@ -382,6 +382,23 @@ class header():
         self._named_parm = None
         self._parms = None
 
+    def __setattr__(self, name, value):
+        if hasattr(self, '_parms') and (hasattr(self, '_parm_index') or
+           hasattr(self, '_namd_parm')):
+            if self._parms:
+                if self._named_parm:
+                    pl = self._named_parm
+                elif self._parm_index != None:
+                    pl = self._parms[self._parm_index]
+                else:
+                    pl = self._parms[0]
+        
+                if name in pl.__dict__:
+                    pl.__dict__[name] = value
+                    return
+
+        self.__dict__[name] = value        
+                
     def __getattr__(self, name):
         if self._named_parm:
             pl = self._named_parm
@@ -442,7 +459,7 @@ class header():
                             break
                     else:
                         while len(self._default_parms) > len(newparms):
-                            newparms.append(copy.copy(newparms[0]))
+                            newparms.append(copy.deepcopy(newparms[0]))
             self._reconcile(newparms)
         else:
             self._parms = newparms

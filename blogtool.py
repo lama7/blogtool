@@ -373,9 +373,6 @@ No text for post, aborting.
             sys.exit()
 
         return postid
-        if postid != None:
-            header = self._updateHeader(postid)
-            return 1                
 
     ############################################################################ 
     def updateFile(self, filename, hdr_text, post_text, postid):
