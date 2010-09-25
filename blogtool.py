@@ -451,7 +451,7 @@ def main():
         header.addParms(header_text, fp.allblogs)
         for hdr in header:
             try:
-                postid = bt.pushPost(post_text, hdr)
+                postid = fp.pushPost(post_text, hdr)
             except blogtoolError, err_msg:
                 print err_msg
                 sys.exit()
