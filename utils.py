@@ -3,6 +3,7 @@ from proxybase import proxyError
 import time
 import sys
 import os
+import subprocess
 
 ################################################################################
 class utilsError(Exception):
@@ -23,9 +24,38 @@ def chkfile(file):
     return tmpfile
 
 ################################################################################
-#
-# returns a post dictionary suitable for publishing
-#
+'''
+    Launches an editor
+
+    Arguments:
+    fh:  filehandle of file to edit
+    hdr_string:  optional string to write to file 
+'''
+def edit(fh, hdr_string = ''):
+    editor = os.getenv('EDITOR', 'editor')
+
+    if hdr_string:
+        try:
+            fh.write("TITLE: \nCATEGORIES: \n")
+            fh.flush()
+        except IOError, e:
+            print "Could not write header text to file."
+
+    try:
+        rcode = subprocess.call([editor, fh.name])
+    except OSError, e:
+        print "Can't launch %s:  %s" % (editor, e)
+        return None
+
+    if rcode == 0:
+        return True
+    else:
+        return None
+
+################################################################################
+'''
+    returns a post dictionary suitable for publishing
+'''
 def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
 
     time_fmts = [

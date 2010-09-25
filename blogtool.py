@@ -14,7 +14,6 @@ import re
 import sys
 import os
 import types
-import subprocess
 
 try:
     from lxml import etree
@@ -305,7 +304,7 @@ No text for post, aborting.
                 print err
                 sys.exit()
 
-            edit(f, "TITLE: \nCATEGORIES: \n")
+            utils.edit(f, "TITLE: \nCATEGORIES: \n")
             raise blogtoolRetry()
         else:
             f.close()
@@ -323,7 +322,6 @@ No text for post, aborting.
         updated with the post ID assigned at the blog.
     '''
     def pushPost(self, post_text, header):
-        # this handles pushing a post up to a blog
         self._blogproxy = header.proxy()
         self._blogname = header.name
 
@@ -386,30 +384,6 @@ No text for post, aborting.
 ################################################################################
 #
 #
-def edit(fh, hdr_string = ''):
-    editor = os.getenv('EDITOR', 'editor')
-
-    if hdr_string:
-        try:
-            fh.write("TITLE: \nCATEGORIES: \n")
-            fh.flush()
-        except IOError, e:
-            print "Could not write header text to file."
-
-    try:
-        rcode = subprocess.call([editor, fh.name])
-    except OSError, e:
-        print "Can't launch %s:  %s" % (editor, e)
-        return None
-
-    if rcode == 0:
-        return True
-    else:
-        return None
-
-################################################################################
-#
-#
 def main():
     options = OptionProcessor()
     parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
@@ -425,7 +399,7 @@ def main():
     runeditor = options.check(opts, header)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
-        if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
+        if utils.edit(fd, "TITLE: \nCATEGORIES: \n") == None:
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
 
