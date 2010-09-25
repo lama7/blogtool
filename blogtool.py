@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from xmlproxy.proxybase import proxyError
-from options import getOptions
+from options import OptionProcessor
 
 import utils
 import headerparse
@@ -78,11 +78,15 @@ class blogtoolRetry(Exception):
 '''
 class FileProcessor():
 
-
     if MARKDOWN_PRESENT:
         md = markdown.Markdown(extensions=['typed_list'])
 
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
+
+    ############################################################################
+    def __init__(self, **kwargs):
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
 
     ############################################################################
     def _getHeaderandPostText(self, linelist):
@@ -204,7 +208,7 @@ No text for post, aborting.
         # see if there were any unrecognized categories
         if len(nonCats) == 0:
             print "Post categories OK"
-        elif self.options[2].addpostcats:
+        elif self.addpostcats:
             [ utils.addCategory(self._blogproxy, *ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
@@ -334,8 +338,8 @@ No text for post, aborting.
             post = utils.buildPost(header,
                                    html_desc,
                                    html_ext,
-                                   timestamp = self.options[4].posttime,
-                                   publish = self.options[3].publish )
+                                   timestamp = self.posttime,
+                                   publish = self.publish )
         except utils.utilsError, timestr:
             print timestr
             sys.exit()
@@ -351,7 +355,7 @@ No text for post, aborting.
 
             return None
 
-        if self.options[3].publish:
+        if self.publish:
             print "Publishing '%s' to '%s'" % (header.title,  header.name) 
         else:
             print "Publishing '%s' to '%s' as a draft" % (header.title,
@@ -409,9 +413,9 @@ def edit(fh, hdr_string = ''):
 #
 #
 def main():
-    options = getOptions()
+    options = OptionProcessor()
     parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
-    for option in options:
+    for option in options.o_list:
         parser.add_option(*option.args, **option.kwargs)
     (opts, filelist) = parser.parse_args()
  
@@ -420,13 +424,7 @@ def main():
     # are actually options.  The config file is processed throught this loop
     # and the program will break if that code does not run
     header = headerparse.header()
-    runeditor = False
-    for option in options:
-        if option.check(opts):
-            if option.run(header) == 'runeditor':
-                runeditor = True
-
-    fp = FileProcessor()
+    runeditor = options.check(opts, header)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
         if edit(fd, "TITLE: \nCATEGORIES: \n") == None:
@@ -435,6 +433,7 @@ def main():
 
     ###########################################################################
     tmp_fn = None
+    fp = FileProcessor(**options.flags())
     for filename in filelist:
         if tmp_fn != filename:
             tmp_fn = filename
@@ -449,7 +448,7 @@ def main():
             print err_msg
             continue
 
-        header.addParms(header_text, bt.options[5].allblogs)
+        header.addParms(header_text, fp.allblogs)
         for hdr in header:
             try:
                 postid = bt.pushPost(post_text, hdr)

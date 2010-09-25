@@ -383,8 +383,8 @@ class header():
         self._parms = None
 
     def __setattr__(self, name, value):
-        if hasattr(self, '_parms') and (hasattr(self, '_parm_index') or
-           hasattr(self, '_namd_parm')):
+        if '_parms' in self.__dict__ and ('_parm_index' in self.__dict__ or
+                                          '_named_parm' in self.__dict__):
             if self._parms:
                 if self._named_parm:
                     pl = self._named_parm

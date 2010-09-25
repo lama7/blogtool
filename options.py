@@ -19,26 +19,30 @@ def _getProxy(header):
     return p
 
 ################################################################################
-#
-#  Base Class for handling command line options
-#
+'''
+    Base Class for handling command line options
+'''
 class btOption:
     args = ()  # to be overridden by the option
     kwargs = {}  # to be overriden by the option
 
-    # this method should check the relevant option and return True if the 
-    # option should be processed, False otherwise
-    # the 'opts' arg is the Values object returned by the OptParse parser.
-    # if the option is present and stores a value that is needed when the option
-    # is run, then the value should be squirreled away in an instance attribute
+    '''
+    This method should check the relevant option and return True if the 
+    option should be processed, False otherwise
+    the 'opts' arg is the Values object returned by the OptParse parser.
+    if the option is present and stores a value that is needed when the option
+    is run, then the value should be squirreled away in an instance attribute
+    '''
     def check(self, opts):
         pass
 
-    # this method performs the actual option processing.  It does not return any
-    # error codes- any errors should raise the btOptionError exception
-    # the 'opts' arg will be the Values object returned by the OptParse parser.
-    # the 'proxy' arg will be a proxy object for communicating with the blog
-    # if necessary 
+    '''
+    This method performs the actual option processing.  It does not return any
+    error codes- any errors should raise the btOptionError exception
+    the 'opts' arg will be the Values object returned by the OptParse parser.
+    the 'proxy' arg will be a proxy object for communicating with the blog
+    if necessary 
+    '''
     def run(self, header):
         pass
         
@@ -57,7 +61,6 @@ class DeletePost(btOption):
               'help' : "delete a post" 
              }
 
-    ############################################################################ 
     def check(self, opts):
         if opts.del_postid:
             self.postid = opts.del_postid
@@ -65,7 +68,6 @@ class DeletePost(btOption):
 
         return False
 
-    ############################################################################ 
     def run(self, header):
         print "Deleting post %s" % self.postid
 
@@ -92,7 +94,6 @@ class GetRecentTitles(btOption):
               'help' : "rettrieve recent posts from a blog" 
              }
 
-    ############################################################################ 
     def check(self, opts):
         if opts.num_recent_t:
             self.count = opts.num_recent_t
@@ -100,7 +101,6 @@ class GetRecentTitles(btOption):
 
         return False
 
-    ############################################################################ 
     def run(self, header):
         try:
             self._getRecentTitles(header)
@@ -151,11 +151,9 @@ class GetCategories(btOption):
               'help' : "Get a list of catgories for a blog" 
              }
 
-    ############################################################################ 
     def check(self, opts):
         return bool(opts.getcats)
 
-    ############################################################################ 
     def run(self, header):
         proxy = _getProxy(header)
         print "Retrieving category list for '%s'." % header.name
@@ -196,7 +194,6 @@ class AddCategory(btOption):
               'help' : "Add a new category to a blog" 
              }
 
-    ############################################################################ 
     def check(self, opts):
         if opts.newcat:
             self.catname = opts.newcat
@@ -204,7 +201,6 @@ class AddCategory(btOption):
 
         return False
 
-    ############################################################################ 
     def run(self, header):
         proxy = _getProxy(header)
         blogname = header.name
@@ -245,7 +241,6 @@ class UploadMediaFile(btOption):
               'help' : "Upload a file to a blog"
              }
 
-    ############################################################################ 
     def check(self, opts):
         if opts.uploadfile:
             self.uploafile = opts.uploadfile
@@ -253,7 +248,6 @@ class UploadMediaFile(btOption):
 
         return False
 
-    ############################################################################ 
     def run(self, header):
         try:
             proxy = _getProxy(header)
@@ -286,8 +280,6 @@ a file capture could be used for updating with blogtool.
 """            
              }
 
-    
-    ############################################################################ 
     def check(self, opts):
         if opts.get_postid:
             self.postid = opts.get_postid
@@ -295,7 +287,6 @@ a file capture could be used for updating with blogtool.
 
         return False
 
-    ############################################################################ 
     def run(self, header):
         if not html2md.LXML_PRESENT:
             print "Option not supported without python-lxml library."
@@ -340,7 +331,6 @@ class SetConfigFile(btOption):
               'help' : "specify a config file" 
              }
 
-    ############################################################################ 
     def check(self, opts):
         if opts.configfile:
             self.configfile = opts.configfile
@@ -349,7 +339,6 @@ class SetConfigFile(btOption):
         # should always return True
         return True
 
-    ############################################################################ 
     def run(self, header):
         if not hasattr(self, 'configfile'): 
             rcf = os.path.join(os.path.expanduser('~'), '.btrc')    
@@ -393,12 +382,10 @@ they do not already exist.
 """
              }
 
-    ############################################################################ 
     def check(self, opts):
         self.addpostcats = opts.addcats
         return opts.addcats
 
-    ############################################################################ 
     def run(self, header):
         return 'runeditor'
 
@@ -420,7 +407,6 @@ in ~/.btrc or a config file specified on the command line.
 """  
              }
 
-    ############################################################################ 
     def check(self, opts):
         if opts.blogname:
             self.blogname = opts.blogname
@@ -428,7 +414,6 @@ in ~/.btrc or a config file specified on the command line.
 
         return False
 
-    ############################################################################ 
     def run(self, header):
         try:
             header.setBlogParmsByName(self.blogname)
@@ -455,7 +440,6 @@ MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
 """ 
              }
 
-    ############################################################################ 
     def check(self, opts):
         self.posttime = opts.posttime
         if opts.posttime:
@@ -463,7 +447,6 @@ MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
         else:
             return False
 
-    ############################################################################ 
     def run(self, header):
         return 'runeditor'
 
@@ -482,7 +465,6 @@ class SetNoPublish(btOption):
               'help' : "Do not publish post.  Hold it as a draft." 
              }
 
-    ############################################################################ 
     def check(self, opts):
         self.publish = opts.publish
         if not opts.publish:
@@ -490,11 +472,13 @@ class SetNoPublish(btOption):
         else:
             return False
 
-    ############################################################################ 
     def run(self, header):
         return 'runeditor'
 
 ################################################################################
+'''
+    SetAllBlogs
+'''
 class SetAllBlogs(btOption):
     args = ('-A', '--allblogs')
     kwargs = {
@@ -506,7 +490,6 @@ Will cause post to be published to all blogs listed in the rc file.
 """
              }
 
-    ############################################################################ 
     def check(self, opts):
         self.allblogs = opts.allblogs
         if opts.allblogs:
@@ -514,28 +497,42 @@ Will cause post to be published to all blogs listed in the rc file.
         else:
             return False
 
-    ############################################################################ 
     def run(self, header):
         return 'runeditor'
 
 ################################################################################
-#
-#  function to return a list of option objects
-#
-#  For new options, simply append an instance to the list
-def getOptions():
-    o_list = []
-    o_list.append(SetConfigFile())  # should always be first in list
-    o_list.append(SetBlogname())    # should always be second in list
-    o_list.append(SetAddCategory())
-    o_list.append(SetNoPublish())
-    o_list.append(SetPosttime())
-    o_list.append(SetAllBlogs())
-    o_list.append(DeletePost())
-    o_list.append(GetRecentTitles())
-    o_list.append(GetCategories())
-    o_list.append(AddCategory())
-    o_list.append(GetPost())
-    o_list.append(UploadMediaFile())
+'''
+    OptionProcessor
+'''
+class OptionProcessor:
+    def __init__(self):
+        self.o_list = []
+        self.o_list.append(SetConfigFile())  # should always be first in list
+        self.o_list.append(SetBlogname())    # should always be second in list
+        self.o_list.append(SetAddCategory())
+        self.o_list.append(SetNoPublish())
+        self.o_list.append(SetPosttime())
+        self.o_list.append(SetAllBlogs())
+        self.o_list.append(DeletePost())
+        self.o_list.append(GetRecentTitles())
+        self.o_list.append(GetCategories())
+        self.o_list.append(AddCategory())
+        self.o_list.append(GetPost())
+        self.o_list.append(UploadMediaFile())
 
-    return o_list
+    def flags(self):
+        return {
+                'addpostcats' : self.o_list[2].addpostcats,
+                'publish'     : self.o_list[3].publish,
+                'posttime'    : self.o_list[4].posttime,
+                'allblogs'    : self.o_list[5].allblogs,
+               }
+
+    def check(self, opts, header):
+        rval = False
+        for option in self.o_list:
+            if option.check(opts):
+                if option.run(header) == 'runeditor':
+                     rval = True
+        return rval
+
