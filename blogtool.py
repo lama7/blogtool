@@ -133,8 +133,6 @@ No text for post, aborting.
         else:
             html_ext = ''
 
-        del self.md
-
         return html_desc, html_ext
 
     ############################################################################ 
