@@ -9,11 +9,8 @@ import headerparse
 from optparse import OptionParser
 from tempfile import NamedTemporaryFile
 
-import time
 import re
 import sys
-import os
-import types
 
 try:
     from lxml import etree
