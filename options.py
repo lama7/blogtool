@@ -1,6 +1,6 @@
 from headerparse import headerError
 from proxybase import proxyError
-
+from optparse import OptionParser
 import sys
 import html2md
 import utils
@@ -520,6 +520,14 @@ class OptionProcessor:
         self.o_list.append(GetPost())
         self.o_list.append(UploadMediaFile())
 
+        self.parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
+        for option in self.o_list:
+            self.parser.add_option(*option.args, **option.kwargs)
+
+    def parse(self):
+        self.opts, files = self.parser.parse_args()
+        return files
+
     def flags(self):
         return {
                 'addpostcats' : self.o_list[2].addpostcats,
@@ -528,10 +536,10 @@ class OptionProcessor:
                 'allblogs'    : self.o_list[5].allblogs,
                }
 
-    def check(self, opts, header):
+    def check(self, header):
         rval = False
         for option in self.o_list:
-            if option.check(opts):
+            if option.check(self.opts):
                 if option.run(header) == 'runeditor':
                      rval = True
         return rval

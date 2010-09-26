@@ -1,14 +1,10 @@
 #!/usr/bin/python
 
-from xmlproxy.proxybase import proxyError
 from options import OptionProcessor
-
+from xmlproxy.proxybase import proxyError
+from tempfile import NamedTemporaryFile
 import utils
 import headerparse
-
-from optparse import OptionParser
-from tempfile import NamedTemporaryFile
-
 import re
 import sys
 
@@ -75,7 +71,9 @@ class blogtoolRetry(Exception):
 class FileProcessor():
 
     if MARKDOWN_PRESENT:
-        md = markdown.Markdown(extensions=['typed_list'])
+#        md = markdown.Markdown(extensions=['typed_list'])
+        md = markdown.Markdown()
+
 
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
@@ -379,21 +377,18 @@ No text for post, aborting.
             f.close()
 
 ################################################################################
-#
-#
 def main():
     options = OptionProcessor()
-    parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
-    for option in options.o_list:
-        parser.add_option(*option.args, **option.kwargs)
-    (opts, filelist) = parser.parse_args()
+    filelist = options.parse()
  
     ###########################################################################
-    # make sure that this loop always executes, regardless of whether there 
-    # are actually options.  The config file is processed throught this loop
-    # and the program will break if that code does not run
+    '''
+    Make sure that this loop always executes, regardless of whether there 
+    are actually options.  The config file is processed throught this loop
+    and the program will break if that code does not run
+    '''
     header = headerparse.header()
-    runeditor = options.check(opts, header)
+    runeditor = options.check(header)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
         if utils.edit(fd, "TITLE: \nCATEGORIES: \n") == None:
@@ -428,8 +423,6 @@ def main():
             if postid:
                 print 'Updating post file...'
                 fp.updateFile(filename, header_text, post_text, postid) 
-
-    sys.exit()
 
 ################################################################################
 if __name__ == "__main__":
