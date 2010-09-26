@@ -14,6 +14,10 @@ class utilsError(Exception):
         return self.message
 
 ################################################################################
+'''
+    attempts to verify a file exists by checking the home directory as well as
+    the absolute path to the file
+'''
 def chkfile(file):
     tmpfile = file
     if not os.path.isfile(tmpfile):
