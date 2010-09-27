@@ -44,8 +44,8 @@ def main():
             continue
 
         header.addParms(header_text, fp.allblogs)
-        print header
-        sys.exit()
+#        print header
+#        sys.exit()
         for hdr in header:
             try:
                 postid = fp.pushPost(post_text, hdr)
@@ -54,8 +54,9 @@ def main():
                 sys.exit()
 
             if postid:
+                header.postid = postid
                 print 'Updating post file...'
-                fp.updateFile(filename, header_text, post_text, postid) 
+                fp.updateFile(filename, '%s' % header, post_text) 
 
 ################################################################################
 if __name__ == "__main__":

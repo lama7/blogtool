@@ -221,63 +221,6 @@ No text for post, aborting.
                                       [c.split('.') for c in header.categories])))
 
     ############################################################################ 
-    '''
-        updateHeder
-
-        This function consists of subfunctions that drill into the header 
-        string to find where to insert the POSTID info.  Each function returns 
-        a tuple consisting of the next state, the header string that has been
-        processed and the header string yet to be processed
-
-    '''
-    def _updateHeader(self, hdr_text, postid):
-
-        def findbloggroup(l):
-            # it possible that BLOG will not appear in the header (blog info
-            # can also be defined in an rc file or command line options)
-            # if we reach the end of the header, just append the POSTID there
-            m = re.match('(.*?BLOG\s*\{\s*)(.*)', l, re.DOTALL)
-            if m == None:
-                l += 'POSTID: %s\n' % postid
-                return None, l, ''
-
-            return states.index(findblogname), m.group(1), m.group(2)
-
-        def findblogname(l):
-            m = re.match('(.*?NAME\s*:\s*|NAME\s*:\s*)([^\n]+)(.*)', l, re.DOTALL)
-            if m != None:
-                hdr_ret = m.group(1) + m.group(2)
-                if self.bc.name not in hdr_ret:
-                    return states.index(findbloggroup), hdr_ret, m.group(3)
-
-                return states.index(findendgroup), hdr_ret, m.group(3)
-
-            # we've found the group where the POSTID is to be written
-            return states.index(findendgroup), '', l
-
-        def findendgroup(l):
-            m = re.match('(.*?)([}])(.*)', l, re.DOTALL)
-            hdr_ret = m.group(1)
-            hdr_ret += '    POSTID: %s\n' % postid
-            hdr_ret += m.group(2) + m.group(3)
-            return None, hdr_ret, ''
-
-        # actual _updateHeader function
-        states = [
-                  findbloggroup,
-                  findblogname,
-                  findendgroup ]
-
-        current_state = states.index(findbloggroup)
-        hdr_str = hdr_text
-        hdr_text = ''
-        while current_state != None:
-            current_state, procd_hdr, hdr_str = states[current_state](hdr_str)
-            hdr_text += procd_hdr
-
-        return hdr_text
-
-    ############################################################################ 
     ''' parsePostFile
 
         Attempts to read a post file.  If successful, then a header and text
@@ -359,8 +302,7 @@ No text for post, aborting.
         return postid
 
     ############################################################################ 
-    def updateFile(self, filename, hdr_text, post_text, postid):
-        hdr_text = self._updateHeader(hdr_text, postid)
+    def updateFile(self, filename, hdr_text, post_text):
         # alter the file name so we don't overwrite
         filename += '.posted'
         try:

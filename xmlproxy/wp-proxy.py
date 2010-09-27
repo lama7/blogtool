@@ -6,7 +6,7 @@ import os
 ################################################################################
 # returns an instance of a wpproxy object
 def getInst(url, user, password):
-   wp = wpproxy(url, user, password)
+   wp = WordpressProxy(url, user, password)
    return wp
 
 ################################################################################
@@ -16,7 +16,7 @@ def getInst(url, user, password):
 # part of the initialization.  From that point, the various server methods
 # are "directly" accessible through my blogproxy class
 #
-class wpproxy(proxybase.BlogProxy):
+class WordpressProxy(proxybase.BlogProxy):
     ############################################################################ 
     def getCategories(self):
         blogid = self._getBlogID()
