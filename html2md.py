@@ -128,7 +128,7 @@ class Html2Markdown:
                 for se in p:
                     if se.tag in self._inlineHandlers:
                         text += self._inlineHandlers[se.tag](se)
-                    elif se.text.find('more') != -1:
+                    elif se.text.find('--more--') != -1:
                         if text: 
                             text = text.rstrip() + '\n\n'
                         text += "<!--more-->\n\n"
@@ -289,7 +289,7 @@ class Html2Markdown:
             if child.tag in self._inlineHandlers and \
                child.getparent().tag != 'pre':
                 text += self._inlineHandlers[child.tag](child)
-            elif child.text and child.text.find('more') != -1:
+            elif child.text and child.text.find('--more--') != -1:
                 text = text.rstrip() + "\n\n<!--more-->\n\n"
             else:
                 # when switching from inline tags to block tags, add
