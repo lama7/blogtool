@@ -26,6 +26,8 @@ def main():
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
 
+    header.generate()
+
     ###########################################################################
     tmp_fn = None
     fp = fileprocessor.FileProcessor(**options.flags())

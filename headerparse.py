@@ -470,27 +470,29 @@ class header():
         p.setBlogname(pl.name)
         return p
 
-#    def generate(self):
-#        def add2dict(d, k, v):
-#            if k not in d:
-#                d[k] = list()
-#            elif d[k] == v:
-#                return
-#
-#            if k in ['categories','tags']:
-#                d[k].append(v)
-#            else:
-#                d[k].extend(v)
-#
-#        d = {}
-#        for parml in self._parms:
-#            for k,v in parml.getDict().iteritems():
-#                if k in ['categories','tags']:
-#                    if len(v) != 0:
-#                        add2dict(d, k, v)
-#                elif v != '':
-#                    add2dict(d, k, v)
-#
+    def generate(self):
+        def add2dict(d, k, v):
+            if k not in d:
+                d[k] = list()
+            elif d[k] == v:
+                return
+
+            if k in ['categories','tags']:
+                d[k].extend(v)
+            else:
+                d[k].append(v)
+
+        d = {}
+        for parml in self._parms:
+            for k,v in parml.getDict().iteritems():
+                if k in ['categories','tags']:
+                    if len(v) != 0:
+                        add2dict(d, k, v)
+                elif v != '':
+                    add2dict(d, k, v)
+
+        print d
+        sys.exit()
 
 
     def _reconcile(self, newparms):
