@@ -26,8 +26,6 @@ def main():
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
 
-    header.generate()
-
     ###########################################################################
     tmp_fn = None
     fp = fileprocessor.FileProcessor(**options.flags())
@@ -46,6 +44,7 @@ def main():
             continue
 
         header.addParms(header_text, fp.allblogs)
+        header.generate()
         for hdr in header:
             try:
                 postid = fp.pushPost(post_text, hdr)

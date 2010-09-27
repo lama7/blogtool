@@ -54,6 +54,34 @@ class hdrparms():
         self.username = ''
         self.password = ''
 
+    def __str__(self):
+        return """
+    title:           %s
+    categories:      %s
+    tags:            %s
+    postid:          %s
+    posttime:        %s
+    name:            %s
+    blogtype:        %s
+    xmlrpc_location: %s
+    username:        %s
+    password:        %s""" % ( self.title,
+                               self.categories,
+                               self.tags,
+                               self.postid,
+                               self.posttime,
+                               self.name,
+                               self.blogtype,
+                               self.xmlrpc,
+                               self.username,
+                               self.password )
+
+    def __contains__(self, item):
+        if item in self.__dict__:
+            return True
+        else:
+            return False
+
     def get(self, name):
         rval = self.__dict__[name]
         if rval == '' or (type(rval) == types.ListType and len(rval) == 0):
@@ -76,28 +104,6 @@ class hdrparms():
     
     def getDict(self):
         return self.__dict__
-
-    def __str__(self):
-        return """
-    title:           %s
-    categories:      %s
-    tags:            %s
-    postid:          %s
-    posttime:        %s
-    name:            %s
-    blogtype:        %s
-    xmlrpc_location: %s
-    username:        %s
-    password:        %s""" % ( self.title,
-                               self.categories,
-                               self.tags,
-                               self.postid,
-                               self.posttime,
-                               self.name,
-                               self.blogtype,
-                               self.xmlrpc,
-                               self.username,
-                               self.password )
 
 ################################################################################
 class keyword():
@@ -346,10 +352,109 @@ class headerParse():
 #        sys.exit()
 
         return postconfig
+################################################################################
+'''
+    ReverseParse
+    
+    Reverse parses a hdrparms object.
+'''
+class ReverseParser:
+    def _getdefault(self, name):
+        for df in self._default_parms:
+            if name == df.name:
+                return df
+        else:
+            return None
+
+    def _isdefault(self, default, k, v):
+        if default and k in default and default.get(k) == v:
+            return True
+        else:
+            return False
+
+    def _add2dict(self, d, k, v):
+        if k not in d:
+            d[k] = list()
+
+        d[k].append(v)
+
+    def _valsequal(self, vallist, val):
+        for item in vallist:
+            if item != val:
+                return False
+        else:
+            return True
+
+    def _val2string(self, val):
+        if isinstance(val, list):
+            return ', '.join(val).strip("'")
+        else:
+            return val
+
+    def _clean(self, d):
+        ''' remove dict entries that have empy lists '''
+        cleaned_keys = []
+        for k,v in d.iteritems():
+            if self._valsequal(v, None):
+                cleaned_keys.append(k)
+
+        for k in cleaned_keys:
+            del d[k]
+
+        return d
+
+    def _convertGlobals(self, d):
+        removekeys = []
+        text = ''
+        for k,v in d.iteritems():
+            if self._valsequal(v, v[0]): 
+                removekeys.append(k)
+                if k == 'name':
+                    k = 'blog'
+                text += "%s: %s\n" % (k.upper(), self._val2string(v[0]))
+
+        for k in removekeys:
+            del d[k]
+
+        return text, d
+
+    def _convertGroups(self, d):
+        text = ''
+        if 'name' in d:
+            text += 'BLOG:\t'
+            blognames = d['name']
+            del d['name']
+            i = 0
+            for name in blognames:
+                text += '{\n\t  NAME: %s\n' % name
+                for k,v in d.iteritems():
+                    if v[i]:
+                        text += "\t  %s: %s\n" % (k.upper(),
+                                                  self._val2string(v[i])) 
+                text += '\t},\n\t'
+                i = i + 1   
+        return text.strip(',\n\t')
+
+    def toString(self, parms, defaultparms):
+        self._default_parms = defaultparms
+        d = {}
+        for parml in parms:
+            default = self._getdefault(parml.name)
+            for k,v in parml.getDict().iteritems():
+                if k == 'name' or (not self._isdefault(default, k, v) and v):
+                    val = v
+                else:
+                    val = None
+                self._add2dict(d, k, val)
+
+        hdrtext, d = self._convertGlobals(self._clean(d))
+        hdrtext += self._convertGroups(d)
+        print hdrtext + '\n'
 
 ################################################################################
 class header():
     _parser = headerParse()
+    _revparser = ReverseParser()
 
     def __init__(self):
         self._default_parms = None
@@ -417,7 +522,7 @@ class header():
         except headerParseError, err:
             print err
             sys.exit()
-        self._parms = self._default_parms
+        self._parms = copy.deepcopy(self._default_parms)
 
     def addParms(self, hdrstr, allblogs):
         try:
@@ -471,29 +576,8 @@ class header():
         return p
 
     def generate(self):
-        def add2dict(d, k, v):
-            if k not in d:
-                d[k] = list()
-            elif d[k] == v:
-                return
-
-            if k in ['categories','tags']:
-                d[k].extend(v)
-            else:
-                d[k].append(v)
-
-        d = {}
-        for parml in self._parms:
-            for k,v in parml.getDict().iteritems():
-                if k in ['categories','tags']:
-                    if len(v) != 0:
-                        add2dict(d, k, v)
-                elif v != '':
-                    add2dict(d, k, v)
-
-        print d
+        self._revparser.toString(self._parms, self._default_parms)        
         sys.exit()
-
 
     def _reconcile(self, newparms):
         for parmlist in newparms:
@@ -521,7 +605,5 @@ class header():
                     setattr(parmlist, k, default)
 
         if '_parms' in self.__dict__:
-#        if hasattr(self, '_parms'):
             del self._parms[:]
         self._parms = newparms
-
