@@ -44,8 +44,6 @@ def main():
             continue
 
         header.addParms(header_text, fp.allblogs)
-#        print header
-#        sys.exit()
         for hdr in header:
             try:
                 postid = fp.pushPost(post_text, hdr)

@@ -297,12 +297,14 @@ class HeaderParse():
         # processing is pretty straight forward now- iterate through the AST
         # and fill in the config objects.  
         for k, vallist in ast.iteritems():
-            # helper function to assign a value to an attirbute of a config
-            # object.  The actual loop is implemented as a list comprehension
-            # Done this way for practice- the more verbose form of the 
-            # comprehension is the commented out code immediately below the 
-            # comprehension- for future reference I'm leaving it this way in
-            # case something needs to change
+            '''
+             helper function to assign a value to an attirbute of a config
+             object.  The actual loop is implemented as a list comprehension
+             Done this way for practice- the more verbose form of the 
+             comprehension is the commented out code immediately below the 
+             comprehension- for future reference I'm leaving it this way in
+             case something needs to change
+            '''
             def assignConfigAttr(attr, val, cf):
                 if attr == 'blog':
                     attr = 'name'
@@ -505,6 +507,35 @@ class Header():
 
         return self
 
+    def _reconcile(self, newparms):
+        for parmlist in newparms:
+            if parmlist.name:
+                for default_parmlist in self._default_parms:
+                    if default_parmlist.name == parmlist.name:
+                        break
+                else:
+                    continue
+            else:
+                i = newparms.index(parmlist)
+                if i >= len(self._default_parms):
+                    continue
+                default_parmlist = self._default_parms[i]
+
+            for (k, v) in parmlist.__dict__.iteritems():
+                if k in ['categories', 'tags']:
+                    if len(v) != 0:
+                        continue
+                elif v:
+                    continue
+
+                default = default_parmlist.get(k)
+                if default:
+                    setattr(parmlist, k, default)
+
+        if '_parms' in self.__dict__:
+            del self._parms[:]
+        self._parms = newparms
+    
     def debug(self):
         if self._named_parm:
             print "named_parm"
@@ -552,10 +583,6 @@ class Header():
         else:
              raise HeaderError(HeaderError.NAMENOTFOUND)
 
-    def setBlogParmByIndex(self, new_index):
-        if new_index < len(self._parms):
-            self._parm_index = new_index
-
     def proxy(self):
         if self._named_parm:
             pl = self._named_parm
@@ -572,31 +599,4 @@ class Header():
         p.setBlogname(pl.name)
         return p
 
-    def _reconcile(self, newparms):
-        for parmlist in newparms:
-            if parmlist.name:
-                for default_parmlist in self._default_parms:
-                    if default_parmlist.name == parmlist.name:
-                        break
-                else:
-                    continue
-            else:
-                i = newparms.index(parmlist)
-                if i >= len(self._default_parms):
-                    continue
-                default_parmlist = self._default_parms[i]
 
-            for (k, v) in parmlist.__dict__.iteritems():
-                if k in ['categories', 'tags']:
-                    if len(v) != 0:
-                        continue
-                elif v:
-                    continue
-
-                default = default_parmlist.get(k)
-                if default:
-                    setattr(parmlist, k, default)
-
-        if '_parms' in self.__dict__:
-            del self._parms[:]
-        self._parms = newparms
