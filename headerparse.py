@@ -54,22 +54,8 @@ class hdrparms():
         self.username = ''
         self.password = ''
 
-    def set(self, name, val):
-        # the try-except is a debug tool- the except should NEVER occur
-        try:
-            getattr(self, name)
-        except AttributeError:
-            sys.exit("headerparse.py error: bad set attribute %s" % name)
-            
-        setattr(self, name, val)
-
     def get(self, name):
-        # the try-except is for debug purposes- this except should NEVER happen
-        try:
-            rval = getattr(self, name)
-        except AttributeError:
-            sys.exit("headerparse.py error: bad get attribute %s" % name)
-        
+        rval = self.__dict__[name]
         if rval == '' or (type(rval) == types.ListType and len(rval) == 0):
             return None
 
@@ -90,15 +76,6 @@ class hdrparms():
     
     def getDict(self):
         return self.__dict__
-
-    # implemented so 'in' operator can be used
-    def __contains__(self, item):
-        # this is naive- but effective.  For instance, 'set', and 'get' are 
-        # are part of self.__dict__
-        if item in self.__dict__:
-            return True
-
-        return False
 
     def __str__(self):
         return """
@@ -304,7 +281,7 @@ class headerParse():
             for blog, config in zip(ast['BLOG'], postconfig):
                 # make sure it's a dict before proceeding
                 if type(blog) != types.DictType:
-                    config.set('name', blog)
+                    setattr(config, 'name', blog)
                     continue
 
                 # in a blog group, we'll assume there are no lists
@@ -314,11 +291,9 @@ class headerParse():
                     # within a BLOG group, the only setting that can have more
                     # than 1 value are CATEGORIES and TAGS
                     if len(v) != 1:
-                        raise InterpError(k, v)
-                        raise headerParseError("Value '%s' not valid for key '%s'" % 
-                                               (v, k) )
+                        raise headerParseError("Value '%s' not valid for key '%s'" %                                                (v, k) )
 
-                    config.set(k, v.pop())
+                    setattr(config, k, v.pop())
             del ast['BLOG']
 
         return self.__interpASTcommon(ast, postconfig)
@@ -344,12 +319,12 @@ class headerParse():
                     val = [val]
                 elif attr == 'postid':
                     if vallist.index(val) == postconfig.index(cf):
-                         cf.set(attr, val)
+                        setattr(cf, attr, val)
                     return
            
                 if cf.get(attr) == None or \
                    vallist.index(val) == postconfig.index(cf):
-                    cf.set(attr, val)
+                    setattr(cf, attr, val)   
                     
             [ assignConfigAttr(k.lower(), x, config) for config in postconfig \
                                                      for x in vallist ]
@@ -541,9 +516,10 @@ class header():
 
                 default = default_parmlist.get(k)
                 if default:
-                    parmlist.set(k, default)
+                    setattr(parmlist, k, default)
 
-        if hasattr(self, '_parms'):
+        if '_parms' in self.__dict__:
+#        if hasattr(self, '_parms'):
             del self._parms[:]
         self._parms = newparms
 
