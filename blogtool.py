@@ -2,9 +2,9 @@
 
 from options import OptionProcessor
 from tempfile import NamedTemporaryFile
+from headerparse import Header
 import fileprocessor
 import utils
-import headerparse
 import sys
 
 ################################################################################
@@ -18,7 +18,7 @@ def main():
     are actually options.  The config file is processed throught this loop
     and the program will break if that code does not run
     '''
-    header = headerparse.header()
+    header = Header()
     runeditor = options.check(header)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
@@ -44,7 +44,8 @@ def main():
             continue
 
         header.addParms(header_text, fp.allblogs)
-        header.generate()
+        print header
+        sys.exit()
         for hdr in header:
             try:
                 postid = fp.pushPost(post_text, hdr)

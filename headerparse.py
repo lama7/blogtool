@@ -6,7 +6,7 @@ import types
 import copy
 
 ################################################################################
-class headerError(Exception):
+class HeaderError(Exception):
     NAMENOTFOUND = 0
     NOCONFIGFILE = 1
     MULTIPLEBLOGS = 2
@@ -25,22 +25,28 @@ The rc file supplied has multiple blogs defined.  Please specify one of them
 using the -b option.''', 
                   ]
     def __init__(self, err_code):
-        self.message = "headerError: %s" % self.ERR_STRINGS[err_code]
+        self.message = "HeaderError: %s" % self.ERR_STRINGS[err_code]
         self.code = err_code
 
     def __str__(self):
         return self.message
 
 ################################################################################
-class headerParseError(Exception):
+class HeaderParseError(Exception):
     def __init__(self, msg):
-        self.message = "headerParseError: %s" % msg
+        self.message = "HeaderParseError: %s" % msg
 
     def __str__(self):
         return self.message
 
 ################################################################################
-class hdrparms():
+'''
+    HeaderParms
+
+    Essentially a data class for the various header settings.
+
+'''    
+class HeaderParms():
 
     def __init__(self):
         self.title = ''
@@ -106,38 +112,18 @@ class hdrparms():
         return self.__dict__
 
 ################################################################################
-class keyword():
+class Keyword():
     def __init__(self, kwtype):
         self.kwtype = kwtype
 
 ################################################################################
-#
-#  The rules are as follows:
-#  -  the largest element I'll call a ASSIGNMENT- consisting of a KEYWORD followed
-#     ':', followed by an element
-#  -  the parser starts by finding a KEYWORD, which is a capitalized word
-#  -  the ':' can be followed by a single ELEMENT or a list of ',' separated
-#     ELEMENTs
-#  -  ASSIGNMENTs can span multiple lines if comprised of ',' separated
-#     ELEMENTs
-#  -  an ELEMENT can be a GROUP or a VALUE terminated by a newline or a ','
-#  -  a GROUP is a series of SENTENCES related to the original KEYWORD
-#     it starts with a '{' and is terminated by a '}'
-#  -  a VALUE is a contiguous piece of text terminated by a ',' or a '\n'
-#     or a '}'
-#  -  multiple groups can be specified using a ',' to separate them
-#
-#  To tease out the above a little more, there should be some more
-#  reasonable restrictions on the header syntax, so to speak.  For instance,
-#  groups don't make any sense for certain keywords, like PASSWORD or
-#  TITLE.  They do, sort of, make sense for use with CATEGORIES and 
-#  TAGS since they support lists.  Grouping would provide a means to 
-#  distinguish which elements of the list are together.  The flipside is 
-#  perhaps it is more sensible to use '[]' for this purpose.
-#  Another limitation is that there is NO reason to allow groups to be 
-#  nested.   
-#
-class headerParse():
+'''
+    HeaderParse
+
+    Class for parsing header text and creating a HeaderParms object.
+
+'''
+class HeaderParse():
     __hdr_value = re.compile('([^\n,}]+)\s*(.*)', re.DOTALL)
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
@@ -151,17 +137,17 @@ class headerParse():
     def __init__(self):
         self.__kw_tbl = dict(
                              [
-                              ( 'TITLE', keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'BLOG', keyword(self.KTYPE_GROUP) ),
-                              ( 'NAME', keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'XMLRPC', keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'CATEGORIES', keyword(self.KTYPE_MULTIVAL) ),
-                              ( 'POSTID',  keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'USERNAME', keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'PASSWORD', keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'TAGS',  keyword(self.KTYPE_MULTIVAL) ),
-                              ( 'POSTTIME',  keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'BLOGTYPE', keyword(self.KTYPE_SINGLEVAL) )
+                              ( 'TITLE', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'BLOG', Keyword(self.KTYPE_GROUP) ),
+                              ( 'NAME', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'XMLRPC', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'CATEGORIES', Keyword(self.KTYPE_MULTIVAL) ),
+                              ( 'POSTID',  Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'USERNAME', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'PASSWORD', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'TAGS',  Keyword(self.KTYPE_MULTIVAL) ),
+                              ( 'POSTTIME',  Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'BLOGTYPE', Keyword(self.KTYPE_SINGLEVAL) )
                              ]
                             )
 
@@ -179,7 +165,7 @@ class headerParse():
         # determine how many configs we need by finding the length of the 
         # longest list in the AST
         numconfigs = max(map(lambda x: len(ast[x]), ast.keys()))
-        postconfig = [ hdrparms() for x in range(numconfigs) ]
+        postconfig = [ HeaderParms() for x in range(numconfigs) ]
 
         return self.__interpAST(ast, postconfig)
 
@@ -187,12 +173,12 @@ class headerParse():
     def __parseAssignment(self, parsestring):
         m = self.__hdr_keyword.match(parsestring)
         if m == None:
-            raise headerParseError("Expected keyword, found none: %s" %
+            raise HeaderParseError("Expected keyword, found none: %s" %
                                    parsestring)
 
         keyword, parsestring = m.group(1,2)
         if keyword not in self.__kw_tbl:
-            raise headerParseError("Invalid keyword: %s" % keyword)
+            raise HeaderParseError("Invalid keyword: %s" % keyword)
 
         val, parsestring = self.__parseElement(parsestring)
 
@@ -214,7 +200,7 @@ class headerParse():
     def __parseValue(self, parsestring):
         m = self.__hdr_value.match(parsestring)
         if m == None:
-            raise headerParseError( "Could not parse keyword value: %s" %
+            raise HeaderParseError( "Could not parse keyword value: %s" %
                                     parsestring)
 
         # if next character is a comma, then we have a list otherwise
@@ -257,12 +243,12 @@ class headerParse():
         # single value keyword are just that- and no groups
         if (kwtype == self.KTYPE_SINGLEVAL and
             (len(val) > 1 or type(val[0]) == types.DictType)):
-            raise headerParseError("Value '%s' not valid for key '%s'" % 
+            raise HeaderParseError("Value '%s' not valid for key '%s'" % 
                                    (val, keyword) )
         # multival can't have any groups in the list
         elif (kwtype == self.KTYPE_MULTIVAL and
               len([ v for v in val if type(v) == types.DictType ]) != 0):
-            raise headerParseError("Value '%s' not valid for key '%s'" % 
+            raise HeaderParseError("Value '%s' not valid for key '%s'" % 
                                    (value, key) )
 
         # build AST using keyword value pairs
@@ -297,7 +283,7 @@ class headerParse():
                     # within a BLOG group, the only setting that can have more
                     # than 1 value are CATEGORIES and TAGS
                     if len(v) != 1:
-                        raise headerParseError("Value '%s' not valid for key '%s'" %                                                (v, k) )
+                        raise HeaderParseError("Value '%s' not valid for key '%s'" %                                                (v, k) )
 
                     setattr(config, k, v.pop())
             del ast['BLOG']
@@ -354,17 +340,17 @@ class headerParse():
         return postconfig
 ################################################################################
 '''
-    ReverseParse
+    reverseParse
     
-    Reverse parses a hdrparms object.
+    Reverse parses a HeaderParms object making into a parsable string.
 '''
-class ReverseParser:
+class reverseParser:
     def _getdefault(self, name):
-        for df in self._default_parms:
-            if name == df.name:
-                return df
-        else:
-            return None
+        if self._default_parms:
+            for df in self._default_parms:
+                if name == df.name:
+                    return df
+        return None
 
     def _isdefault(self, default, k, v):
         if default and k in default and default.get(k) == v:
@@ -449,12 +435,20 @@ class ReverseParser:
 
         hdrtext, d = self._convertGlobals(self._clean(d))
         hdrtext += self._convertGroups(d)
-        print hdrtext + '\n'
+        return hdrtext + '\n'
 
 ################################################################################
-class header():
-    _parser = headerParse()
-    _revparser = ReverseParser()
+'''
+    Header
+
+    Container class for dealing with headers.  
+    
+    This is the public class that a header is accessed through.
+
+'''
+class Header():
+    _parser = HeaderParse()
+    _revparser = reverseParser()
 
     def __init__(self):
         self._default_parms = None
@@ -497,6 +491,9 @@ class header():
     def __iter__(self):
         return self
 
+    def __str__(self):
+        return self._revparser.toString(self._parms, self._default_parms)
+
     def next(self):
         if self._parm_index == None:
             self._parm_index = 0
@@ -519,7 +516,7 @@ class header():
     def setDefaults(self, hdrstr):
         try:
             self._default_parms = self._parser.parse(hdrstr)
-        except headerParseError, err:
+        except HeaderParseError, err:
             print err
             sys.exit()
         self._parms = copy.deepcopy(self._default_parms)
@@ -527,7 +524,7 @@ class header():
     def addParms(self, hdrstr, allblogs):
         try:
             newparms = self._parser.parse(hdrstr)
-        except headerParseError, err:
+        except HeaderParseError, err:
             print err
             sys.exit()
 
@@ -546,14 +543,14 @@ class header():
 
     def setBlogParmsByName(self, name = ''):
         if not self._parms:
-            raise headerError(headerError.NOCONFIGFILE)
+            raise HeaderError(HeaderError.NOCONFIGFILE)
 
         for parm in self._parms:
             if parm.name == name:
                 self._named_parm = parm
                 break
         else:
-             raise headerError(headerError.NAMENOTFOUND)
+             raise HeaderError(HeaderError.NAMENOTFOUND)
 
     def setBlogParmByIndex(self, new_index):
         if new_index < len(self._parms):
@@ -563,21 +560,17 @@ class header():
         if self._named_parm:
             pl = self._named_parm
         elif not self._parms:
-            raise headerError(headerError.NOCONFIGFILE)
+            raise HeaderError(HeaderError.NOCONFIGFILE)
         elif len(self._parms) == 1:
             pl = self._parms[0]
         elif self._parm_index == None:
-            raise headerError(headerError.MULTIPLEBLOGS)
+            raise HeaderError(HeaderError.MULTIPLEBLOGS)
         else:
             pl = self._parms[self._parm_index]
 
         p = getProxy(*pl.getXMLrpc())
         p.setBlogname(pl.name)
         return p
-
-    def generate(self):
-        self._revparser.toString(self._parms, self._default_parms)        
-        sys.exit()
 
     def _reconcile(self, newparms):
         for parmlist in newparms:

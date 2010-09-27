@@ -1,4 +1,4 @@
-from headerparse import headerError
+from headerparse import HeaderError
 from proxybase import proxyError
 from optparse import OptionParser
 import sys
@@ -12,7 +12,7 @@ import os
 def _getProxy(header):
     try:
         p = header.proxy()
-    except headerError, err:
+    except HeaderError, err:
         print err
         sys.exit()
 
@@ -22,7 +22,7 @@ def _getProxy(header):
 '''
     Base Class for handling command line options
 '''
-class btOption:
+class CommandLineOption:
     args = ()  # to be overridden by the option
     kwargs = {}  # to be overriden by the option
 
@@ -38,7 +38,7 @@ class btOption:
 
     '''
     This method performs the actual option processing.  It does not return any
-    error codes- any errors should raise the btOptionError exception
+    error codes- any errors should raise the CommandLineOptionError exception
     the 'opts' arg will be the Values object returned by the OptParse parser.
     the 'proxy' arg will be a proxy object for communicating with the blog
     if necessary 
@@ -53,7 +53,7 @@ class btOption:
         Define class to handle deleting posts from a blog.
 
 '''
-class DeletePost(btOption):
+class DeletePost(CommandLineOption):
     args = ('-d', '--delete')
     kwargs = {
               'action' : 'store',
@@ -86,7 +86,7 @@ class DeletePost(btOption):
         Define class to handle retrieving recent blog post info and displaying
         it to stdout.
 '''
-class GetRecentTitles(btOption):
+class GetRecentTitles(CommandLineOption):
     args = ('-t', '--recent-titles')
     kwargs = {
               'action' : 'store',
@@ -104,8 +104,8 @@ class GetRecentTitles(btOption):
     def run(self, header):
         try:
             self._getRecentTitles(header)
-        except headerError, err:
-            if err.code != headerError.MULTIPLEBLOGS:
+        except HeaderError, err:
+            if err.code != HeaderError.MULTIPLEBLOGS:
                 print err
                 sys.exit()
             else:
@@ -143,7 +143,7 @@ class GetRecentTitles(btOption):
         displaying is to stdout.
 
 '''
-class GetCategories(btOption):
+class GetCategories(CommandLineOption):
     args = ('-C', '--Categories')
     kwargs = {
               'action' : "store_true",
@@ -186,7 +186,7 @@ class GetCategories(btOption):
         Define class to handle adding a category to a blog
 
 '''
-class AddCategory(btOption):
+class AddCategory(CommandLineOption):
     args = ('-n', '--new-categories')
     kwargs = {
               'action' : 'store',
@@ -233,7 +233,7 @@ class AddCategory(btOption):
     UploadMediaFile
 
 '''
-class UploadMediaFile(btOption):
+class UploadMediaFile(CommandLineOption):
     args = ('-u', '--uploadmedia')
     kwargs = {
               'action' : 'store',
@@ -268,7 +268,7 @@ class UploadMediaFile(btOption):
         ID and printing the result to stdout.
      
 '''
-class GetPost(btOption):
+class GetPost(CommandLineOption):
     args = ('-g', '--getpost')
     kwargs = {
               'action' : 'store',
@@ -323,7 +323,7 @@ a file capture could be used for updating with blogtool.
         Define class to handle parsing of a config file for blogtool.
 
 '''
-class SetConfigFile(btOption):
+class SetConfigFile(CommandLineOption):
     args = ('-c', '--config')
     kwargs = { 
               'action' : 'store',
@@ -371,7 +371,7 @@ class SetConfigFile(btOption):
         blog post that are not on the blog.
 
 '''
-class SetAddCategory(btOption):
+class SetAddCategory(CommandLineOption):
     args = ('-a', '--add-categories')
     kwargs = {
               'action' : 'store_true',
@@ -396,7 +396,7 @@ they do not already exist.
         Define class for option that specfies blog to use if multiple blogs 
         setup in config file.
 '''
-class SetBlogname(btOption):
+class SetBlogname(CommandLineOption):
     args = ('-b','--blog')
     kwargs = {
               'action' : 'store',
@@ -417,7 +417,7 @@ in ~/.btrc or a config file specified on the command line.
     def run(self, header):
         try:
             header.setBlogParmsByName(self.blogname)
-        except headerError, err:
+        except HeaderError, err:
             print err
             sys.exit()
 
@@ -427,7 +427,7 @@ in ~/.btrc or a config file specified on the command line.
 
         Define class for option to schedule when a post should be published.
 '''
-class SetPosttime(btOption):
+class SetPosttime(CommandLineOption):
     args = ('-s', '--schedule')
     kwargs = {
               'action' : 'store',
@@ -456,7 +456,7 @@ MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
 
         Define class for option to write post to blog as a draft.
 '''
-class SetNoPublish(btOption):
+class SetNoPublish(CommandLineOption):
     args = ('--draft', )
     kwargs = {
               'action' : "store_false",
@@ -479,7 +479,7 @@ class SetNoPublish(btOption):
 '''
     SetAllBlogs
 '''
-class SetAllBlogs(btOption):
+class SetAllBlogs(CommandLineOption):
     args = ('-A', '--allblogs')
     kwargs = {
               'action' : "store_true",
