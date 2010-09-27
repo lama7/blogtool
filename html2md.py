@@ -14,7 +14,7 @@ except ImportError:
     LXML_PRESENT = False
 
 #################################################################################
-class html2md:
+class Html2Markdown:
     def __init__(self):
 
         # the blocklist is what will be returned as a joined string
@@ -357,6 +357,6 @@ class html2md:
 #
 #
 def convert(html):
-    md = html2md()
+    md = Html2Markdown()
  
     return md.convert(html)
