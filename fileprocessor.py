@@ -1,5 +1,5 @@
 
-from xmlproxy.proxybase import proxyError
+from xmlproxy.proxybase import ProxyError
 import utils
 import re
 import sys
@@ -152,7 +152,7 @@ No text for post, aborting.
                 except utils.utilsError, err:
                     print "File not found: %s" % err
                     sys.exit(1)
-                except proxyError, err:
+                except ProxyError, err:
                     print "Caught in FileProcessor._procText:"
                     print err
                     sys.exit()
@@ -185,7 +185,7 @@ No text for post, aborting.
         for c in header.categories:
             try:
                 cat_list = self._blogproxy.getCategories()
-            except proxyError, err:
+            except ProxyError, err:
                 print "Caught in FileProcessor._procPostCategories:"
                 print err
                 sys.exit()
@@ -336,7 +336,7 @@ No text for post, aborting.
             print "Updating '%s' on %s..." % (header.title, header.name)
             try:
                 postid = self._blogproxy.editPost(header.postid, post)
-            except proxyError, err:
+            except ProxyError, err:
                 print "Caught in FileProcessor.pushPost:"
                 print err
                 sys.exit()
@@ -351,7 +351,7 @@ No text for post, aborting.
 
         try:
             postid = self._blogproxy.publishPost(post)
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in FileProcessor.pushPost:"
             print err
             sys.exit()

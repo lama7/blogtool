@@ -1,5 +1,5 @@
 from headerparse import HeaderError
-from proxybase import proxyError
+from proxybase import ProxyError
 from optparse import OptionParser
 import sys
 import html2md
@@ -74,7 +74,7 @@ class DeletePost(CommandLineOption):
         proxy = _getProxy(header)
         try:
             postid = proxy.deletePost(self.postid)
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in options.DeletePost.run:"
             print err
             sys.exit()
@@ -119,7 +119,7 @@ class GetRecentTitles(CommandLineOption):
                                                                      blogname)
         try:
             recent = proxy.getRecentTitles(self.count)
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in options.GetRecentTitles.run:"
             print err
             sys.exit()
@@ -160,7 +160,7 @@ class GetCategories(CommandLineOption):
 
         try:
             cat_list = proxy.getCategories()
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in options.GetCategories.run:"
             print err
             sys.exit()
@@ -212,7 +212,7 @@ class AddCategory(CommandLineOption):
         # the first part that is not on the blog is returned
         try:
             blogcats = proxy.getCategories()
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in options.AddCategory.run:"
             print err
             sys.exit()
@@ -256,7 +256,7 @@ class UploadMediaFile(CommandLineOption):
             res = proxy.upload(uf)
         except utils.utilsError, err:
             print "File not found: %s" % err
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in options.UploadMediaFile"
             print err
 
@@ -295,7 +295,7 @@ a file capture could be used for updating with blogtool.
         proxy = _getProxy(header)
         try:
             post = proxy.getPost(self.postid)
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in options.GetPost.run:"
             print err
             sys.exit()

@@ -16,7 +16,7 @@ def getInst(url, user, password):
 # part of the initialization.  From that point, the various server methods
 # are "directly" accessible through my blogproxy class
 #
-class wpproxy(proxybase.blogproxy):
+class wpproxy(proxybase.BlogProxy):
     ############################################################################ 
     def getCategories(self):
         blogid = self._getBlogID()
@@ -28,7 +28,7 @@ class wpproxy(proxybase.blogproxy):
                                                                 self._password)
 
             except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-                raise proxybase.proxyError("wp.getCategories", error)
+                raise proxybase.ProxyError("wp.getCategories", error)
 
         return self._categories
 
@@ -50,7 +50,7 @@ class wpproxy(proxybase.blogproxy):
                                      newcStruct)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.newCategory", error)
+            raise proxybase.ProxyError("wp.newCategory", error)
 
         return id
 
@@ -64,7 +64,7 @@ class wpproxy(proxybase.blogproxy):
                                                  number)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.getRecentTitles", error)
+            raise proxybase.ProxyError("wp.getRecentTitles", error)
 
         return recent
 
@@ -82,7 +82,7 @@ class wpproxy(proxybase.blogproxy):
                                              post['publish'])
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.publishPost", error)
+            raise proxybase.ProxyError("wp.publishPost", error)
 
         return postid
 
@@ -96,7 +96,7 @@ class wpproxy(proxybase.blogproxy):
                                      post['publish'] )
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.editPost", error)
+            raise proxybase.ProxyError("wp.editPost", error)
 
         return postid
 
@@ -108,7 +108,7 @@ class wpproxy(proxybase.blogproxy):
                                            self._password)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.getPost", error)
+            raise proxybase.ProxyError("wp.getPost", error)
 
         return post
 
@@ -122,7 +122,7 @@ class wpproxy(proxybase.blogproxy):
                                                  True)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.deletePost", error)
+            raise proxybase.ProxyError("wp.deletePost", error)
 
         return postdelete
 
@@ -158,7 +158,7 @@ class wpproxy(proxybase.blogproxy):
                                                  mediaStruct )
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.proxyError("wp.upload", error)
+            raise proxybase.ProxyError("wp.upload", error)
 
         return res
 
@@ -173,7 +173,7 @@ class wpproxy(proxybase.blogproxy):
             if self._blogname == blog['blogName']:
                 return blog['blogid']
 
-        raise proxybase.proxyError("wp._getBlogID", 
+        raise proxybase.ProxyError("wp._getBlogID", 
                                    'bad name: %s' % self._blogname)
 
     ############################################################################ 
@@ -185,4 +185,4 @@ class wpproxy(proxybase.blogproxy):
                 self._blogs = self.wp.getUsersBlogs(self._username, 
                                                     self._password)
             except (xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-                raise proxybase.proxyError('wp._getUsersBlogs', error)
+                raise proxybase.ProxyError('wp._getUsersBlogs', error)

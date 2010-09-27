@@ -1,5 +1,5 @@
 from xmlrpclib import DateTime
-from proxybase import proxyError
+from proxybase import ProxyError
 import time
 import sys
 import os
@@ -164,7 +164,7 @@ def addCategory(proxy, c, substart, parentId):
         print "Adding %s with parent %s" % (c, parentId)
         try:
             parentId = proxy.newCategory(c, parentId)
-        except proxyError, err:
+        except ProxyError, err:
             print "Caught in utils.addCategory:"
             print err
             sys.exit()
