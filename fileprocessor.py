@@ -117,7 +117,6 @@ No text for post, aborting.
             description = posttext
             extended = ''
 
-#        self.md = markdown.Markdown(extensions=['typed_list'])
         html_desc = self._procText(description)
         if extended:
             html_ext = self._procText(extended)
@@ -149,7 +148,7 @@ No text for post, aborting.
                     ifile = utils.chkFile(ifile)
                     print "Attempting to upload '%s'..." % ifile
                     res = self._blogproxy.upload(ifile)
-                except utils.utilsError, err:
+                except utils.UtilsError, err:
                     print "File not found: %s" % err
                     sys.exit(1)
                 except ProxyError, err:
@@ -265,41 +264,34 @@ No text for post, aborting.
         print "Checking post categories..."
         self._procPostCategories(header)
 
+        rval = None
         try:
             post = utils.buildPost(header,
                                    html_desc,
                                    html_ext,
                                    timestamp = self.posttime,
                                    publish = self.publish )
-        except utils.utilsError, timestr:
+            if header.postid:
+                print "Updating '%s' on %s..." % (header.title, header.name)
+                self._blogproxy.editPost(header.postid, post)
+            else:
+                if self.publish:
+                    print "Publishing '%s' to '%s'" % (header.title, header.name) 
+                else:
+                    print "Publishing '%s' to '%s' as a draft" % (header.title,
+                                                                  header.name)
+                postid = self._blogproxy.publishPost(post)
+                rval = postid
+     
+        except utils.UtilsError, timestr:
             print timestr
             sys.exit()
-
-        if header.postid:
-            print "Updating '%s' on %s..." % (header.title, header.name)
-            try:
-                postid = self._blogproxy.editPost(header.postid, post)
-            except ProxyError, err:
-                print "Caught in FileProcessor.pushPost:"
-                print err
-                sys.exit()
-
-            return None
-
-        if self.publish:
-            print "Publishing '%s' to '%s'" % (header.title,  header.name) 
-        else:
-            print "Publishing '%s' to '%s' as a draft" % (header.title,
-                                                          header.name)
-
-        try:
-            postid = self._blogproxy.publishPost(post)
         except ProxyError, err:
             print "Caught in FileProcessor.pushPost:"
             print err
             sys.exit()
 
-        return postid
+        return rval
 
     ############################################################################ 
     def updateFile(self, filename, hdr_text, post_text):

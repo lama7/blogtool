@@ -6,7 +6,7 @@ import os
 import subprocess
 
 ################################################################################
-class utilsError(Exception):
+class UtilsError(Exception):
     def __init__(self, msg):
         self.message = msg
 
@@ -23,7 +23,7 @@ def chkfile(file):
     if not os.path.isfile(tmpfile):
         tmpfile = os.path.join(os.path.expanduser('~', tmpfile))
         if not os.path.isfile(tmpfile):
-            raise utilsError(file)
+            raise UtilsError(file)
 
     return tmpfile
 
@@ -117,7 +117,7 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
                 continue
         else:
             # the time format could not be parsed properly
-            raise utilsError("Unable to parse timestring: %s" % timestamp)
+            raise UtilsError("Unable to parse timestring: %s" % timestamp)
             
 
     return postStruct
