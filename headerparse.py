@@ -581,7 +581,7 @@ class Header():
                 self._named_parm = parm
                 break
         else:
-             raise HeaderError(HeaderError.NAMENOTFOUND)
+            raise HeaderError(HeaderError.NAMENOTFOUND)
 
     def proxy(self):
         if self._named_parm:

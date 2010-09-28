@@ -22,6 +22,8 @@ def main():
     runeditor = options.check(header)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
+        header.debug()
+        sys.exit()
         if utils.edit(fd, "TITLE: \nCATEGORIES: \n") == None:
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
@@ -45,12 +47,7 @@ def main():
 
         header.addParms(header_text, fp.allblogs)
         for hdr in header:
-            try:
-                postid = fp.pushPost(post_text, hdr)
-            except fileprocessor.FileProcessorError, err_msg:
-                print err_msg
-                sys.exit()
-
+            postid = fp.pushPost(post_text, hdr)
             if postid:
                 header.postid = postid
                 print 'Updating post file...'

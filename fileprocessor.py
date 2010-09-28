@@ -257,13 +257,9 @@ No text for post, aborting.
     '''
     def pushPost(self, post_text, header):
         self._blogproxy = header.proxy()
-        self._blogname = header.name
-
         html_desc, html_ext = self._procPost(post_text)
-
         print "Checking post categories..."
         self._procPostCategories(header)
-
         rval = None
         try:
             post = utils.buildPost(header,
@@ -276,13 +272,12 @@ No text for post, aborting.
                 self._blogproxy.editPost(header.postid, post)
             else:
                 if self.publish:
-                    print "Publishing '%s' to '%s'" % (header.title, header.name) 
+                    msg_text = "Publishing '%s' to '%s'" 
                 else:
-                    print "Publishing '%s' to '%s' as a draft" % (header.title,
-                                                                  header.name)
+                    msg_text = "Publishing '%s' to '%s' as a draft" 
+                print msg_text % (header.title, header.name)
                 postid = self._blogproxy.publishPost(post)
                 rval = postid
-     
         except utils.UtilsError, timestr:
             print timestr
             sys.exit()
