@@ -22,8 +22,6 @@ def main():
     runeditor = options.check(header)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
-        header.debug()
-        sys.exit()
         if utils.edit(fd, "TITLE: \nCATEGORIES: \n") == None:
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
