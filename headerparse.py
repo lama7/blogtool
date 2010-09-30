@@ -480,7 +480,7 @@ class Header():
             pl = self._named_parm
         elif self._parm_index != None:
             pl = self._parms[self._parm_index]    
-        elif len(self._parms) == 1:
+        elif self._parms and len(self._parms) >= 1:
             pl = self._parms[0]
         else:
             raise AttributeError
@@ -571,6 +571,22 @@ class Header():
             self._reconcile(newparms)
         else:
             self._parms = newparms
+
+    def buildPostHeader(self, options):
+        headertext = ''
+        pl = self._parms
+        if not pl:
+            headertext = "TITLE: \nCATEGORIES: \n"
+            headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
+        else:
+            for p in pl[0].__dict__:
+                if not pl[0].get(p) and p not in ['posttime', 'postid', 'blog',
+                                                  'tags']:
+                    headertext += '%s: \n' % p.upper()
+            if len(pl) > 1 and not options.flags()['allblogs']:
+                headertext += 'BLOG: \n'
+            
+        return headertext
 
     def setBlogParmsByName(self, name = ''):
         if not self._parms:

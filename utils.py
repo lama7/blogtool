@@ -38,12 +38,14 @@ def chkfile(file):
 def edit(fh, hdr_string = ''):
     editor = os.getenv('EDITOR', 'editor')
 
-    if hdr_string:
-        try:
+    try:
+        if not hdr_string:
             fh.write("TITLE: \nCATEGORIES: \n")
-            fh.flush()
-        except IOError, e:
-            print "Could not write header text to file."
+        else:
+            fh.write(hdr_string) 
+        fh.flush()
+    except IOError, e:
+        print "Could not write header text to file."
 
     try:
         rcode = subprocess.call([editor, fh.name])

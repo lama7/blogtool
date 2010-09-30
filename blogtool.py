@@ -20,9 +20,10 @@ def main():
     '''
     header = Header()
     runeditor = options.check(header)
+    emptyheader_text = header.buildPostHeader(options)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
         fd = NamedTemporaryFile()
-        if utils.edit(fd, "TITLE: \nCATEGORIES: \n") == None:
+        if utils.edit(fd, emptyheader_text) == None:
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
 
@@ -35,7 +36,8 @@ def main():
             print "Processing post file %s..." % filename
 
         try:
-            header_text, post_text = fp.parsePostFile(filename)
+            header_text, post_text = fp.parsePostFile(filename,
+                                                      emptyheader_text)
         except FileProcessorRetry:
             filelist.insert(0, filename)
             continue

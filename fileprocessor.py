@@ -227,7 +227,7 @@ No text for post, aborting.
         text portion can be sent to the appropriate blogs.
 
     '''
-    def parsePostFile(self, filename):
+    def parsePostFile(self, filename, hdrtext):
         try:
             f = open(filename, 'r')
             lines = f.readlines()
@@ -238,7 +238,7 @@ No text for post, aborting.
                 print err
                 sys.exit()
 
-            utils.edit(f, "TITLE: \nCATEGORIES: \n")
+            utils.edit(f, hdrtext)
             raise FileProcessorRetry()
         else:
             f.close()
