@@ -3,7 +3,7 @@
 from options import OptionProcessor
 from tempfile import NamedTemporaryFile
 from headerparse import Header
-import fileprocessor
+from fileprocessor import FileProcessor, FileProcessorError, FileProcessorRetry
 import utils
 import sys
 
@@ -28,7 +28,7 @@ def main():
 
     ###########################################################################
     tmp_fn = None
-    fp = fileprocessor.FileProcessor(**options.flags())
+    fp = FileProcessor(**options.flags())
     for filename in filelist:
         if tmp_fn != filename:
             tmp_fn = filename
@@ -36,10 +36,10 @@ def main():
 
         try:
             header_text, post_text = fp.parsePostFile(filename)
-        except fileprocessor.FileProcessorRetry:
+        except FileProcessorRetry:
             filelist.insert(0, filename)
             continue
-        except fileprocessor.FileProcessorError, err_msg:
+        except FileProcessorError, err_msg:
             print err_msg
             continue
 
