@@ -68,9 +68,7 @@ class FileProcessorRetry(Exception):
 class FileProcessor():
 
     if MARKDOWN_PRESENT:
-#        md = markdown.Markdown(extensions=['typed_list'])
-        md = markdown.Markdown()
-
+        md = markdown.Markdown(extensions=['typed_list'])
 
     EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
 
