@@ -251,7 +251,7 @@ class UploadMediaFile(CommandLineOption):
     def run(self, header):
         try:
             proxy = _getProxy(header)
-            uf = utils.chkFile(opts.uploadfile)
+            uf = utils.chkfile(opts.uploadfile)
             print "Attempting to upload '%s'..." % uf
             res = proxy.upload(uf)
         except utils.UtilsError, err:
@@ -346,7 +346,7 @@ class SetConfigFile(CommandLineOption):
                 return 
         else:
            try:
-               rcf = utils.chkFile(self.configfile)
+               rcf = utils.chkfile(self.configfile)
            except utils.UtilsError, err:
                print "Config file not found: %s" % self.configfile
                sys.exit(1)

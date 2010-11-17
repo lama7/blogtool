@@ -143,7 +143,7 @@ No text for post, aborting.
                     continue
 
                 try:
-                    ifile = utils.chkFile(ifile)
+                    ifile = utils.chkfile(ifile)
                     print "Attempting to upload '%s'..." % ifile
                     res = self._blogproxy.upload(ifile)
                 except utils.UtilsError, err:
