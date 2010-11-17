@@ -243,7 +243,7 @@ class UploadMediaFile(CommandLineOption):
 
     def check(self, opts):
         if opts.uploadfile:
-            self.uploafile = opts.uploadfile
+            self.uploadfile = opts.uploadfile
             return True
 
         return False
@@ -251,7 +251,7 @@ class UploadMediaFile(CommandLineOption):
     def run(self, header):
         try:
             proxy = _getProxy(header)
-            uf = utils.chkfile(opts.uploadfile)
+            uf = utils.chkfile(self.uploadfile)
             print "Attempting to upload '%s'..." % uf
             res = proxy.upload(uf)
         except utils.UtilsError, err:
