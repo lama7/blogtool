@@ -21,7 +21,7 @@ class UtilsError(Exception):
 def chkfile(file):
     tmpfile = file
     if not os.path.isfile(tmpfile):
-        tmpfile = os.path.join(os.path.expanduser('~', tmpfile))
+        tmpfile = os.path.join(os.path.expanduser('~'), tmpfile)
         if not os.path.isfile(tmpfile):
             raise UtilsError(file)
 
