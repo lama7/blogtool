@@ -256,7 +256,18 @@ class Html2Markdown:
 
     def _img(self, img):
         # processes img tag if it's on it's own
-        return "%s\n" % etree.tostring(img)
+        attrib_str = ''
+        for a in img.attrib.keys():
+            if a not in ['alt', 'title', 'src']:
+                attrib_str = "%s{@%s=%s}" % (attrib_str, a, img.attrib[a])
+        if 'title' not in img.attrib.keys():
+            img.set('title', '')
+        img_text = "![%s%s](%s %s)" % (img.attrib['alt'], 
+                                       attrib_str,
+                                       img.attrib['src'],
+                                       img.attrib['title'])
+        return img_text
+#        return "%s\n" % etree.tostring(img)
            
     def _a(self, a):
         # build return string based on anchor tag
