@@ -241,10 +241,10 @@ class Html2Markdown:
         # for linebreaks and multiple paragraphs
         for line in li_text.splitlines(1):
             if li_pre:
-                text += "%s%s%s" % (' '*4*li_level, li_pre, line)
+                text += "%s%s%s" % (' '*4*li_level, li_pre, line.lstrip())
                 li_pre = ''
             elif not line.isspace():
-                text += "%s%s" % (' '*4*(li_level + 1), line)
+                text += "%s%s" % (' '*4*(li_level + 1), line.lstrip())
             else:
                 # most likely a linefeed...
                 text += line
