@@ -82,10 +82,21 @@ class Html2Markdown:
             if len(self._tagstack) != 0:
                 continue
 
+#            print "TAG: %s" % e.tag
+#            print "TEXT: %s" % e.text
+#            print "Attrib: %s" % e.attrib
+#            print "TAIL: %s" % e.tail
+#            print etree.tostring(e)
+
+       
             # the 'page break' in a post is a comment- <!--more-->
             # catch that here if it exists
             if event == 'comment':
                 self._blocklist.append('<!--more-->\n')
+                # of course, comment's can have tails as well...
+                tail = self._checktail(e)
+                if tail:
+                    self._blocklist.append(tail.lstrip().rstrip() + '\n')
             # back to the first level, start processing with the current 
             # block tag
             elif e.tag in self._blockHandlers:
@@ -94,13 +105,20 @@ class Html2Markdown:
                 # we can safely fix that here by stripping and appending a 
                 # single '\n'- the join below will add the second one to the 
                 # final text
-                text = text.rstrip() + '\n'
-                self._blocklist.append(text)
+                self._blocklist.append(text.rstrip() + '\n')
                 e.clear() # don't need this anymore
+            elif e.tag in self._inlineHandlers:
+                text = self._inlineHandlers[e.tag](e)
+                # what to do with text?  Since it's an inline, chances are it
+                # needs to be appended to the text in the last entry in the
+                # _blocklist...
+                last = self._blocklist[-1]
+                last = last.rstrip() + ' ' + text.rstrip() + '\n'
+                self._blocklist[-1] = last
 
-                # see if we created any links, if so add them now
-                if len(self._links):
-                    self._blocklist.append(self._reflinkText())
+            # see if we created any links, if so add them now
+            if len(self._links):
+                self._blocklist.append(self._reflinkText())
 
         return '\n'.join(self._blocklist)
 
@@ -138,12 +156,12 @@ class Html2Markdown:
                         print se.tag
                         sys.exit()
 
-        # if text already has a trailing '\n' then return it, otherwise
-        # append a '\n'
-        if text.endswith('\n'):
-            return text
+        # return text with any tail
+        tail = self._checktail(p)
+        if tail:
+            return text.rstrip() + '\n\n' + tail.lstrip().rstrip() + '\n'
         else:
-            return text + '\n'
+            return text.rstrip() + '\n'
 
     def _blockquote(self, bq, text):
         # we need to accomodate nesting here- but also the simplest case 
@@ -223,10 +241,10 @@ class Html2Markdown:
         # for linebreaks and multiple paragraphs
         for line in li_text.splitlines(1):
             if li_pre:
-                text += "%s%s%s" % (' '*4*li_level, li_pre, line)
+                text += "%s%s%s" % (' '*4*li_level, li_pre, line.lstrip())
                 li_pre = ''
             elif not line.isspace():
-                text += "%s%s" % (' '*4*(li_level + 1), line)
+                text += "%s%s" % (' '*4*(li_level + 1), line.lstrip())
             else:
                 # most likely a linefeed...
                 text += line
@@ -238,7 +256,18 @@ class Html2Markdown:
 
     def _img(self, img):
         # processes img tag if it's on it's own
-        return "%s\n" % etree.tostring(img)
+        attrib_str = ''
+        for a in img.attrib.keys():
+            if a not in ['alt', 'title', 'src']:
+                attrib_str = "%s{@%s=%s}" % (attrib_str, a, img.attrib[a])
+        if 'title' not in img.attrib.keys():
+            img.set('title', '')
+        img_text = "![%s%s](%s %s)" % (img.attrib['alt'], 
+                                       attrib_str,
+                                       img.attrib['src'],
+                                       img.attrib['title'])
+        return img_text
+#        return "%s\n" % etree.tostring(img)
            
     def _a(self, a):
         # build return string based on anchor tag
@@ -291,7 +320,7 @@ class Html2Markdown:
                 text += self._inlineHandlers[child.tag](child)
             elif child.text and child.text.find('--more--') != -1:
                 text = text.rstrip() + "\n\n<!--more-->\n\n"
-            else:
+            elif child.tag in self._blockHandlers:
                 # when switching from inline tags to block tags, add
                 # a linefeed
                 if text and not text.endswith('\n'):
@@ -299,6 +328,11 @@ class Html2Markdown:
                 text = self._blockHandlers[child.tag](child, text)
                 if child.tag == 'p':
                     text = text.rstrip() + '\n\n'
+            else: # PITFALL!!! for now, catches a 'comment'
+                text = text.rstrip() + "\n\n<!--more-->\n\n"
+                tail = self._checktail(child)
+                if tail:
+                    text = text + tail.lstrip().rstrip() + '\n'
 
         return text
 
