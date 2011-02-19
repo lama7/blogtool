@@ -112,9 +112,8 @@ class Html2Markdown:
                 # what to do with text?  Since it's an inline, chances are it
                 # needs to be appended to the text in the last entry in the
                 # _blocklist...
-                last = self._blocklist[-1]
-                last = last.rstrip() + ' ' + text.rstrip() + '\n'
-                self._blocklist[-1] = last
+                self._blocklist[-1] = self._blocklist[-1].rstrip() + ' ' + \
+                                      text.rstrip() + '\n'
 
             # see if we created any links, if so add them now
             if len(self._links):
