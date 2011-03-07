@@ -46,13 +46,16 @@ class TagHandler:
             text = e.text
         return text + self._txtConverter.childHandler(e)
 
-    def getTagAttributes(self, e)
+    def getTagAttributes(self, e):
         attr_str = ''
         if self.tag == 'img':
             for a in e.attrib.keys():
                 if a not in ['alt', 'title', 'src']:
                     attr_str += "{@%s=%s}" % (a, e.attrib[a])
-            return attr_str
+        else:
+            for a in e.attrib.keys():
+                attr_str += "{@%s=%s}" % (a, e.attrib[a])
+        return attr_str
 
 
 #################################################################################
@@ -224,7 +227,7 @@ class OListHandler(TagHandler):
         li_pre = li_pre
         for line in listitem.splitlines(1):
             if li_pre:
-                text += "%s%s" % (' '*(4*self._level) + li_pre, line.lstrip())
+                text += "%s" % (' '*(4*self._level) + li_pre + line.lstrip())
                 li_pre = ''
             elif not line.isspace():
                 text += "%s" % (' '*(4*(self._level+1)) + line.lstrip())
@@ -279,7 +282,7 @@ class Html2Markdown:
             nhtml = str(unicodedata.normalize('NFKD', html))
         except TypeError:
             nhtml = html
-        print nhtml
+#        print nhtml
         root = etree.fromstring("<post>%s</post>" % nhtml)
 
         # if the 'post' tag has text, then grab it and add it as the first
@@ -342,7 +345,7 @@ class Html2Markdown:
                 text = handler.convert(element)
                 break
         else:
-            if element.text.find('more') != -1:
+            if element.text and element.text.find('more') != -1:
                 text = "### MORE ###\n\n"
             else:
                 return etree.tostring(element)
