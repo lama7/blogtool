@@ -48,7 +48,7 @@ class TagHandler:
 
     def getTagAttributes(self, e):
         attr_str = ''
-        if self.tag == 'img':
+        if e.tag == 'img':
             for a in e.attrib.keys():
                 if a not in ['alt', 'title', 'src']:
                     attr_str += "{@%s=%s}" % (a, e.attrib[a])
@@ -147,13 +147,21 @@ class BlockQuoteHandler(TagHandler):
     tag = 'blockquote'
     prepend_char = '> '
 
-    def convert(self, bq):
-        text = self.getElementText(bq).rstrip() + '\n'
-        tail = self._txtConverter.checkTail(bq)
-        if tail:
-            tail = '\n' + tail.lstrip()
+    def __init__(self, txtConverter):
+        self._txtConverter = txtConverter
+        self._level = -1
 
-        return self._txtConverter.prepend(text, self.prepend_char) + tail
+    def convert(self, bq):
+#text = self.getElementText(bq).rstrip() + '\n'
+        self._level += 1
+
+        text = self.getElementText(bq)
+        text = self._txtConverter.prepend(text, self.prepend_char)
+        if self._level > 0:
+            text += '\n'
+
+        self._level -= 1
+        return text
 
 #################################################################################
 class PreHandler(TagHandler):
@@ -189,10 +197,6 @@ class OListHandler(TagHandler):
 
     tag = 'ol'
 
-    def __init__(self, txtConverter):
-        self._txtConverter = txtConverter
-        self._level = None
-
     def convert(self, ol):
         # We'll handle this a little differently- we have to manually manage
         # each list item- if we just call 'getElementText' on the 'ol' tag, it
@@ -202,24 +206,26 @@ class OListHandler(TagHandler):
         # think it's safe to assume it has children, so setup the loop and go.
         # NOTE: This approach also means there is not need for an 'li' tag
         #       handler
-        if self._level == None:
-            self._level = 0
-        else:
-            self._level += 1
+        self._txtConverter.listlevel += 1
 
         listitems = [ self.getElementText(li) for li in ol ]           
-        return self.listloop(listitems)
+        text = self.listloop(listitems)
+        self._txtConverter.listlevel -= 1
+        return text
 
     def listloop(self, listitems):
         item_number = 1 
         text = ''
         for listitem in listitems:
+            # if a list without p-tags around the items, make sure the items are
+            # separated with a '\n'
+            if not listitem.endswith('\n'):
+                listitem += '\n'
             listitem_pre = "%s." % item_number
-            listitem_pre += ' '*(4 - len(listiem_pre))
+            listitem_pre += ' '*(4 - len(listitem_pre))
             item_number += 1
             text += self.formatListItem(listitem, listitem_pre)
 
-        self._level -= 1
         return text
 
     def formatListItem(self, listitem, li_pre):
@@ -227,10 +233,12 @@ class OListHandler(TagHandler):
         li_pre = li_pre
         for line in listitem.splitlines(1):
             if li_pre:
-                text += "%s" % (' '*(4*self._level) + li_pre + line.lstrip())
+                text += "%s" % (' '*(4*self._txtConverter.listlevel) + li_pre + 
+                                                                   line.lstrip())
                 li_pre = ''
             elif not line.isspace():
-                text += "%s" % (' '*(4*(self._level+1)) + line.lstrip())
+                text += "%s" % (' '*(4*(self._txtConverter.listlevel+1)) + 
+                                                                   line.lstrip())
             else:
                 # most likely a linefeed...
                 text += line
@@ -246,6 +254,8 @@ class UListHandler(OListHandler):
         listitem_pre = '*   '
         text = ''
         for listitem in listitems:
+            if not listitem.endswith('\n'):
+                listitem += '\n'
             text += self.formatListItem(listitem, listitem_pre)
 
         return text
@@ -273,6 +283,7 @@ class Html2Markdown:
         self._taghandlers.append(StrikeHandler(self))
         self._taghandlers.append(ImgHandler(self))
 
+        self.listlevel = -1
         self._blocklist = []
         self._reflinks = 0
         self._links = []
@@ -325,6 +336,7 @@ class Html2Markdown:
             return ''
 
     def prepend(self, text, pretext):
+#        print text
         rtext = ''
         for line in text.splitlines():
             rtext += "%s%s\n" % (pretext, line)
