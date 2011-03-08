@@ -152,10 +152,9 @@ class BlockQuoteHandler(TagHandler):
         self._level = -1
 
     def convert(self, bq):
-#text = self.getElementText(bq).rstrip() + '\n'
         self._level += 1
 
-        text = self.getElementText(bq)
+        text = self.getElementText(bq).rstrip() + '\n'
         text = self._txtConverter.prepend(text, self.prepend_char)
         if self._level > 0:
             text += '\n'
