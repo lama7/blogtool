@@ -141,6 +141,24 @@ class PHandler(TagHandler):
     def convert(self, p):
         return self.getElementText(p) + '\n\n'
 
+
+#################################################################################
+class HeadingHandler(TagHandler):
+    
+    tag = re.compile('^h(\d)$')
+
+    def test(self, e):
+        m = self.tag.match(e.tag)
+        if m:
+            self._hlevel = m.group(1)
+            return True
+
+        return False
+
+    def convert(self, h):
+        return "#"*int(self._hlevel) + self.getElementText(h) + '\n\n'
+
+        
 #################################################################################
 class BlockQuoteHandler(TagHandler):
 
@@ -272,6 +290,7 @@ class Html2Markdown:
         self._taghandlers.append(BlockQuoteHandler(self))
         self._taghandlers.append(UListHandler(self))
         self._taghandlers.append(OListHandler(self))
+        self._taghandlers.append(HeadingHandler(self))
         self._taghandlers.append(PreHandler(self))
         self._taghandlers.append(CodeBlockHandler(self))
         self._taghandlers.append(AHandler(self))
@@ -359,7 +378,7 @@ class Html2Markdown:
             if element.text and element.text.find('more') != -1:
                 text = "### MORE ###\n\n"
             else:
-                return etree.tostring(element)
+                return etree.tostring(element, pretty_print=True)
 
         return text + self.checkTail(element)
 
