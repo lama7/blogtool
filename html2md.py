@@ -31,14 +31,10 @@ class TagHandler:
         return False
 
     def convert(self, e):
-        addspace = False
-        if e.text.endswith(' '):
-            addspace = True
-        text = "%s%s%s" % (self.inlinechars, e.text.rstrip(), self.inlinechars)
-        if addspace:
-            text += ' '
-
-        return text
+        '''
+            To be over-ridden by subclasses.
+        '''
+        pass
 
     def getElementText(self, e):
         text = ''
@@ -48,18 +44,26 @@ class TagHandler:
 
     def getElementAttributes(self, e):
         attr_str = ''
-        if e.tag == 'img':
-            for a in e.attrib.keys():
-                if a not in ['alt', 'title', 'src']:
-                    attr_str += "{@%s=%s}" % (a, e.attrib[a])
-        else:
-            for a in e.attrib.keys():
-                attr_str += "{@%s=%s}" % (a, e.attrib[a])
+        for a in e.attrib.keys():
+            attr_str += "{@%s=%s}" % (a, e.attrib[a])
         return attr_str
 
 
 #################################################################################
-class InlineCodeHandler(TagHandler):
+class InlineTagHandler(TagHandler):
+
+    def convert(self, e):
+        addspace = False
+        if e.text.endswith(' '):
+            addspace = True
+        text = "%s%s%s" % (self.inlinechars, e.text.rstrip(), self.inlinechars)
+        if addspace:
+            text += ' '
+
+        return text
+
+#################################################################################
+class InlineCodeHandler(InlineTagHandler):
 
     tag = 'code'
     inlinechars = '`'
@@ -70,19 +74,19 @@ class InlineCodeHandler(TagHandler):
         return False
 
 #################################################################################
-class EmHandler(TagHandler):
+class EmHandler(InlineTagHandler):
     
     tag = 'em'
     inlinechars = '*'
 
 #################################################################################
-class StrongHandler(TagHandler):
+class StrongHandler(InlineTagHandler):
     
     tag = 'strong'
     inlinechars = '**'
 
 #################################################################################
-class StrikeHandler(TagHandler):
+class StrikeHandler(InlineTagHandler):
 
     tag = 'strike'
     inlinechars = '-'
@@ -141,6 +145,13 @@ class ImgHandler(TagHandler):
                                        img.attrib['title'])
         return img_text
 
+    def getElementAttributes(self, img):
+        attr_str = ''
+        for a in img.attrib.keys():
+            if a not in ['alt', 'title', 'src']:
+                attr_str += "{@%s=%s}" % (a, img.attrib[a])
+        return attr_str
+ 
 #################################################################################
 class PHandler(TagHandler):
     
@@ -160,6 +171,8 @@ class HeadingHandler(TagHandler):
     tag = re.compile('^h(\d)$')
 
     def test(self, e):
+        if not isinstance(e.tag, str):
+            return False
         m = self.tag.match(e.tag)
         if m:
             self._hlevel = m.group(1)
@@ -338,6 +351,7 @@ class Html2Markdown:
         # spacing
         for element in root:
             text = self._tagHandler(element)
+#            print text
             if text:
                 if self._isblock(element):
                     self._blocklist.append(text.rstrip() + '\n')
@@ -413,8 +427,10 @@ class Html2Markdown:
             return True
         if e.tag == 'code' and e.getparent().tag == 'pre':
             return True
-        # we need to pick up comments- they are to be treated as block tags
-        if e.tag not in self._inlinetags:
+        # we need to pick up comments- but their tag is not a string, but a 
+        # function so, until this stops working, we'll check the tag instance
+        # for a string and return True if it isn't
+        if not isinstance(e.tag, str):
             return True
 
         return False
