@@ -46,7 +46,7 @@ class TagHandler:
             text = e.text
         return text + self._txtConverter.childHandler(e)
 
-    def getTagAttributes(self, e):
+    def getElementAttributes(self, e):
         attr_str = ''
         if e.tag == 'img':
             for a in e.attrib.keys():
@@ -96,6 +96,14 @@ class BrHandler(TagHandler):
         return '  \n'
 
 #################################################################################
+class HorizontalRuleHandler(TagHandler):
+    
+    tag = 'hr'
+
+    def convert(self, hr):
+        return "* * *\n\n"
+
+#################################################################################
 class AHandler(TagHandler):
 
     tag = 'a'
@@ -124,7 +132,7 @@ class ImgHandler(TagHandler):
 
     def convert(self, img):
         # processes img tag if it's on it's own
-        attrib_str = self.getTagAttributes(img)
+        attrib_str = self.getElementAttributes(img)
         if 'title' not in img.attrib.keys():
             img.set('title', '')
         img_text = "![%s%s](%s %s)" % (img.attrib['alt'], 
@@ -139,7 +147,11 @@ class PHandler(TagHandler):
     tag = 'p'
 
     def convert(self, p):
-        return self.getElementText(p) + '\n\n'
+        attrs = self.getElementAttributes(p)
+        if attrs:
+            attrs += '\n'
+       
+        return attrs + self.getElementText(p) + '\n\n'
 
 
 #################################################################################
@@ -156,7 +168,8 @@ class HeadingHandler(TagHandler):
         return False
 
     def convert(self, h):
-        return "#"*int(self._hlevel) + self.getElementText(h) + '\n\n'
+        return "#"*int(self._hlevel) + self.getElementAttributes(p) + \
+                self.getElementText(h) + '\n\n'
 
         
 #################################################################################
@@ -300,6 +313,7 @@ class Html2Markdown:
         self._taghandlers.append(BrHandler(self))
         self._taghandlers.append(StrikeHandler(self))
         self._taghandlers.append(ImgHandler(self))
+        self._taghandlers.append(HorizontalRuleHandler(self))
 
         self.listlevel = -1
         self._blocklist = []
