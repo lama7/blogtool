@@ -14,6 +14,11 @@ except ImportError:
     LXML_PRESENT = False
 
 #################################################################################
+class Html2MdException(Exception):
+
+    pass
+
+#################################################################################
 '''
     class TagHandler
 
@@ -50,6 +55,12 @@ class TagHandler:
 
 
 #################################################################################
+'''
+    InlineTagHandler
+
+    Subclass of TagHandler- base class for inline tag objects like <em>, <code>,
+    <strong>, etc. due to common conversion processing
+'''
 class InlineTagHandler(TagHandler):
 
     def convert(self, e):
@@ -61,6 +72,18 @@ class InlineTagHandler(TagHandler):
             text += ' '
 
         return text
+
+#################################################################################
+'''
+    FixedStringTagHandler
+
+    subclass of TagHandler, baseclass for tag objects that process tags which
+    return a fixed string, eg <br> and <hr> tags
+'''
+class FixedStringTagHandler(TagHandler):
+
+    def convert(self, e):
+        return self.conversion_str
 
 #################################################################################
 class InlineCodeHandler(InlineTagHandler):
@@ -92,21 +115,17 @@ class StrikeHandler(InlineTagHandler):
     inlinechars = '-'
 
 #################################################################################
-class BrHandler(TagHandler):
+class BrHandler(FixedStringTagHandler):
     
     tag = 'br'
-
-    def convert(self, e):
-        return '  \n'
+    conversion_str = '  \n'
 
 #################################################################################
-class HorizontalRuleHandler(TagHandler):
+class HorizontalRuleHandler(FixedStringTagHandler):
     
     tag = 'hr'
-
-    def convert(self, hr):
-        return "* * *\n\n"
-
+    conversion_str = '* * *\n\n'
+    
 #################################################################################
 class AHandler(TagHandler):
 
@@ -118,6 +137,9 @@ class AHandler(TagHandler):
 
         # now that we have all the text, format it in markdown syntax
         s = "[%s][%s]" % (s, self._txtConverter._reflinks)
+
+        if 'href' not in a.attrib.keys():
+            raise Html2MdException
         
         # save the reflinks
         if 'title' not in a.attrib.keys():
@@ -137,6 +159,9 @@ class ImgHandler(TagHandler):
     def convert(self, img):
         # processes img tag if it's on it's own
         attrib_str = self.getElementAttributes(img)
+        if 'alt' not in img.attrib.keys() and 'src' not in img.attrib.keys():
+            raise Html2MdException
+
         if 'title' not in img.attrib.keys():
             img.set('title', '')
         img_text = "![%s%s](%s %s)" % (img.attrib['alt'], 
@@ -181,7 +206,7 @@ class HeadingHandler(TagHandler):
         return False
 
     def convert(self, h):
-        return "#"*int(self._hlevel) + self.getElementAttributes(p) + \
+        return "#"*int(self._hlevel) + self.getElementAttributes(h) + \
                 self.getElementText(h) + '\n\n'
 
         
@@ -253,6 +278,15 @@ class OListHandler(TagHandler):
 
         listitems = [ self.getElementText(li) for li in ol ]           
         text = self.listloop(listitems)
+
+        # edge case- if a nested list and thies is a previous sibling that
+        # isnt' a block tag, prepend a '\n'
+        if self._txtConverter.listlevel > 0:
+            previous_sibling = ol.getprevious()
+            if previous_sibling is not None and \
+               not self._txtConverter._isblock(previous_sibling):
+                text = '\n' + text
+
         self._txtConverter.listlevel -= 1
         return text
 
@@ -288,6 +322,16 @@ class OListHandler(TagHandler):
 
         return text
 
+    def getElementText(self, e):
+        text = ''
+        if e.text and not e.text.isspace():
+            text = e.text
+        # edge case- if an 'li' tag with text and the next element is another
+        # list add a '\n'
+        if text and e.tag == 'li' and len(e) != 0 and e[0].tag in ['ol', 'ul']:
+            text += '\n'
+        return text + self._txtConverter.childHandler(e)
+
 #################################################################################
 class UListHandler(OListHandler):
 
@@ -308,7 +352,8 @@ class UListHandler(OListHandler):
 class Html2Markdown:
 
     _inlinetags = ['code', 'em', 'strong', 'br', 'strike', 'img', 'a']
-    _blocktags = ['p', 'blockquote', 'li', 'ul', 'ol', 'pre']
+    _blocktags = ['p', 'blockquote', 'li', 'ul', 'ol', 'pre', 'h1', 'h2', 'h3',
+                  'h4', 'h5', 'h6', 'hr']
 
     def __init__(self):
         self._taghandlers = []
@@ -350,16 +395,25 @@ class Html2Markdown:
         # would return a large blob of text.  This way we can control the block
         # spacing
         for element in root:
-            text = self._tagHandler(element)
-#            print text
-            if text:
-                if self._isblock(element):
-                    self._blocklist.append(text.rstrip() + '\n')
-                else:
-                    # some kind of inline tag so we'll for now we'll just append
-                    # to the previous block
-                    self._blocklist[-1] = self._blocklist[-1].rstrip() + \
-                                         ' ' + text.rstrip() + '\n'
+            links_snapshot = len(self._links)
+            try:
+                text = self._tagHandler(element)
+#                print text
+                if text:
+                    if self._isblock(element):
+                        self._blocklist.append(text.rstrip() + '\n')
+                    else:
+                        # some kind of inline tag so we'll for now we'll just append
+                        # to the previous block
+                        self._blocklist[-1] = self._blocklist[-1].rstrip() + \
+                                             ' ' + text.rstrip() + '\n'
+            except Html2MdException:
+                while len(self._links) != links_snapshot:
+                    self._links.pop()
+                    self._reflinks -= 1
+
+                self._blocklist.append(etree.tostring(element, 
+                                                      pretty_print=True))
 
         # now add any referenced links as the final block
         if len(self._links):
@@ -370,8 +424,11 @@ class Html2Markdown:
         text = ''
         if len(element) != 0:
             for child in element:
-#                print "Child: %s" % child.tag
-                text += self._tagHandler(child)
+                try:
+#                    print "Child: %s" % child.tag
+                    text += self._tagHandler(child)
+                except Html2MdException:
+                    raise
         return text
 
     def checkTail(self, element):
