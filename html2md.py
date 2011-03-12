@@ -78,7 +78,7 @@ class InlineTagHandler(TagHandler):
     FixedStringTagHandler
 
     subclass of TagHandler, baseclass for tag objects that process tags which
-    return a fixed string, eg <br> and <hr> tags
+    return a fixed string, eg <br /> and <hr /> tags
 '''
 class FixedStringTagHandler(TagHandler):
 
@@ -132,24 +132,36 @@ class AHandler(TagHandler):
     tag = 'a'
 
     def convert(self, a):
+        if 'href' not in a.attrib.keys():
+            raise Html2MdException
+
         # build return string based on anchor tag
         s = self.getElementText(a)
 
-        # now that we have all the text, format it in markdown syntax
-        s = "[%s][%s]" % (s, self._txtConverter._reflinks)
+        # if the link is within the current document, use inline style
+        if a.attrib['href'].startswith('#'):
+            return "[%s](%s)" % (s, a.attrib['href'])
 
-        if 'href' not in a.attrib.keys():
-            raise Html2MdException
-        
-        # save the reflinks
-        if 'title' not in a.attrib.keys():
-            a.set('title', '')
-        self._txtConverter._links.append((self._txtConverter._reflinks, 
-                                          a.attrib['href'],
-                                          a.attrib['title']))
-        self._txtConverter._reflinks += 1
-            
-        return s
+        reflink = self._searchlink(a.attrib['href'])
+        if reflink is None:
+            reflink = self._txtConverter._reflinks
+            self._txtConverter._reflinks += 1
+            # save the reflinks
+            if 'title' not in a.attrib.keys():
+                a.set('title', '')
+            self._txtConverter._links.append((reflink, 
+                                              a.attrib['href'],
+                                              a.attrib['title']))
+
+        # now that we have all the text, format it in markdown syntax
+        return "[%s][%s]" % (s, reflink)
+       
+    def _searchlink(self, linktext):
+        for t in self._txtConverter._links:
+            if linktext == t['href']:
+                return self._txtConverter._links.index(t)
+
+        return None
 
 #################################################################################
 class ImgHandler(TagHandler):
@@ -206,9 +218,15 @@ class HeadingHandler(TagHandler):
         return False
 
     def convert(self, h):
-        return "#"*int(self._hlevel) + self.getElementAttributes(h) + \
-                self.getElementText(h) + '\n\n'
+        h_text = self.getElementAttributes(h) + self.getElementText(h)
+        if h.tag == 'h1':
+            hdr_char = '='
+        elif h.tag == 'h2':
+            hdr_char = '-'
+        else:
+            return "#"*int(self._hlevel) + h_text + '\n\n'
 
+        return h_text + '\n' + hdr_char*len(h_text) + '\n\n'
         
 #################################################################################
 class BlockQuoteHandler(TagHandler):
@@ -413,11 +431,12 @@ class Html2Markdown:
                     self._reflinks -= 1
 
                 self._blocklist.append(etree.tostring(element, 
-                                                      pretty_print=True))
+                                                      pretty_print=True).rstrip()
+                                                                          + '\n')
+            # now add any referenced links as the final block
+            if links_snapshot < len(self._links):
+                self._blocklist.append(self._refLinkText(links_snapshot))
 
-        # now add any referenced links as the final block
-        if len(self._links):
-            self._blocklist.append(self._refLinkText())
         return '\n'.join(self._blocklist)
 
     def childHandler(self, element):
@@ -434,7 +453,8 @@ class Html2Markdown:
     def checkTail(self, element):
         if element.tail and not element.tail.isspace():
 #            print "TAIL: %s" % element.tag
-            return element.tail.lstrip('\n')
+#            return element.tail.lstrip('\n')
+            return element.tail
         else:
             return ''
 
@@ -467,10 +487,10 @@ class Html2Markdown:
 
         return text + self.checkTail(element)
 
-    def _refLinkText(self):
+    def _refLinkText(self, first_link):
         text = ''
-        for ref in self._links:
-            text += "[%s]: %s" % (ref[0], ref[1])
+        for ref in self._links[first_link:]:
+            text += "  [%s]: %s" % (ref[0], ref[1])
             if ref[2]:
                 text += ''' "%s"''' % (ref[2])
             text += '\n'
