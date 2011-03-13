@@ -59,6 +59,8 @@ class HeaderParms():
         self.xmlrpc = ''
         self.username = ''
         self.password = ''
+        self.comment = ''
+        self.parentid = ''
 
     def __str__(self):
         return """
@@ -71,7 +73,9 @@ class HeaderParms():
     blogtype:        %s
     xmlrpc_location: %s
     username:        %s
-    password:        %s""" % ( self.title,
+    password:        %s
+    comment:         %s
+    parentid:        %s""" % ( self.title,
                                self.categories,
                                self.tags,
                                self.postid,
@@ -80,7 +84,9 @@ class HeaderParms():
                                self.blogtype,
                                self.xmlrpc,
                                self.username,
-                               self.password )
+                               self.password,
+                               self.comment,
+                               self.parentid )
 
     def __contains__(self, item):
         if item in self.__dict__:
@@ -147,7 +153,9 @@ class HeaderParse():
                               ( 'PASSWORD', Keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'TAGS',  Keyword(self.KTYPE_MULTIVAL) ),
                               ( 'POSTTIME',  Keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'BLOGTYPE', Keyword(self.KTYPE_SINGLEVAL) )
+                              ( 'BLOGTYPE', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'COMMENT', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'PARENTID', Keyword(self.KTYPE_SINGLEVAL) )
                              ]
                             )
 
@@ -575,16 +583,20 @@ class Header():
     def buildPostHeader(self, options):
         headertext = ''
         pl = self._parms
-        if not pl:
+        if options.flags()['comment']:
+            headertext = "COMMENT: \n"
+        elif not pl:
             headertext = "TITLE: \nCATEGORIES: \n"
             headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
         else:
             for p in pl[0].__dict__:
                 if not pl[0].get(p) and p not in ['posttime', 'postid', 'blog',
-                                                  'tags']:
+                                                  'tags', 'comment', 'parentid']:
                     headertext += '%s: \n' % p.upper()
-            if len(pl) > 1 and not options.flags()['allblogs']:
-                headertext += 'BLOG: \n'
+
+        if len(pl) > 1 and self._named_parm is None \
+           and not options.flags()['allblogs']:
+            headertext += 'BLOG: \n'
             
         return headertext
 

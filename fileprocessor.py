@@ -245,44 +245,58 @@ No text for post, aborting.
 
     ############################################################################ 
     '''
-        pushPost
+        pushContent
 
         Takes care of pushing a post up to a blog as defined by a header.
         Creates a blogproxy, processes the blog categories and builds a post
         object prior to determining if the post is just being updated or if it
         is a new post.  If the post is successfully sent, the post file is
         updated with the post ID assigned at the blog.
+        Added: Also can be used to write a comment for the blog- thus the name
+               change from pushPost to pushContent
     '''
-    def pushPost(self, post_text, header):
+    def pushContent(self, post_text, header):
+        rval = None
         self._blogproxy = header.proxy()
         html_desc, html_ext = self._procPost(post_text)
-        print "Checking post categories..."
-        self._procPostCategories(header)
-        rval = None
-        try:
-            post = utils.buildPost(header,
-                                   html_desc,
-                                   html_ext,
-                                   timestamp = self.posttime,
-                                   publish = self.publish )
-            if header.postid:
-                print "Updating '%s' on %s..." % (header.title, header.name)
-                self._blogproxy.editPost(header.postid, post)
-            else:
-                if self.publish:
-                    msg_text = "Publishing '%s' to '%s'" 
+        if self.comment:
+            print "Publishing comment to post %s..." % header.comment
+            comment = utils.buildComment(header, html_desc)
+            try:
+                commentid = self._blogproxy.newComment(header.comment,
+                                                       comment)
+            except ProxyError, err:
+                print "Caught in FileProcessor.pushContent:"
+                print err
+                sys.exit()
+            rval = commentid
+        else:
+            print "Checking post categories..."
+            self._procPostCategories(header)
+            try:
+                post = utils.buildPost(header,
+                                       html_desc,
+                                       html_ext,
+                                       timestamp = self.posttime,
+                                       publish = self.publish )
+                if header.postid:
+                    print "Updating '%s' on %s..." % (header.title, header.name)
+                    self._blogproxy.editPost(header.postid, post)
                 else:
-                    msg_text = "Publishing '%s' to '%s' as a draft" 
-                print msg_text % (header.title, header.name)
-                postid = self._blogproxy.publishPost(post)
-                rval = postid
-        except utils.UtilsError, timestr:
-            print timestr
-            sys.exit()
-        except ProxyError, err:
-            print "Caught in FileProcessor.pushPost:"
-            print err
-            sys.exit()
+                    if self.publish:
+                        msg_text = "Publishing '%s' to '%s'" 
+                    else:
+                        msg_text = "Publishing '%s' to '%s' as a draft" 
+                    print msg_text % (header.title, header.name)
+                    postid = self._blogproxy.publishPost(post)
+                    rval = postid
+            except utils.UtilsError, timestr:
+                print timestr
+                sys.exit()
+            except ProxyError, err:
+                print "Caught in FileProcessor.pushContent:"
+                print err
+                sys.exit()
 
         return rval
 

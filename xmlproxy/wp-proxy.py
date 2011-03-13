@@ -182,6 +182,32 @@ class WordpressProxy(proxybase.BlogProxy):
 
         return comments
 
+    ############################################################################ 
+    def newComment(self, postid, comment):
+        blogid = self._getBlogID()
+        try:
+            commentid = self.wp.newComment(blogid,
+                                           self._username,
+                                           self._password,
+                                           postid,
+                                           comment)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.newComment", error)
+       
+        return commentid
+
+    ############################################################################ 
+    def deleteComment(self, commentid):
+        blogid = self._getBlogID()
+        try:
+            status = self.wp.deleteComment(blogid,
+                                           self._username,
+                                           self._password,
+                                           commentid)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.newComment", error)
+
+        return status
 
     ############################################################################ 
     ### START PRIVATE METHODS 

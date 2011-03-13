@@ -13,6 +13,9 @@ class UtilsError(Exception):
     def __str__(self):
         return self.message
 
+class dataStruct:
+    pass
+
 ################################################################################
 '''
     attempts to verify a file exists by checking the home directory as well as
@@ -123,6 +126,25 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
             
 
     return postStruct
+
+################################################################################
+'''
+    buildComment
+'''
+def buildComment(header, comment_text):
+#    commentStruct = {}
+#    commentStruct['comment_parent'] = header.parentid or 0
+#    commentStruct['content'] = comment_text
+#    commentStruct['author'] = ''
+#    commentStruct['author_url'] = ''
+#    commentStruct['author_email'] = ''
+    commentStruct = dataStruct()
+    commentStruct.comment_parent = header.parentid or 0
+    commentStruct.content = comment_text
+    commentStruct.author = ''
+    commentStruct.author_url = ''
+    commentStruct.author_email = ''
+    return commentStruct
 
 ################################################################################
 '''

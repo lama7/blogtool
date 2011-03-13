@@ -47,9 +47,9 @@ def main():
 
         header.addParms(header_text, fp.allblogs)
         for hdr in header:
-            postid = fp.pushPost(post_text, hdr)
-            if postid:
-                header.postid = postid
+            rval = fp.pushContent(post_text, hdr)
+            if rval and not header.comment:
+                header.postid = rval
                 print 'Updating post file...'
                 fp.updateFile(filename, '%s' % header, post_text) 
 
