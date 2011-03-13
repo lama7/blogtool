@@ -68,3 +68,8 @@ class BlogProxy(xmlrpclib.ServerProxy):
     def upload(self, filename):
         pass
 
+    def getCommentCount(self, postid):
+        pass
+
+    def getComments(self, postid):
+        pass

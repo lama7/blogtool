@@ -163,6 +163,27 @@ class WordpressProxy(proxybase.BlogProxy):
         return res
 
     ############################################################################ 
+    def getComments(self, postid):
+        blogid = self._getBlogID()
+        count = self._getCommentCount(postid)
+        comment_struct = {}
+        comment_struct['post_id'] = postid
+        comment_struct['status'] = ''
+        comment_struct['offset'] = 0
+        comment_struct['number'] = count['approved']
+
+        try:
+            comments = self.wp.getComments(blogid,
+                                           self._username,
+                                           self._password,
+                                           comment_struct)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.getComments", error)
+
+        return comments
+
+
+    ############################################################################ 
     ### START PRIVATE METHODS 
 
     ############################################################################ 
@@ -186,3 +207,19 @@ class WordpressProxy(proxybase.BlogProxy):
                                                     self._password)
             except (xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
                 raise proxybase.ProxyError('wp._getUsersBlogs', error)
+
+    ############################################################################ 
+    def _getCommentCount(self, postid):
+
+        blogid = self._getBlogID()
+        try:
+            count = self.wp.getCommentCount(blogid,
+                                            self._username,
+                                            self._password,
+                                            postid)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.getCommentCount", error)
+
+        return count
+
+

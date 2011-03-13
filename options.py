@@ -318,6 +318,42 @@ a file capture could be used for updating with blogtool.
 
 ################################################################################
 '''
+    GetComments
+'''
+class GetComments(CommandLineOption):
+    args = ('-r', '--readcomments')
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'comments_postid',
+              'help' : """
+Retrieves the comments for a specific post.
+"""
+             }
+
+    def check(self, opts):
+        if opts.comments_postid:
+            self.postid = opts.comments_postid
+            return True
+
+        return False
+
+    def run(self, header):
+        proxy = _getProxy(header)
+
+        comments = proxy.getComments(self.postid)
+        comments.reverse()
+        for comment in comments:
+            t_converted = datetime.datetime.strptime(comment['date_created_gmt'].value,
+                                                     "%Y%m%dT%H:%M:%S")
+            print 'Comment ID: %s' % comment['comment_id']
+            print 'Parent ID:  %s' % comment['parent']
+            print 'Time:       %s' % t_converted
+            print 'Author:     %s' % comment['author']
+            print 'Email:      %s' % comment['author_email']
+            print '\n' + comment['content'].rstrip() + '\n\n'
+
+################################################################################
+'''
     SetConfigFile
 
         Define class to handle parsing of a config file for blogtool.
@@ -519,6 +555,7 @@ class OptionProcessor:
         self.o_list.append(AddCategory())
         self.o_list.append(GetPost())
         self.o_list.append(UploadMediaFile())
+        self.o_list.append(GetComments())
 
         self.parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
         for option in self.o_list:
