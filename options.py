@@ -590,7 +590,7 @@ Will cause post to be published to all blogs listed in the rc file.
     SetPostComment
 '''
 class SetPostComment(CommandLineOption):
-    args = ('-w', '--writecomment')
+    args = ('--comment', )
     kwargs = {
               'action' : 'store_true',
               'dest' : 'comment',

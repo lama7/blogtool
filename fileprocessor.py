@@ -260,10 +260,10 @@ No text for post, aborting.
         self._blogproxy = header.proxy()
         html_desc, html_ext = self._procPost(post_text)
         if self.comment:
-            print "Publishing comment to post %s..." % header.comment
+            print "Publishing comment to post %s..." % header.postid
             comment = utils.buildComment(header, html_desc)
             try:
-                commentid = self._blogproxy.newComment(header.comment,
+                commentid = self._blogproxy.newComment(header.postid,
                                                        comment)
             except ProxyError, err:
                 print "Caught in FileProcessor.pushContent:"

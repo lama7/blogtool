@@ -79,7 +79,7 @@ class WordpressProxy(proxybase.BlogProxy):
                                              self._username,
                                              self._password,
                                              post,
-                                             post['publish'])
+                                             post.publish)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.publishPost", error)
@@ -93,7 +93,7 @@ class WordpressProxy(proxybase.BlogProxy):
                                      self._username,
                                      self._password,
                                      post,
-                                     post['publish'] )
+                                     post.publish)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.editPost", error)
