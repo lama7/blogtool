@@ -59,6 +59,7 @@ class HeaderParms():
         self.xmlrpc = ''
         self.username = ''
         self.password = ''
+        self.parentid = ''
 
     def __str__(self):
         return """
@@ -71,7 +72,8 @@ class HeaderParms():
     blogtype:        %s
     xmlrpc_location: %s
     username:        %s
-    password:        %s""" % ( self.title,
+    password:        %s
+    parentid:        %s""" % ( self.title,
                                self.categories,
                                self.tags,
                                self.postid,
@@ -80,7 +82,8 @@ class HeaderParms():
                                self.blogtype,
                                self.xmlrpc,
                                self.username,
-                               self.password )
+                               self.password,
+                               self.parentid )
 
     def __contains__(self, item):
         if item in self.__dict__:
@@ -147,7 +150,8 @@ class HeaderParse():
                               ( 'PASSWORD', Keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'TAGS',  Keyword(self.KTYPE_MULTIVAL) ),
                               ( 'POSTTIME',  Keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'BLOGTYPE', Keyword(self.KTYPE_SINGLEVAL) )
+                              ( 'BLOGTYPE', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'PARENTID', Keyword(self.KTYPE_SINGLEVAL) )
                              ]
                             )
 
@@ -463,7 +467,10 @@ class Header():
                                           '_named_parm' in self.__dict__):
             if self._parms:
                 if self._named_parm:
-                    pl = self._named_parm
+                    if len(self._parms) == 1:
+                        pl = self._parms[0]
+                    else:
+                        pl = self._named_parm
                 elif self._parm_index != None:
                     pl = self._parms[self._parm_index]
                 else:
@@ -477,7 +484,10 @@ class Header():
                 
     def __getattr__(self, name):
         if self._named_parm:
-            pl = self._named_parm
+            if self._parms and len(self._parms) == 1:
+                pl = self._parms[0]
+            else:
+                pl = self._named_parm
         elif self._parm_index != None:
             pl = self._parms[self._parm_index]    
         elif self._parms and len(self._parms) >= 1:
@@ -508,19 +518,7 @@ class Header():
         return self
 
     def _reconcile(self, newparms):
-        for parmlist in newparms:
-            if parmlist.name:
-                for default_parmlist in self._default_parms:
-                    if default_parmlist.name == parmlist.name:
-                        break
-                else:
-                    continue
-            else:
-                i = newparms.index(parmlist)
-                if i >= len(self._default_parms):
-                    continue
-                default_parmlist = self._default_parms[i]
-
+        def _merge(default_parmlist, parmlist):
             for (k, v) in parmlist.__dict__.iteritems():
                 if k in ['categories', 'tags']:
                     if len(v) != 0:
@@ -531,6 +529,24 @@ class Header():
                 default = default_parmlist.get(k)
                 if default:
                     setattr(parmlist, k, default)
+
+        if self._named_parm and len(newparms) == 1:
+            _merge(self._named_parm, newparms[0])
+        else:
+            for parmlist in newparms:
+                if parmlist.name:
+                    for default_parmlist in self._default_parms:
+                        if default_parmlist.name == parmlist.name:
+                            break
+                    else:
+                        continue
+                else:
+                    i = newparms.index(parmlist)
+                    if i >= len(self._default_parms):
+                        continue
+                    default_parmlist = self._default_parms[i]
+
+                _merge(default_parmlist, parmlist)
 
         if '_parms' in self.__dict__:
             del self._parms[:]
@@ -575,16 +591,20 @@ class Header():
     def buildPostHeader(self, options):
         headertext = ''
         pl = self._parms
-        if not pl:
+        if options.flags()['comment']:
+            headertext = "POSTID: \n"
+        elif not pl:
             headertext = "TITLE: \nCATEGORIES: \n"
             headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
         else:
             for p in pl[0].__dict__:
                 if not pl[0].get(p) and p not in ['posttime', 'postid', 'blog',
-                                                  'tags']:
+                                                  'tags', 'comment', 'parentid']:
                     headertext += '%s: \n' % p.upper()
-            if len(pl) > 1 and not options.flags()['allblogs']:
-                headertext += 'BLOG: \n'
+
+        if len(pl) > 1 and self._named_parm is None \
+           and not options.flags()['allblogs']:
+            headertext += 'BLOG: \n'
             
         return headertext
 
@@ -601,7 +621,10 @@ class Header():
 
     def proxy(self):
         if self._named_parm:
-            pl = self._named_parm
+            if len(self._parms) == 1:
+                pl = self._parms[0]
+            else:
+                pl = self._named_parm
         elif not self._parms:
             raise HeaderError(HeaderError.NOCONFIGFILE)
         elif len(self._parms) == 1:

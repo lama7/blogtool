@@ -14,6 +14,10 @@ class UtilsError(Exception):
         return self.message
 
 ################################################################################
+class dataStruct:
+    pass
+
+################################################################################
 '''
     attempts to verify a file exists by checking the home directory as well as
     the absolute path to the file
@@ -77,22 +81,22 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
                   "%I:%M%p %m/%d/%Y",    #hh:mmAM/PM MM/DD/YYYY
                 ]
 
-    postStruct = {}
+    postStruct = dataStruct()
 
-    postStruct['title'] = hdrobj.title
-    postStruct['categories'] = hdrobj.categories
-    postStruct['mt_keywords'] = hdrobj.tags
-    postStruct['description'] = desc
-    postStruct['mt_excerpt'] = ''
-    postStruct['mt_allow_commands'] = 1
-    postStruct['mt_allow_pings'] = 1
-    postStruct['mt_text_more'] = more
-    postStruct['mt_convert_breaks'] = 1
+    postStruct.title = hdrobj.title
+    postStruct.categories = hdrobj.categories
+    postStruct.mt_keywords = hdrobj.tags
+    postStruct.description = desc
+    postStruct.mt_excerpt = ''
+    postStruct.mt_allow_commands = 1
+    postStruct.mt_allow_pings = 1
+    postStruct.mt_text_more = more
+    postStruct.mt_convert_breaks = 1
 
     if publish:
-        postStruct['publish'] = 1
+        postStruct.publish = 1
     else:
-        postStruct['publish'] = 0
+        postStruct.publish = 0
 
     # the post can be scheduled expicitly through the timestamp parm, or
     # via the hdrobj- precedence is given to the timestamp parm
@@ -111,7 +115,7 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
 
                 # the following merely makes the string into a xmlrpc datetime
                 # object
-                postStruct['dateCreated'] = DateTime(posttime)
+                postStruct.dateCreated = DateTime(posttime)
 
                 break
 
@@ -123,6 +127,19 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
             
 
     return postStruct
+
+################################################################################
+'''
+    buildComment
+'''
+def buildComment(header, comment_text):
+    commentStruct = dataStruct()
+    commentStruct.comment_parent = header.parentid or 0
+    commentStruct.content = comment_text
+    commentStruct.author = ''
+    commentStruct.author_url = ''
+    commentStruct.author_email = ''
+    return commentStruct
 
 ################################################################################
 '''

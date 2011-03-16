@@ -79,6 +79,39 @@ class DeletePost(CommandLineOption):
             print err
             sys.exit()
 
+        return None
+
+################################################################################
+'''
+    DeleteComment
+'''
+class DeleteComment(CommandLineOption):
+    args = ('-D', '--deletecomment')
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'del_comment_id',
+              'help' : 'Delete a comment from a blog'
+             }
+
+    def check(self, opts):
+        if opts.del_comment_id:
+            self.comment_id = opts.del_comment_id
+            return True
+        return False
+        
+    def run(self, header):
+        print "Deleting comment %s" % self.comment_id
+
+        proxy = _getProxy(header)
+        try:
+            postid = proxy.deleteComment(self.comment_id)
+        except ProxyError, err:
+            print "Caught in options.DeleteComment.run:"
+            print err
+            sys.exit
+
+        return None
+
 ################################################################################
 '''
     GetRecentTitles
@@ -134,6 +167,8 @@ class GetRecentTitles(CommandLineOption):
                                   post['title'] + padding,
                                   t_converted.strftime("%b %d, %Y at %H:%M"))
 
+        return None
+
 
 ################################################################################
 '''
@@ -178,6 +213,8 @@ class GetCategories(CommandLineOption):
 
            str += cat['categoryDescription']
            print str
+
+        return None
 
 ################################################################################
 ''' 
@@ -228,6 +265,8 @@ class AddCategory(CommandLineOption):
             # the '*' is the unpacking operator
             utils.addCategory(proxy, self.catname, *t)
 
+        return None
+
 ################################################################################
 '''
     UploadMediaFile
@@ -259,6 +298,8 @@ class UploadMediaFile(CommandLineOption):
         except ProxyError, err:
             print "Caught in options.UploadMediaFile"
             print err
+
+        return None
 
 ################################################################################
 '''
@@ -316,6 +357,47 @@ a file capture could be used for updating with blogtool.
 
         print '\n' + text
 
+        return None
+
+################################################################################
+'''
+    GetComments
+'''
+class GetComments(CommandLineOption):
+    args = ('-r', '--readcomments')
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'comments_postid',
+              'help' : """
+Retrieves the comments for a specific post.
+"""
+             }
+
+    def check(self, opts):
+        if opts.comments_postid:
+            self.postid = opts.comments_postid
+            return True
+
+        return False
+
+    def run(self, header):
+        proxy = _getProxy(header)
+
+        comments = proxy.getComments(self.postid)
+        comments.reverse()
+        for comment in comments:
+            t_converted = datetime.datetime.strptime(comment['date_created_gmt'].value,
+                                                     "%Y%m%dT%H:%M:%S")
+            print 'Comment ID: %s' % comment['comment_id']
+            print 'Parent ID:  %s' % comment['parent']
+            print 'Time:       %s' % t_converted
+            print 'Author:     %s' % comment['author']
+            print 'Email:      %s' % comment['author_email']
+            content = html2md.convert(comment['content'])
+            print '\n' + content
+
+        return None
+
 ################################################################################
 '''
     SetConfigFile
@@ -363,6 +445,8 @@ class SetConfigFile(CommandLineOption):
         if hdrstr:
             header.setDefaults(hdrstr)
    
+        return None
+
 ################################################################################
 '''
     SetAddCategory
@@ -420,6 +504,7 @@ in ~/.btrc or a config file specified on the command line.
         except HeaderError, err:
             print err
             sys.exit()
+        return None
 
 ################################################################################
 '''
@@ -502,6 +587,29 @@ Will cause post to be published to all blogs listed in the rc file.
 
 ################################################################################
 '''
+    SetPostComment
+'''
+class SetPostComment(CommandLineOption):
+    args = ('--comment', )
+    kwargs = {
+              'action' : 'store_true',
+              'dest' : 'comment',
+              'default' : False,
+              'help' : "Will cause text to be posted as a comment."
+             }
+
+    def check(self, opts):
+        self.comment = opts.comment
+        if opts.comment:
+            return True
+        else:
+            return False
+
+    def run(self, header):
+        return 'runeditor'
+
+################################################################################
+'''
     OptionProcessor
 '''
 class OptionProcessor:
@@ -513,12 +621,15 @@ class OptionProcessor:
         self.o_list.append(SetNoPublish())
         self.o_list.append(SetPosttime())
         self.o_list.append(SetAllBlogs())
+        self.o_list.append(SetPostComment())
         self.o_list.append(DeletePost())
+        self.o_list.append(DeleteComment())
         self.o_list.append(GetRecentTitles())
         self.o_list.append(GetCategories())
         self.o_list.append(AddCategory())
         self.o_list.append(GetPost())
         self.o_list.append(UploadMediaFile())
+        self.o_list.append(GetComments())
 
         self.parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
         for option in self.o_list:
@@ -534,6 +645,7 @@ class OptionProcessor:
                 'publish'     : self.o_list[3].publish,
                 'posttime'    : self.o_list[4].posttime,
                 'allblogs'    : self.o_list[5].allblogs,
+                'comment'     : self.o_list[6].comment,
                }
 
     def check(self, header):
