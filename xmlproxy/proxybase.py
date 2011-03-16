@@ -76,3 +76,9 @@ class BlogProxy(xmlrpclib.ServerProxy):
 
     def deleteComment(self, commentid):
         pass
+
+    def editComment(self, commentid, comment):
+        pass
+
+    def getComment(self, commentid):
+        pass
