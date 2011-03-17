@@ -205,7 +205,34 @@ class WordpressProxy(proxybase.BlogProxy):
                                            self._password,
                                            commentid)
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.ProxyError("wp.newComment", error)
+            raise proxybase.ProxyError("wp.deleteComment", error)
+
+        return status
+
+    ############################################################################ 
+    def editComment(self, commentid, comment):
+        blogid = self._getBlogID()
+        try:
+            status = self.wp.editComment(blogid,
+                                         self._username,
+                                         self._password,
+                                         commentid,
+                                         comment)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.editComment", error)
+
+        return status
+
+    ############################################################################ 
+    def getComment(self, commentid):
+        blogid = self._getBlogID()
+        try:
+            status = self.wp.getComment(blogid,
+                                        self._username,
+                                        self._password,
+                                        commentid)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.editComment", error)
 
         return status
 

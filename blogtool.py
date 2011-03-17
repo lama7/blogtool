@@ -1,9 +1,20 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-from options import OptionProcessor
-from tempfile import NamedTemporaryFile
+"""
+    blogtool.py
+
+    The entry module for the blogtool command line utility.
+
+    Program initialization, option and file processing are all started from
+    here.
+"""
+
 from headerparse import Header
 from fileprocessor import FileProcessor, FileProcessorError, FileProcessorRetry
+from options import OptionProcessor
+
+from tempfile import NamedTemporaryFile
+
 import utils
 import sys
 

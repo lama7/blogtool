@@ -59,7 +59,12 @@ class HeaderParms():
         self.xmlrpc = ''
         self.username = ''
         self.password = ''
+        self.commentstatus = ''
+        self.commentid = ''
         self.parentid = ''
+        self.author = ''
+        self.authorurl = ''
+        self.authoremail = ''
 
     def __str__(self):
         return """
@@ -73,7 +78,12 @@ class HeaderParms():
     xmlrpc_location: %s
     username:        %s
     password:        %s
-    parentid:        %s""" % ( self.title,
+    commentstatus:   %s
+    commentid:       %s
+    parentid:        %s
+    author:          %s
+    authorurl:       %s
+    authoremail:     %s""" % ( self.title,
                                self.categories,
                                self.tags,
                                self.postid,
@@ -83,7 +93,12 @@ class HeaderParms():
                                self.xmlrpc,
                                self.username,
                                self.password,
-                               self.parentid )
+                               self.commentstatus,
+                               self.commentid,
+                               self.parentid,
+                               self.author,
+                               self.authorurl,
+                               self.authoremail )
 
     def __contains__(self, item):
         if item in self.__dict__:
@@ -104,6 +119,14 @@ class HeaderParms():
                 self.tags,
                 self.postid,
                 self.posttime)
+
+    def getCommentMeta(self):
+        return (self.commentstatus,
+                self.commentid,
+                self.parentid,
+                self.author,
+                self.authorurl,
+                self.authoremail)
 
     def getXMLrpc(self):
         return (self.blogtype,
@@ -151,7 +174,12 @@ class HeaderParse():
                               ( 'TAGS',  Keyword(self.KTYPE_MULTIVAL) ),
                               ( 'POSTTIME',  Keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'BLOGTYPE', Keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'PARENTID', Keyword(self.KTYPE_SINGLEVAL) )
+                              ( 'COMMENTID', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'PARENTID', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'AUTHOR', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'AUTHORURL', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'AUTHOREMAIL', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'COMMENTSTATUS', Keyword(self.KTYPE_SINGLEVAL) )
                              ]
                             )
 

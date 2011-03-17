@@ -1,9 +1,14 @@
 from headerparse import HeaderError
 from proxybase import ProxyError
+from fileprocessor import FileProcessor, FileProcessorError
+
 from optparse import OptionParser
-import sys
+from tempfile import NamedTemporaryFile
+
 import html2md
 import utils
+
+import sys
 import datetime
 import os
 
@@ -400,6 +405,54 @@ Retrieves the comments for a specific post.
 
 ################################################################################
 '''
+    EditComment
+
+    Class to handle editing of comments.
+'''
+class EditComment(CommandLineOption):
+    args = ('--editcomment', )
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'commentid',
+              'help' : "Edit a comment already on the blog."
+             }
+
+    def check(self, opts):
+        if opts.commentid:
+            self.commentid = opts.commentid
+            return True
+        return False
+
+    def run(self, header):
+        proxy = _getProxy(header)
+        comment = proxy.getComment(self.commentid)
+        commenttext = "COMMENTID: %s\n" % (self.commentid)
+        commenttext += "PARENTID: %s\n" % (comment['parent'])
+        commenttext += "COMMENTSTATUS: %s\n" % (comment['status'])
+        commenttext += "AUTHOR: %s\n" % (comment['author'])
+        commenttext += "AUTHORURL: %s\n" % (comment['author_url'])
+        commenttext += "AUTHOREMAIL: %s\n" % (comment['author_email'])
+        commenttext += "\n%s" % (html2md.convert(comment['content']))
+        
+        fd = NamedTemporaryFile()
+        if utils.edit(fd, commenttext) == None:
+            print "Nothing to do with comment."
+        fp = FileProcessor(**{'comment' : True})
+        try:
+            header_text, commenttext = fp.parsePostFile(fd.name, '')
+        except FileProcessorError, err_msg:
+            print err_msg
+            sys.exit()
+        
+        header.addParms(header_text, False)
+        rval = fp.pushContent(commenttext, header)
+        if rval:
+            print "Comment %s updated." % self.commentid
+
+        return None
+
+################################################################################
+'''
     SetConfigFile
 
         Define class to handle parsing of a config file for blogtool.
@@ -595,7 +648,7 @@ class SetPostComment(CommandLineOption):
               'action' : 'store_true',
               'dest' : 'comment',
               'default' : False,
-              'help' : "Will cause text to be posted as a comment."
+              'help' : "Will cause text to be posted as a new comment."
              }
 
     def check(self, opts):
@@ -630,6 +683,7 @@ class OptionProcessor:
         self.o_list.append(GetPost())
         self.o_list.append(UploadMediaFile())
         self.o_list.append(GetComments())
+        self.o_list.append(EditComment())
 
         self.parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
         for option in self.o_list:
