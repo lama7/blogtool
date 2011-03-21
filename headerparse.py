@@ -621,13 +621,28 @@ class Header():
         pl = self._parms
         if options.flags()['comment']:
             headertext = "POSTID: \n"
+            if len(pl) > 1 and self._named_parm is None:
+                headertext += "AUTHOR: \nAUTHOREMAIL: \n"
+            elif len(pl) == 1 or self._named_parm is not None:
+                for attrname in ['author', 'authoremail']:
+                    if not pl[0].get(attrname):
+                        headertext += "%s: \n" % attrname.upper()
         elif not pl:
             headertext = "TITLE: \nCATEGORIES: \n"
             headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
         else:
-            for p in pl[0].__dict__:
-                if not pl[0].get(p) and p not in ['posttime', 'postid', 'blog',
-                                                  'tags', 'comment', 'parentid']:
+            for attrname in pl[0].__dict__:
+                if not pl[0].get(attrname) and attrname not in ['posttime',
+                                                                'postid',
+                                                                'blog', 'tags',
+                                                                'comment',
+                                                                'parentid',
+                                                                'commentstatus',
+                                                                'commentid',
+                                                                'parentid',
+                                                                'author',
+                                                                'authorurl',
+                                                                'authoremail']:
                     headertext += '%s: \n' % p.upper()
 
         if len(pl) > 1 and self._named_parm is None \
