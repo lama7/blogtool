@@ -1,5 +1,8 @@
 from xmlrpclib import DateTime
 from proxybase import ProxyError
+
+from tempfile import NamedTemporaryFile
+
 import time
 import sys
 import os
@@ -14,8 +17,59 @@ class UtilsError(Exception):
         return self.message
 
 ################################################################################
+'''
+    dataStruct
+    
+    Empty container class for creating miscellaneous data structures.
+'''
 class dataStruct:
     pass
+
+################################################################################
+'''
+    _convertTime
+
+    Function that attempts to convert a date time string to a datetime object
+    in UTC time.  Defaults to assuming string is a local time representation.
+'''
+def _convertTime(timestr, local = True):
+    '''
+        List of formats to attempt to match up.
+    '''
+    time_fmts = [
+                  "%Y%m%dT%H:%M",        #YYYYMMDDThh:mm
+                  "%Y%m%dT%I:%M%p",      #YYYYMMDDThh:mmAM/PM
+                  "%Y%m%dT%H:%M:%S",     #YYYYMMDDThh:mm:ss
+                  "%Y%m%dT%I:%M:%S%p",   #YYYYMMDDThh:mm:ssAM/PM
+                  "%b %d, %Y %H:%M",     #Month Day, Year hour:min
+                  "%b %d, %Y %I:%M%p",   #Month Day, Year hour:min AM/PM
+                  "%m/%d/%Y %H:%M",      #MM/DD/YYYY hh:mm
+                  "%m/%d/%Y %I:%M%p",    #MM/DD/YYYY hh:mmAM/PM
+                  "%H:%M %m/%d/%Y",      #hh:mm MM/DD/YYYY
+                  "%I:%M%p %m/%d/%Y",    #hh:mmAM/PM MM/DD/YYYY
+                ]
+
+    # the timestamp is provided as "local time" so we need to convert it to
+    # UTC time- do this by converting timestamp to seconds from epoch, then
+    # to UTC time.  Finally, pass it to xmlrpclib for formatting
+    for tf in time_fmts:
+        try:
+            timeStruct = time.strptime(timestr, tf)
+            if local:
+                utctime = time.gmtime(time.mktime(timeStruct))
+            else:
+                utctime = timeStruct
+            posttime = time.strftime("%Y%m%dT%H:%M:%SZ", utctime)
+
+            # the following merely makes the string into a xmlrpc datetime
+            # object
+            return DateTime(posttime)
+
+        except ValueError:
+            continue
+    else:
+        # the time format could not be parsed properly
+        raise UtilsError("Unable to parse timestring: %s" % timestamp)
 
 ################################################################################
 '''
@@ -39,8 +93,10 @@ def chkfile(file):
     fh:  filehandle of file to edit
     hdr_string:  optional string to write to file 
 '''
-def edit(fh, hdr_string = ''):
+def edit(hdr_string = '', fh = None):
     editor = os.getenv('EDITOR', 'editor')
+    if fh == None:
+        fh = NamedTemporaryFile()
 
     try:
         if not hdr_string:
@@ -58,7 +114,7 @@ def edit(fh, hdr_string = ''):
         return None
 
     if rcode == 0:
-        return True
+        return fh
     else:
         return None
 
@@ -67,19 +123,6 @@ def edit(fh, hdr_string = ''):
     returns a post dictionary suitable for publishing
 '''
 def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
-
-    time_fmts = [
-                  "%Y%m%dT%H:%M",        #YYYYMMDDThh:mm
-                  "%Y%m%dT%I:%M%p",      #YYYYMMDDThh:mmAM/PM
-                  "%Y%m%dT%H:%M:%S",     #YYYYMMDDThh:mm:ss
-                  "%Y%m%dT%I:%M:%S%p",   #YYYYMMDDThh:mm:ssAM/PM
-                  "%b %d, %Y %H:%M",     #Month Day, Year hour:min
-                  "%b %d, %Y %I:%M%p",   #Month Day, Year hour:min AM/PM
-                  "%m/%d/%Y %H:%M",      #MM/DD/YYYY hh:mm
-                  "%m/%d/%Y %I:%M%p",    #MM/DD/YYYY hh:mmAM/PM
-                  "%H:%M %m/%d/%Y",      #hh:mm MM/DD/YYYY
-                  "%I:%M%p %m/%d/%Y",    #hh:mmAM/PM MM/DD/YYYY
-                ]
 
     postStruct = dataStruct()
 
@@ -104,27 +147,7 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
         timestamp = hdrobj.posttime
 
     if timestamp != None:
-        # the timestamp is provided as "local time" so we need to convert it to
-        # UTC time- do this by converting timestamp to seconds from epoch, then
-        # to UTC time.  Finally, pass it to xmlrpclib for formatting
-        for tf in time_fmts:
-            try:
-                timeStruct = time.strptime(timestamp, tf)
-                utctime = time.gmtime(time.mktime(timeStruct))
-                posttime = time.strftime("%Y%m%dT%H:%M:%SZ", utctime)
-
-                # the following merely makes the string into a xmlrpc datetime
-                # object
-                postStruct.dateCreated = DateTime(posttime)
-
-                break
-
-            except ValueError:
-                continue
-        else:
-            # the time format could not be parsed properly
-            raise UtilsError("Unable to parse timestring: %s" % timestamp)
-            
+        postStruct.dateCreated = _convertTime(timestamp)
 
     return postStruct
 

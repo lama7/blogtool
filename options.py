@@ -3,7 +3,6 @@ from proxybase import ProxyError
 from fileprocessor import FileProcessor, FileProcessorError
 
 from optparse import OptionParser
-from tempfile import NamedTemporaryFile
 
 import html2md
 import utils
@@ -426,6 +425,8 @@ class EditComment(CommandLineOption):
     def run(self, header):
         proxy = _getProxy(header)
         comment = proxy.getComment(self.commentid)
+        print comment['date_created_gmt']
+        sys.exit()
         commenttext = "COMMENTID: %s\n" % (self.commentid)
         commenttext += "PARENTID: %s\n" % (comment['parent'])
         commenttext += "COMMENTSTATUS: %s\n" % (comment['status'])
@@ -434,10 +435,11 @@ class EditComment(CommandLineOption):
         commenttext += "AUTHOREMAIL: %s\n" % (comment['author_email'])
         commenttext += "\n%s" % (html2md.convert(comment['content']))
         
-        fd = NamedTemporaryFile()
-        if utils.edit(fd, commenttext) == None:
+        fd = utils.edit(commenttext)
+        if fd == None:
             print "Nothing to do with comment."
-        fp = FileProcessor(**{'comment' : True})
+        fp = FileProcessor(**{'comment' : True,
+                              'allblogs' : False})
         try:
             header_text, commenttext = fp.parsePostFile(fd.name, '')
         except FileProcessorError, err_msg:

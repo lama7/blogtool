@@ -13,8 +13,6 @@ from headerparse import Header
 from fileprocessor import FileProcessor, FileProcessorError, FileProcessorRetry
 from options import OptionProcessor
 
-from tempfile import NamedTemporaryFile
-
 import utils
 import sys
 
@@ -33,8 +31,8 @@ def main():
     runeditor = options.check(header)
     emptyheader_text = header.buildPostHeader(options)
     if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
-        fd = NamedTemporaryFile()
-        if utils.edit(fd, emptyheader_text) == None:
+        fd = utils.edit(emptyheader_text)
+        if fd == None:
             print "Nothing to do, exiting."
         filelist.append(fd.name)      
 
