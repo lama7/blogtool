@@ -67,38 +67,8 @@ class HeaderParms():
         self.authoremail = ''
 
     def __str__(self):
-        return """
-    title:           %s
-    categories:      %s
-    tags:            %s
-    postid:          %s
-    posttime:        %s
-    name:            %s
-    blogtype:        %s
-    xmlrpc_location: %s
-    username:        %s
-    password:        %s
-    commentstatus:   %s
-    commentid:       %s
-    parentid:        %s
-    author:          %s
-    authorurl:       %s
-    authoremail:     %s""" % ( self.title,
-                               self.categories,
-                               self.tags,
-                               self.postid,
-                               self.posttime,
-                               self.name,
-                               self.blogtype,
-                               self.xmlrpc,
-                               self.username,
-                               self.password,
-                               self.commentstatus,
-                               self.commentid,
-                               self.parentid,
-                               self.author,
-                               self.authorurl,
-                               self.authoremail )
+        l = ["%s:  %s" % (attr, val) for attr, val in self.__dict__.iteritems()]
+        return '\n'.join(l) + '\n'
 
     def __contains__(self, item):
         if item in self.__dict__:
@@ -632,18 +602,13 @@ class Header():
             headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
         else:
             for attrname in pl[0].__dict__:
-                if not pl[0].get(attrname) and attrname not in ['posttime',
-                                                                'postid',
-                                                                'blog', 'tags',
-                                                                'comment',
-                                                                'parentid',
-                                                                'commentstatus',
-                                                                'commentid',
-                                                                'parentid',
-                                                                'author',
-                                                                'authorurl',
-                                                                'authoremail']:
-                    headertext += '%s: \n' % p.upper()
+                if not pl[0].get(attrname) and attrname in ['title', 
+                                                            'categories',
+                                                            'blogtype',
+                                                            'xmlrpc', 
+                                                            'username',
+                                                            'password']:
+                    headertext += '%s: \n' % attrname.upper()
 
         if len(pl) > 1 and self._named_parm is None \
            and not options.flags()['allblogs']:

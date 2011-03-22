@@ -514,7 +514,7 @@ class SetAddCategory(CommandLineOption):
     args = ('-a', '--add-categories')
     kwargs = {
               'action' : 'store_true',
-              'dest' : 'addcats',
+              'dest' : 'addpostcats',
               'help' : """
 Categories specified for the post will be added to the blog's category list if
 they do not already exist.
@@ -522,8 +522,7 @@ they do not already exist.
              }
 
     def check(self, opts):
-        self.addpostcats = opts.addcats
-        return opts.addcats
+        return opts.addpostcats
 
     def run(self, header):
         return 'runeditor'
@@ -581,7 +580,6 @@ MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
              }
 
     def check(self, opts):
-        self.posttime = opts.posttime
         if opts.posttime:
             return True
         else:
@@ -606,7 +604,6 @@ class SetNoPublish(CommandLineOption):
              }
 
     def check(self, opts):
-        self.publish = opts.publish
         if not opts.publish:
             return True
         else:
@@ -631,7 +628,6 @@ Will cause post to be published to all blogs listed in the rc file.
              }
 
     def check(self, opts):
-        self.allblogs = opts.allblogs
         if opts.allblogs:
             return True
         else:
@@ -654,7 +650,6 @@ class SetPostComment(CommandLineOption):
              }
 
     def check(self, opts):
-        self.comment = opts.comment
         if opts.comment:
             return True
         else:
@@ -697,11 +692,11 @@ class OptionProcessor:
 
     def flags(self):
         return {
-                'addpostcats' : self.o_list[2].addpostcats,
-                'publish'     : self.o_list[3].publish,
-                'posttime'    : self.o_list[4].posttime,
-                'allblogs'    : self.o_list[5].allblogs,
-                'comment'     : self.o_list[6].comment,
+                'addpostcats' : self.opts.addpostcats,
+                'publish'     : self.opts.publish,
+                'posttime'    : self.opts.posttime,
+                'allblogs'    : self.opts.allblogs,
+                'comment'     : self.opts.comment,
                }
 
     def check(self, header):
@@ -710,5 +705,6 @@ class OptionProcessor:
             if option.check(self.opts):
                 if option.run(header) == 'runeditor':
                      rval = True
+
         return rval
 

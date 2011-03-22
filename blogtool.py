@@ -21,7 +21,6 @@ def main():
     options = OptionProcessor()
     filelist = options.parse()
  
-    ###########################################################################
     '''
     Make sure that this loop always executes, regardless of whether there 
     are actually options.  The config file is processed throught this loop
@@ -30,15 +29,16 @@ def main():
     header = Header()
     runeditor = options.check(header)
     emptyheader_text = header.buildPostHeader(options)
-    if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor):
+    if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor) or \
+       (len(sys.argv) == 3 and options.opts.blogname is not None):
         fd = utils.edit(emptyheader_text)
         if fd == None:
             print "Nothing to do, exiting."
+            sys.exit()
         filelist.append(fd.name)      
 
-    ###########################################################################
-    tmp_fn = None
     fp = FileProcessor(**options.flags())
+    tmp_fn = None
     for filename in filelist:
         if tmp_fn != filename:
             tmp_fn = filename
