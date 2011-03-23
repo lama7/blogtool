@@ -67,38 +67,8 @@ class HeaderParms():
         self.authoremail = ''
 
     def __str__(self):
-        return """
-    title:           %s
-    categories:      %s
-    tags:            %s
-    postid:          %s
-    posttime:        %s
-    name:            %s
-    blogtype:        %s
-    xmlrpc_location: %s
-    username:        %s
-    password:        %s
-    commentstatus:   %s
-    commentid:       %s
-    parentid:        %s
-    author:          %s
-    authorurl:       %s
-    authoremail:     %s""" % ( self.title,
-                               self.categories,
-                               self.tags,
-                               self.postid,
-                               self.posttime,
-                               self.name,
-                               self.blogtype,
-                               self.xmlrpc,
-                               self.username,
-                               self.password,
-                               self.commentstatus,
-                               self.commentid,
-                               self.parentid,
-                               self.author,
-                               self.authorurl,
-                               self.authoremail )
+        l = ["%s:  %s" % (attr, val) for attr, val in self.__dict__.iteritems()]
+        return '\n'.join(l) + '\n'
 
     def __contains__(self, item):
         if item in self.__dict__:
@@ -621,14 +591,24 @@ class Header():
         pl = self._parms
         if options.flags()['comment']:
             headertext = "POSTID: \n"
+            if len(pl) > 1 and self._named_parm is None:
+                headertext += "AUTHOR: \nAUTHOREMAIL: \n"
+            elif len(pl) == 1 or self._named_parm is not None:
+                for attrname in ['author', 'authoremail']:
+                    if not pl[0].get(attrname):
+                        headertext += "%s: \n" % attrname.upper()
         elif not pl:
             headertext = "TITLE: \nCATEGORIES: \n"
             headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
         else:
-            for p in pl[0].__dict__:
-                if not pl[0].get(p) and p not in ['posttime', 'postid', 'blog',
-                                                  'tags', 'comment', 'parentid']:
-                    headertext += '%s: \n' % p.upper()
+            for attrname in pl[0].__dict__:
+                if not pl[0].get(attrname) and attrname in ['title', 
+                                                            'categories',
+                                                            'blogtype',
+                                                            'xmlrpc', 
+                                                            'username',
+                                                            'password']:
+                    headertext += '%s: \n' % attrname.upper()
 
         if len(pl) > 1 and self._named_parm is None \
            and not options.flags()['allblogs']:

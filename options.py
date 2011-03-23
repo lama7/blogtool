@@ -3,7 +3,6 @@ from proxybase import ProxyError
 from fileprocessor import FileProcessor, FileProcessorError
 
 from optparse import OptionParser
-from tempfile import NamedTemporaryFile
 
 import html2md
 import utils
@@ -426,6 +425,8 @@ class EditComment(CommandLineOption):
     def run(self, header):
         proxy = _getProxy(header)
         comment = proxy.getComment(self.commentid)
+        print comment['date_created_gmt']
+        sys.exit()
         commenttext = "COMMENTID: %s\n" % (self.commentid)
         commenttext += "PARENTID: %s\n" % (comment['parent'])
         commenttext += "COMMENTSTATUS: %s\n" % (comment['status'])
@@ -434,10 +435,11 @@ class EditComment(CommandLineOption):
         commenttext += "AUTHOREMAIL: %s\n" % (comment['author_email'])
         commenttext += "\n%s" % (html2md.convert(comment['content']))
         
-        fd = NamedTemporaryFile()
-        if utils.edit(fd, commenttext) == None:
+        fd = utils.edit(commenttext)
+        if fd == None:
             print "Nothing to do with comment."
-        fp = FileProcessor(**{'comment' : True})
+        fp = FileProcessor(**{'comment' : True,
+                              'allblogs' : False})
         try:
             header_text, commenttext = fp.parsePostFile(fd.name, '')
         except FileProcessorError, err_msg:
@@ -512,7 +514,7 @@ class SetAddCategory(CommandLineOption):
     args = ('-a', '--add-categories')
     kwargs = {
               'action' : 'store_true',
-              'dest' : 'addcats',
+              'dest' : 'addpostcats',
               'help' : """
 Categories specified for the post will be added to the blog's category list if
 they do not already exist.
@@ -520,8 +522,7 @@ they do not already exist.
              }
 
     def check(self, opts):
-        self.addpostcats = opts.addcats
-        return opts.addcats
+        return opts.addpostcats
 
     def run(self, header):
         return 'runeditor'
@@ -579,7 +580,6 @@ MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
              }
 
     def check(self, opts):
-        self.posttime = opts.posttime
         if opts.posttime:
             return True
         else:
@@ -604,7 +604,6 @@ class SetNoPublish(CommandLineOption):
              }
 
     def check(self, opts):
-        self.publish = opts.publish
         if not opts.publish:
             return True
         else:
@@ -629,7 +628,6 @@ Will cause post to be published to all blogs listed in the rc file.
              }
 
     def check(self, opts):
-        self.allblogs = opts.allblogs
         if opts.allblogs:
             return True
         else:
@@ -652,7 +650,6 @@ class SetPostComment(CommandLineOption):
              }
 
     def check(self, opts):
-        self.comment = opts.comment
         if opts.comment:
             return True
         else:
@@ -695,11 +692,11 @@ class OptionProcessor:
 
     def flags(self):
         return {
-                'addpostcats' : self.o_list[2].addpostcats,
-                'publish'     : self.o_list[3].publish,
-                'posttime'    : self.o_list[4].posttime,
-                'allblogs'    : self.o_list[5].allblogs,
-                'comment'     : self.o_list[6].comment,
+                'addpostcats' : self.opts.addpostcats,
+                'publish'     : self.opts.publish,
+                'posttime'    : self.opts.posttime,
+                'allblogs'    : self.opts.allblogs,
+                'comment'     : self.opts.comment,
                }
 
     def check(self, header):
@@ -708,5 +705,6 @@ class OptionProcessor:
             if option.check(self.opts):
                 if option.run(header) == 'runeditor':
                      rval = True
+
         return rval
 

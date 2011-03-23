@@ -236,7 +236,7 @@ No text for post, aborting.
                 print err
                 sys.exit()
 
-            utils.edit(f, hdrtext)
+            utils.edit(hdrtext, f)
             raise FileProcessorRetry()
         else:
             f.close()
