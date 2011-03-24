@@ -325,6 +325,9 @@ a file capture could be used for updating with blogtool.
 """            
              }
 
+    catID = 0
+    parentID = 1
+
     def check(self, opts):
         if opts.get_postid:
             self.postid = opts.get_postid
@@ -340,6 +343,7 @@ a file capture could be used for updating with blogtool.
         proxy = _getProxy(header)
         try:
             post = proxy.getPost(self.postid)
+            self.blogcats = proxy.getCategories()
         except ProxyError, err:
             print "Caught in options.GetPost.run:"
             print err
@@ -351,17 +355,86 @@ a file capture could be used for updating with blogtool.
                                                post['mt_text_more']))
         else:
             text = html2md.convert(post['description'])
-
-        print 'BLOG: %s\nPOSTID: %s\nTITLE: %s\nCATEGORIES: %s' % ( header.name, 
-                                                                    self.postid, 
-                                                                  post['title'], 
-                                                  ', '.join(post['categories']))
+        header_str = 'BLOG: %s\nPOSTID: %s\nTITLE: %s\n' % (header.name, 
+                                                            self.postid, 
+                                                            post['title'])
+        header_str += 'CATEGORIES: %s\n' % self._buildCatStr(post['categories'])
         if post['mt_keywords']:
-            print 'TAGS: %s' % post['mt_keywords']
-
-        print '\n' + text
-
+            header_str += 'TAGS: %s\n' % post['mt_keywords']
+        print header_str + '\n' + text
         return None
+
+    def _buildCatStr(self, catlist):
+        blogcats_d = {cat['categoryName']:(cat['categoryId'], cat['parentId'])
+                                                       for cat in self.blogcats}
+        catlist = self._sortCats(catlist, blogcats_d)
+        cat_s = ''
+        # We need to convert the category list into a dot-delimited category
+        # string if there are subcategories, or not depending on the categories
+        # in the list- luckliy, the category list is sorted appropriately for us
+        if len(catlist) == 1:
+            cat_s = catlist[0]
+        else:
+            for cat in catlist:
+               if blogcats_d[cat][self.parentID] == '0':
+                   if cat_s == '':
+                      cat_s += "%s" % cat
+                   else:
+                      cat_s += ", %s" % cat
+               else:
+                   cat_s += ".%s" % cat
+        return cat_s
+
+    def _sortCats(self, catlist, bcats_d):
+        ''' Sorts catlist from category to lowest subcategory.  If multiple
+            subcategories have a common parent, then the category hierarchy is
+            duplicated and added to the list with the new subcategory.
+        '''
+        sortedcats = []
+        while len(catlist) != 0:
+            for cat in catlist[:]:
+                cat_parent_id = bcats_d[cat][self.parentID]
+                if cat_parent_id == '0':
+                    sortedcats.append(cat)
+                    catlist.remove(cat)
+                else:
+                    enumerated_seq = list(enumerate(sortedcats))
+                    for i, s_cat in enumerated_seq:
+                        if cat_parent_id == bcats_d[s_cat][self.catID]:
+                            # does this subcategory have the same parent as 
+                            # another subcatgory?
+                            if len(sortedcats) > i+1 and \
+                               bcats_d[sortedcats[i+1]][self.parentID] == \
+                                                                  cat_parent_id:
+                                # find the top of the category hierarchy
+                                # i is the index of the parent of cat
+                                while bcats_d[sortedcats[i]][self.parentID] != \
+                                                                            '0':
+                                    i = i - 1
+                                j = i # mark insertion point into sortedlist
+                                # copy category hierarchy
+                                hierarchycopy = []
+                                while bcats_d[sortedcats[i]][self.parentID] != \
+                                      cat_parent_id:
+                                    hierarchycopy.insert(0, sortedcats[i])
+                                    i = i + 1
+                                hierarchycopy.insert(0, cat) # add new cat
+                                # insert copy into sorted list
+                                for c in hierarchycopy:
+                                    sortedcats.insert(j, c)
+                                catlist.remove(cat)
+                                break
+                            else:
+                                sortedcats.insert(i+1, cat)
+                                catlist.remove(cat)
+                                break
+                        elif bcats_d[cat][self.catID] == \
+                                                  bcats_d[s_cat][self.parentID]:
+                            sortedcats.insert(i-1, cat)
+                            catlist.remove(cat)
+                            break
+        return sortedcats
+                    
 
 ################################################################################
 '''
