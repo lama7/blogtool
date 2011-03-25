@@ -156,14 +156,14 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
     buildComment
 '''
 def buildComment(header, comment_text):
-    print header
-    sys.exit()
     commentStruct = dataStruct()
     commentStruct.comment_parent = header.parentid or 0
     commentStruct.content = comment_text
     commentStruct.author = header.author
     commentStruct.author_url = header.authorurl
     commentStruct.author_email = header.authoremail
+    if header.commentstatus:
+        commentStruct.status = header.commentstatus
     return commentStruct
 
 ################################################################################

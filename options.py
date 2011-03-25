@@ -504,7 +504,8 @@ class EditComment(CommandLineOption):
         commenttext += "PARENTID: %s\n" % (comment['parent'])
         commenttext += "COMMENTSTATUS: %s\n" % (comment['status'])
         commenttext += "AUTHOR: %s\n" % (comment['author'])
-        commenttext += "AUTHORURL: %s\n" % (comment['author_url'])
+        if comment['author_url']:
+            commenttext += "AUTHORURL: %s\n" % (comment['author_url'])
         commenttext += "AUTHOREMAIL: %s\n" % (comment['author_email'])
         commenttext += "\n%s" % (html2md.convert(comment['content']))
         

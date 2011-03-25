@@ -574,9 +574,6 @@ class Header():
             print err
             sys.exit()
 
-        for p in newparms:
-            print p
-        sys.exit()
         if self._default_parms:
             if allblogs:
                 if len(self._default_parms) > len(newparms):
