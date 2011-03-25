@@ -124,7 +124,8 @@ class HeaderParse():
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
     __hdr_comma = re.compile(',\s*(.*)', re.DOTALL)
-    __hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
+    #__hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
+    __hdr_keyword = re.compile('([A-Z]+)\s*[:][ \t\f\v]*(.*)', re.DOTALL)
 
     KTYPE_SINGLEVAL = 0
     KTYPE_MULTIVAL = 1
@@ -573,6 +574,9 @@ class Header():
             print err
             sys.exit()
 
+        for p in newparms:
+            print p
+        sys.exit()
         if self._default_parms:
             if allblogs:
                 if len(self._default_parms) > len(newparms):
