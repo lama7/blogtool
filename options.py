@@ -465,13 +465,15 @@ Retrieves the comments for a specific post.
         for comment in comments:
             t_converted = datetime.datetime.strptime(comment['date_created_gmt'].value,
                                                      "%Y%m%dT%H:%M:%S")
-            print 'Comment ID: %s' % comment['comment_id']
-            print 'Parent ID:  %s' % comment['parent']
-            print 'Time:       %s' % t_converted
-            print 'Author:     %s' % comment['author']
-            print 'Email:      %s' % comment['author_email']
+            output = 'Comment ID: %s\n' % comment['comment_id']
+            output += 'Parent ID:  %s\n' % comment['parent']
+            output += 'Time:       %s\n' % t_converted
+            output += 'Author:     %s\n' % comment['author']
+            output += 'Email:      %s\n' % comment['author_email']
+            output += 'URL:        %s\n' % comment['author_url']
+
             content = html2md.convert(comment['content'])
-            print '\n' + content
+            print output + '\n' + content
 
         return None
 
@@ -498,8 +500,6 @@ class EditComment(CommandLineOption):
     def run(self, header):
         proxy = _getProxy(header)
         comment = proxy.getComment(self.commentid)
-        print comment['date_created_gmt']
-        sys.exit()
         commenttext = "COMMENTID: %s\n" % (self.commentid)
         commenttext += "PARENTID: %s\n" % (comment['parent'])
         commenttext += "COMMENTSTATUS: %s\n" % (comment['status'])
