@@ -159,9 +159,11 @@ def buildComment(header, comment_text):
     commentStruct = dataStruct()
     commentStruct.comment_parent = header.parentid or 0
     commentStruct.content = comment_text
-    commentStruct.author = ''
-    commentStruct.author_url = ''
-    commentStruct.author_email = ''
+    commentStruct.author = header.author
+    commentStruct.author_url = header.authorurl
+    commentStruct.author_email = header.authoremail
+    if header.commentstatus:
+        commentStruct.status = header.commentstatus
     return commentStruct
 
 ################################################################################

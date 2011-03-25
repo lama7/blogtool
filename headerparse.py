@@ -124,7 +124,8 @@ class HeaderParse():
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
     __hdr_comma = re.compile(',\s*(.*)', re.DOTALL)
-    __hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
+    #__hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
+    __hdr_keyword = re.compile('([A-Z]+)\s*[:][ \t\f\v]*(.*)', re.DOTALL)
 
     KTYPE_SINGLEVAL = 0
     KTYPE_MULTIVAL = 1
