@@ -398,9 +398,13 @@ class Html2Markdown:
 
     def convert(self, html):
         try:
-            nhtml = str(unicodedata.normalize('NFKD', html))
+            #nhtml = str(unicodedata.normalize('NFKD', html))
+            nhtml = unicodedata.normalize('NFKD', html).encode("utf-8")
         except TypeError:
             nhtml = html
+        except UnicodeEncodeError:
+            print repr(html)
+            sys.exit()
 #        print nhtml
         root = etree.fromstring("<post>%s</post>" % nhtml)
 
