@@ -73,7 +73,7 @@ class DeletePost(CommandLineOption):
         return False
 
     def run(self, header):
-        print "Deleting post %s" % self.postid
+        print "Deleting post %s from %s" % (self.postid, header.name)
 
         proxy = _getProxy(header)
         try:

@@ -131,7 +131,7 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
     postStruct.mt_keywords = hdrobj.tags
     postStruct.description = desc
     postStruct.mt_excerpt = ''
-    postStruct.mt_allow_commands = 1
+    postStruct.mt_allow_comments = 1
     postStruct.mt_allow_pings = 1
     postStruct.mt_text_more = more
     postStruct.mt_convert_breaks = 1

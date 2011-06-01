@@ -56,11 +56,23 @@ def main():
 
         header.addParms(header_text, fp.allblogs)
         for hdr in header:
-            rval = fp.pushContent(post_text, hdr)
-            if rval and not fp.comment:
-                header.postid = rval
-                print 'Updating post file...'
-                fp.updateFile(filename, '%s' % header, post_text) 
+            try:
+                rval = fp.pushContent(post_text, hdr)
+                if rval and not fp.comment:
+                    header.postid = rval
+                    print 'Updating post file...'
+                    fp.updateFile(filename, '%s' % header, post_text) 
+            except:
+                print "Error connecting to blog:\n\t%s" % sys.exc_info()[0]
+                if filename.startswith("/tmp"):
+                    if fp.comment:
+                        filename += '.' + hdr.postid
+                    else:
+                        filename += '.' + hdr.title
+                    print "Saving tmp content file %s" % filename
+                    f = open(filename, 'w')
+                    f.write('%s' % header + '\n' + post_text)
+                    f.close()
 
 ################################################################################
 if __name__ == "__main__":
