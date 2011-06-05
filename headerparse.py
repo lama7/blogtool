@@ -593,9 +593,15 @@ class Header():
 
     def buildPostHeader(self, options):
         def pl2text(pl):
-            return ': \n'.join([attrname.upper() for attrname in pl.__dict__ \
+            text = ': \n'.join([attrname.upper() for attrname in pl.__dict__ \
                                 if not pl.get(attrname) and \
-                                   attrname in req_parms]) + ': \n'
+                                   attrname in req_parms])
+            if text != '':
+                text += ': \n'
+            if flags['comment']:
+                text += 'POSTID: %s\n' % pl.get('postid')
+            return text + 'BLOG: %s\n' % pl.get('name')
+            
 
         REQUIRED = ['blog', 'blogtype', 'xmlrpc', 'username', 'password']
         REQUIRED_POST = REQUIRED + ['title', 'categories']
