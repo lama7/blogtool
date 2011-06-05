@@ -286,7 +286,7 @@ class HeaderParse():
                     # within a BLOG group, the only setting that can have more
                     # than 1 value are CATEGORIES and TAGS
                     if len(v) != 1:
-                        raise HeaderParseError("Value '%s' not valid for key '%s'" %                                                (v, k) )
+                        raise HeaderParseError("Value '%s' not valid for key '%s'" % (v, k) )
 
                     setattr(config, k, v.pop())
             del ast['BLOG']
@@ -412,18 +412,22 @@ class reverseParser:
     def _convertGroups(self, d):
         text = ''
         if 'name' in d:
-            text += 'BLOG:\t'
-            blognames = d['name']
-            del d['name']
-            i = 0
-            for name in blognames:
-                text += '{\n\t  NAME: %s\n' % name
-                for k,v in d.iteritems():
-                    if v[i]:
-                        text += "\t  %s: %s\n" % (k.upper(),
-                                                  self._val2string(v[i])) 
-                text += '\t},\n\t'
-                i = i + 1   
+            if len(d) == 1:
+                # only blog name in dict, just list them
+                text = 'BLOG: ' + ', '.join(d['name']) + '\n'
+            else:
+                text += 'BLOG:\t'
+                blognames = d['name']
+                del d['name']
+                i = 0
+                for name in blognames:
+                    text += '{\n\t  NAME: %s\n' % name
+                    for k,v in d.iteritems():
+                        if v[i]:
+                            text += "\t  %s: %s\n" % (k.upper(),
+                                                      self._val2string(v[i])) 
+                    text += '\t},\n\t'
+                    i = i + 1   
         return text.strip(',\n\t')
 
     def toString(self, parms, defaultparms):
@@ -458,18 +462,18 @@ class Header():
     def __init__(self):
         self._default_parms = None
         self._parm_index = None
-        self._named_parm = None
+        self._named_parmlist = None
         self._parms = None
 
     def __setattr__(self, name, value):
         if '_parms' in self.__dict__ and ('_parm_index' in self.__dict__ or
-                                          '_named_parm' in self.__dict__):
+                                          '_named_parmlist' in self.__dict__):
             if self._parms:
-                if self._named_parm:
+                if self._named_parmlist:
                     if len(self._parms) == 1:
                         pl = self._parms[0]
                     else:
-                        pl = self._named_parm
+                        pl = self._named_parmlist
                 elif self._parm_index != None:
                     pl = self._parms[self._parm_index]
                 else:
@@ -482,11 +486,11 @@ class Header():
         self.__dict__[name] = value        
                 
     def __getattr__(self, name):
-        if self._named_parm:
+        if self._named_parmlist:
             if self._parms and len(self._parms) == 1:
                 pl = self._parms[0]
             else:
-                pl = self._named_parm
+                pl = self._named_parmlist
         elif self._parm_index != None:
             pl = self._parms[self._parm_index]    
         elif self._parms and len(self._parms) >= 1:
@@ -529,8 +533,8 @@ class Header():
                 if default:
                     setattr(parmlist, k, default)
 
-        if self._named_parm and len(newparms) == 1:
-            _merge(self._named_parm, newparms[0])
+        if self._named_parmlist and len(newparms) == 1:
+            _merge(self._named_parmlist, newparms[0])
         else:
             for parmlist in newparms:
                 if parmlist.name:
@@ -552,9 +556,9 @@ class Header():
         self._parms = newparms
     
     def debug(self):
-        if self._named_parm:
+        if self._named_parmlist:
             print "named_parm"
-            print self._named_parm
+            print self._named_parmlist
         print "_parms:"
         for parm in self._parms:
             print parm
@@ -588,33 +592,47 @@ class Header():
             self._parms = newparms
 
     def buildPostHeader(self, options):
-        headertext = ''
-        pl = self._parms
-        if options.flags()['comment']:
-            headertext = "POSTID: \n"
-            if len(pl) > 1 and self._named_parm is None:
-                headertext += "AUTHOR: \nAUTHOREMAIL: \n"
-            elif len(pl) == 1 or self._named_parm is not None:
-                for attrname in ['author', 'authoremail']:
-                    if not pl[0].get(attrname):
-                        headertext += "%s: \n" % attrname.upper()
-        elif not pl:
-            headertext = "TITLE: \nCATEGORIES: \n"
-            headertext += "BLOG: \nBLOGTYPE: \nXMLRPC: \nUSERNAME: \nPASSWORD: \n"
-        else:
-            for attrname in pl[0].__dict__:
-                if not pl[0].get(attrname) and attrname in ['title', 
-                                                            'categories',
-                                                            'blogtype',
-                                                            'xmlrpc', 
-                                                            'username',
-                                                            'password']:
-                    headertext += '%s: \n' % attrname.upper()
+        def pl2text(pl):
+            return ': \n'.join([attrname.upper() for attrname in pl.__dict__ \
+                                if not pl.get(attrname) and \
+                                   attrname in req_parms]) + ': \n'
 
-        if len(pl) > 1 and self._named_parm is None \
-           and not options.flags()['allblogs']:
-            headertext += 'BLOG: \n'
-            
+        REQUIRED = ['blog', 'blogtype', 'xmlrpc', 'username', 'password']
+        REQUIRED_POST = REQUIRED + ['title', 'categories']
+        REQUIRED_COMMENT = REQUIRED + ['postid', 'author']
+        flags = options.flags()
+        if flags['comment']:
+            req_parms = REQUIRED_COMMENT
+        else:
+            req_parms = REQUIRED_POST
+
+        if not self._parms:
+            headertext = ': \n'.join([p.upper() for p in req_parms]) + ': \n'
+        elif len(self._parms) == 1:
+            headertext = pl2text(self._parms[0])
+        elif self._named_parmlist is not None:
+            headertext = pl2text(self._named_parmlist)
+        #len(self._parms) > 1 and self._named_parmlist is None
+        else:
+            # mark any unfilled required parms with a known pattern 
+            pattern = '!XxXx#'
+            parmlist_copy = copy.deepcopy(self._parms)
+            for rp in req_parms:
+                for pl in parmlist_copy:
+                    if rp == 'blog':
+                        rp = 'name'
+                    if not pl.get(rp):
+                        setattr(pl, rp, pattern)
+            # now build a header string and replace occurences of pattern
+            # with blanks
+            if flags['allblogs']:
+                headertext = self._revparser.toString(parmlist_copy,
+                                      self._default_parms).replace(pattern, '')
+            else:
+                headertext = self._revparser.toString(parmlist_copy, 
+                                                     None).replace(pattern, '')
+            del parmlist_copy
+
         return headertext
 
     def setBlogParmsByName(self, name = ''):
@@ -623,17 +641,17 @@ class Header():
 
         for parm in self._parms:
             if parm.name == name:
-                self._named_parm = parm
+                self._named_parmlist = parm
                 break
         else:
             raise HeaderError(HeaderError.NAMENOTFOUND)
 
     def proxy(self):
-        if self._named_parm:
+        if self._named_parmlist:
             if len(self._parms) == 1:
                 pl = self._parms[0]
             else:
-                pl = self._named_parm
+                pl = self._named_parmlist
         elif not self._parms:
             raise HeaderError(HeaderError.NOCONFIGFILE)
         elif len(self._parms) == 1:

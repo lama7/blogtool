@@ -62,7 +62,8 @@ class DeletePost(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : "del_postid", 
-              'help' : "delete a post" 
+              'metavar' : 'POSTID',
+              'help' : "Delete post POSTID from a blog." 
              }
 
     def check(self, opts):
@@ -94,7 +95,8 @@ class DeleteComment(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : 'del_comment_id',
-              'help' : 'Delete a comment from a blog'
+              'metavar' : 'COMMENTID',
+              'help' : 'Delete comment COMMENTID from a blog.'
              }
 
     def check(self, opts):
@@ -127,8 +129,9 @@ class GetRecentTitles(CommandLineOption):
     args = ('-t', '--recent-titles')
     kwargs = {
               'action' : 'store',
-              'dest' : "num_recent_t",
-              'help' : "rettrieve recent posts from a blog" 
+              'dest' : 'num_recent_t',
+              'metavar' : 'NUMBER',
+              'help' : "Retrieve NUMBER recent posts from a blog." 
              }
 
     def check(self, opts):
@@ -187,7 +190,7 @@ class GetCategories(CommandLineOption):
     kwargs = {
               'action' : "store_true",
               'dest' : "getcats",
-              'help' : "Get a list of catgories for a blog" 
+              'help' : "Get the list of catgories for a blog." 
              }
 
     def check(self, opts):
@@ -232,7 +235,11 @@ class AddCategory(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : "newcat",
-              'help' : "Add a new category to a blog" 
+              'help' : """
+Add NEWCAT category to a blog.  NEWCAT can specifiy mutlitple levels of new
+categories using a dot notation to separate subcategories, eg
+"newcat1.subcata.subcatb".
+"""
              }
 
     def check(self, opts):
@@ -281,7 +288,8 @@ class UploadMediaFile(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : 'uploadfile',
-              'help' : "Upload a file to a blog"
+              'metavar' : 'FILE',
+              'help' : "Upload media file FILE to a blog."
              }
 
     def check(self, opts):
@@ -318,10 +326,11 @@ class GetPost(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : 'get_postid',
+              'metavar' : 'POSTID',
               'help' : """
-Retrieves a blog post and writes it to STDOUT.  Certain HTML tags are stripped
-and an attempt is made to format the text.  A header is also created, meaning
-a file capture could be used for updating with blogtool.  
+Retrieves post POSTID from a blog and writes it to STDOUT using Markdown
+formatting.  A header is also created, meaning a file capture could be used for
+updating with blogtool.  
 """            
              }
 
@@ -445,8 +454,9 @@ class GetComments(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : 'comments_postid',
+              'metavar' : 'POSTID',
               'help' : """
-Retrieves the comments for a specific post.
+Retrieves the comments for post POSTID.
 """
              }
 
@@ -490,7 +500,12 @@ class EditComment(CommandLineOption):
     kwargs = {
               'action' : 'store',
               'dest' : 'commentid',
-              'help' : "Edit a comment already on the blog."
+              'help' : """
+Edit comment COMMENTID already on the blog.  The comment will be downloaded and
+an editor will be launched with the comment text formatted into Markdown syntax.
+A header is also generated with the metadata from the blog in it so it can also
+be edited, for instance to approve a comment held in moderation.
+"""
              }
 
     def check(self, opts):
@@ -541,7 +556,8 @@ class SetConfigFile(CommandLineOption):
     kwargs = { 
               'action' : 'store',
               'dest' : "configfile", 
-              'help' : "specify a config file" 
+              'metavar' : 'FILE',
+              'help' : "Use FILE as the rc file when executing blogtool." 
              }
 
     def check(self, opts):
@@ -591,9 +607,10 @@ class SetAddCategory(CommandLineOption):
     kwargs = {
               'action' : 'store_true',
               'dest' : 'addpostcats',
+              'default' : False,
               'help' : """
-Categories specified for the post will be added to the blog's category list if
-they do not already exist.
+A flag option that causes categories specified in a post file to be added to the
+blog's category list if they do not already exist.  
 """
              }
 
@@ -614,10 +631,11 @@ class SetBlogname(CommandLineOption):
     args = ('-b','--blog')
     kwargs = {
               'action' : 'store',
-              'dest' : "blogname",
+              'dest' : 'blogname',
               'help' : """
-Blog name in config file for operations on blog.  The name must correspond to a name
-in ~/.btrc or a config file specified on the command line.
+Specifies a blog to execute a command against for deleting posts or comments,
+retrieving category lists or posts or comments, etc.  The name must correspond
+to a name in ~/.btrc or a config file specified on the command line.
 """  
              }
 
@@ -646,9 +664,10 @@ class SetPosttime(CommandLineOption):
     args = ('-s', '--schedule')
     kwargs = {
               'action' : 'store',
-              'dest' : "posttime",
+              'dest' : 'posttime',
+              'metavar' : 'TIMESTR',
               'help' : """
-Time to publish post, a number of formats are supported:  YYYYMMDDThh:mm, 
+Sets the time to publish post.  TIMESTR supports a number of formats:  YYYYMMDDThh:mm, 
 YYYYMMDDThh:mmAM/PM, YYYYMMDDThh:mm:ss, YYYYMMDDThh:mm:ssAM/PM,
 Month Day, Year hour:min, Month Day, Year hour:min AM/PM, MM/DD/YYYY hh:mm,
 MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
@@ -699,7 +718,8 @@ class SetAllBlogs(CommandLineOption):
               'dest' : "allblogs",
               'default' : False,
               'help' : """
-Will cause post to be published to all blogs listed in the rc file.
+A flag option that will cause the post to be published to all blogs listed in
+the rc file.
 """
              }
 
@@ -719,19 +739,23 @@ Will cause post to be published to all blogs listed in the rc file.
 class SetPostComment(CommandLineOption):
     args = ('--comment', )
     kwargs = {
-              'action' : 'store_true',
+              'action' : 'store',
               'dest' : 'comment',
               'default' : False,
-              'help' : "Will cause text to be posted as a new comment."
+              'metavar' : 'POSTID',
+              'help' : "Post text from file as a comment to post POSTID."
              }
 
     def check(self, opts):
         if opts.comment:
+            self.postid = opts.comment
+            opts.comment = True
             return True
         else:
             return False
 
     def run(self, header):
+        header.postid = self.postid
         return 'runeditor'
 
 ################################################################################

@@ -99,10 +99,7 @@ def edit(hdr_string = '', fh = None):
         fh = NamedTemporaryFile()
 
     try:
-        if not hdr_string:
-            fh.write("TITLE: \nCATEGORIES: \n")
-        else:
-            fh.write(hdr_string) 
+        fh.write(hdr_string) 
         fh.flush()
     except IOError, e:
         print "Could not write header text to file."
