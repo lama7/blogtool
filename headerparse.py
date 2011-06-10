@@ -469,11 +469,10 @@ class Header():
         if '_parms' in self.__dict__ and ('_parm_index' in self.__dict__ or
                                           '_named_parmlist' in self.__dict__):
             if self._parms:
-                if self._named_parmlist:
-                    if len(self._parms) == 1:
-                        pl = self._parms[0]
-                    else:
-                        pl = self._named_parmlist
+                if len(self._parms) == 1:
+                    pl = self._parms[0]
+                elif self._named_parmlist:
+                    pl = self._named_parmlist
                 elif self._parm_index != None:
                     pl = self._parms[self._parm_index]
                 else:
@@ -486,17 +485,17 @@ class Header():
         self.__dict__[name] = value        
                 
     def __getattr__(self, name):
-        if self._named_parmlist:
-            if self._parms and len(self._parms) == 1:
-                pl = self._parms[0]
-            else:
-                pl = self._named_parmlist
+        if self._parms is None:
+            raise AttributeError
+        elif len(self._parms) == 1:
+            pl = self._parms[0]
+        elif self._named_parmlist:
+            pl = self._named_parmlist
         elif self._parm_index != None:
             pl = self._parms[self._parm_index]    
-        elif self._parms and len(self._parms) >= 1:
-            pl = self._parms[0]
         else:
             raise AttributeError
+            # pl = self._parms[0]
 
         if name in pl.__dict__:
             return pl.__dict__[name]
@@ -653,15 +652,12 @@ class Header():
             raise HeaderError(HeaderError.NAMENOTFOUND)
 
     def proxy(self):
-        if self._named_parmlist:
-            if len(self._parms) == 1:
-                pl = self._parms[0]
-            else:
-                pl = self._named_parmlist
-        elif not self._parms:
+        if self._parms is None:
             raise HeaderError(HeaderError.NOCONFIGFILE)
         elif len(self._parms) == 1:
             pl = self._parms[0]
+        elif self._named_parmlist:
+            pl = self._named_parmlist
         elif self._parm_index == None:
             raise HeaderError(HeaderError.MULTIPLEBLOGS)
         else:
