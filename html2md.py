@@ -364,7 +364,6 @@ class UListHandler(OListHandler):
             text += self.formatListItem(listitem, listitem_pre)
 
         return text
-        
 
 #################################################################################
 class Html2Markdown:
@@ -425,8 +424,8 @@ class Html2Markdown:
                     if self._isblock(element):
                         self._blocklist.append(text.rstrip() + '\n')
                     else:
-                        # some kind of inline tag so we'll for now we'll just append
-                        # to the previous block
+                        # some kind of inline tag so we'll for now we'll just 
+                        # append to the previous block
                         self._blocklist[-1] = self._blocklist[-1].rstrip() + \
                                              ' ' + text.rstrip() + '\n'
             except Html2MdException:
@@ -435,8 +434,9 @@ class Html2Markdown:
                     self._reflinks -= 1
 
                 self._blocklist.append(etree.tostring(element, 
-                                                      pretty_print=True).rstrip()
-                                                                          + '\n')
+                                                      pretty_print=True,
+                                                      method="html").rstrip()
+                                                                         + '\n')
             # now add any referenced links as the final block
             if links_snapshot < len(self._links):
                 self._blocklist.append(self._refLinkText(links_snapshot))
@@ -487,7 +487,7 @@ class Html2Markdown:
             if element.text and element.text.find('more') != -1:
                 text = "### MORE ###\n\n"
             else:
-                return etree.tostring(element, pretty_print=True)
+                return etree.tostring(element, pretty_print=True, method="html")
 
         return text + self.checkTail(element)
 
