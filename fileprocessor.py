@@ -169,10 +169,10 @@ No text for post, aborting.
                     e.attrib['src'] = re.sub("\.(\w*)$", r'%s\1' % res_str, e.attrib['src'])
                     del(e.attrib['res'])
 
-#        print etree.tostring(tree)
+#        print etree.tostring(tree, method="html")
 #        sys.exit()
     
-        return (etree.tostring(tree).replace('<post>', '')).replace('</post>', '')
+        return (etree.tostring(tree, method="html").replace('<post>', '')).replace('</post>', '')
 
     ############################################################################ 
     def _procPostCategories(self, header):
