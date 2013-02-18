@@ -749,13 +749,40 @@ class SetPostComment(CommandLineOption):
     def check(self, opts):
         if opts.comment:
             self.postid = opts.comment
-            opts.comment = True
+            opts.comment = True  # used by the headerparse module
             return True
         else:
             return False
 
     def run(self, header):
         header.postid = self.postid
+        return 'runeditor'
+
+################################################################################
+'''
+    SetCharset
+'''
+class SetCharset(CommandLineOption):
+    args = ('--charset', )
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'charset',
+              'metavar' : 'CHARSET',
+              'help' : """
+Set the CHARSET to use to decode the post text prior to running the text through
+markdown.
+"""
+             }
+
+    def check(self, opts):
+        if opts.charset:
+            self.charset = opts.charset
+            return True
+        else:
+            return False
+
+    def run(self, header):
+        header.charset = self.charset
         return 'runeditor'
 
 ################################################################################
@@ -772,6 +799,7 @@ class OptionProcessor:
         self.o_list.append(SetPosttime())
         self.o_list.append(SetAllBlogs())
         self.o_list.append(SetPostComment())
+        self.o_list.append(SetCharset())
         self.o_list.append(DeletePost())
         self.o_list.append(DeleteComment())
         self.o_list.append(GetRecentTitles())
@@ -797,6 +825,7 @@ class OptionProcessor:
                 'posttime'    : self.opts.posttime,
                 'allblogs'    : self.opts.allblogs,
                 'comment'     : self.opts.comment,
+                'charset'     : self.opts.charset,
                }
 
     def check(self, header):
