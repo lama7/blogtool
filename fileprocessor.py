@@ -185,14 +185,24 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
         # process certain tags(ptHelper above), finally return the final
         # product as a string
         last_error = ''
-        for encoding in ['ascii', 'utf-8', 'utf-16', 'iso-8859-1']:
+        # check if charset was defined on command line
+        if self.charset:
+            encodings = [ self.charset ]
+        else:
+            encodings = ['ascii', 'utf-8', 'utf-16', 'iso-8859-1']
+
+        for encoding in encodings:
             try:
                 xhtml = self.md.convert(text.decode(encoding))
-                return ptHelper(xhtml)
-
             except (UnicodeError, UnicodeDecodeError), err:
                 last_error = err
                 continue
+            except:
+                print "Unexpected error: %s" % sys.exc_info()[0]
+                sys.exit(1)    
+            else:
+                return ptHelper(xhtml)
+
         else:
             raise FileProcessorError("In FileProcessor._procText: %s\n" %
                                                                      last_error)
@@ -342,5 +352,3 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
             print "Error writing updated post file %s" % file
         else:
             f.close()
-
-

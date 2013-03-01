@@ -47,7 +47,7 @@ class CommandLineOption:
     the 'proxy' arg will be a proxy object for communicating with the blog
     if necessary 
     '''
-    def run(self, header):
+    def run(self, header, opts):
         pass
         
 ################################################################################
@@ -73,7 +73,7 @@ class DeletePost(CommandLineOption):
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         print "Deleting post %s from %s" % (self.postid, header.name)
 
         proxy = _getProxy(header)
@@ -105,7 +105,7 @@ class DeleteComment(CommandLineOption):
             return True
         return False
         
-    def run(self, header):
+    def run(self, header, opts):
         print "Deleting comment %s" % self.comment_id
 
         proxy = _getProxy(header)
@@ -141,7 +141,7 @@ class GetRecentTitles(CommandLineOption):
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         try:
             self._getRecentTitles(header)
         except HeaderError, err:
@@ -196,7 +196,7 @@ class GetCategories(CommandLineOption):
     def check(self, opts):
         return bool(opts.getcats)
 
-    def run(self, header):
+    def run(self, header, opts):
         proxy = _getProxy(header)
         print "Retrieving category list for '%s'." % header.name
 
@@ -249,7 +249,7 @@ categories using a dot notation to separate subcategories, eg
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         proxy = _getProxy(header)
         blogname = header.name
         print "Checking if category already exists on '%s'..." % (blogname)
@@ -299,7 +299,7 @@ class UploadMediaFile(CommandLineOption):
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         try:
             proxy = _getProxy(header)
             uf = utils.chkfile(self.uploadfile)
@@ -344,7 +344,7 @@ updating with blogtool.
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         if not html2md.LXML_PRESENT:
             print "Option not supported without python-lxml library."
             return
@@ -467,7 +467,7 @@ Retrieves the comments for post POSTID.
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         proxy = _getProxy(header)
 
         comments = proxy.getComments(self.postid)
@@ -514,7 +514,7 @@ be edited, for instance to approve a comment held in moderation.
             return True
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         proxy = _getProxy(header)
         comment = proxy.getComment(self.commentid)
         commenttext = "COMMENTID: %s\n" % (self.commentid)
@@ -529,8 +529,13 @@ be edited, for instance to approve a comment held in moderation.
         fd = utils.edit(commenttext)
         if fd == None:
             print "Nothing to do with comment."
-        fp = FileProcessor(**{'comment' : True,
-                              'allblogs' : False})
+        fp = FileProcessor(**{'addpostcats' : False,
+                              'publish' : True,
+                              'posttime' : None,
+                              'allblogs' : False,
+                              'comment' : True,
+                              'charset': opts.charset,
+                              })
         try:
             header_text, commenttext = fp.parsePostFile(fd.name, '')
         except FileProcessorError, err_msg:
@@ -568,7 +573,7 @@ class SetConfigFile(CommandLineOption):
         # should always return True
         return True
 
-    def run(self, header):
+    def run(self, header, opts):
         if not hasattr(self, 'configfile'): 
             rcf = os.path.join(os.path.expanduser('~'), '.btrc')    
             if not os.path.isfile(rcf):
@@ -617,7 +622,7 @@ blog's category list if they do not already exist.
     def check(self, opts):
         return opts.addpostcats
 
-    def run(self, header):
+    def run(self, header, opts):
         return 'runeditor'
 
 ################################################################################
@@ -646,7 +651,7 @@ to a name in ~/.btrc or a config file specified on the command line.
 
         return False
 
-    def run(self, header):
+    def run(self, header, opts):
         try:
             header.setBlogParmsByName(self.blogname)
         except HeaderError, err:
@@ -680,7 +685,7 @@ MM/DD/YYYY hh:mmAM/PM, hh:mm MM/DD/YYYY, hh:mmAM/PM MM/DD/YYYY
         else:
             return False
 
-    def run(self, header):
+    def run(self, header, opts):
         return 'runeditor'
 
 ################################################################################
@@ -704,7 +709,7 @@ class SetNoPublish(CommandLineOption):
         else:
             return False
 
-    def run(self, header):
+    def run(self, header, opts):
         return 'runeditor'
 
 ################################################################################
@@ -729,7 +734,7 @@ the rc file.
         else:
             return False
 
-    def run(self, header):
+    def run(self, header, opts):
         return 'runeditor'
 
 ################################################################################
@@ -749,14 +754,41 @@ class SetPostComment(CommandLineOption):
     def check(self, opts):
         if opts.comment:
             self.postid = opts.comment
-            opts.comment = True
+            opts.comment = True  # used by the headerparse module
             return True
         else:
             return False
 
-    def run(self, header):
+    def run(self, header, opts):
         header.postid = self.postid
         return 'runeditor'
+
+################################################################################
+'''
+    SetCharset
+'''
+class SetCharset(CommandLineOption):
+    args = ('--charset', )
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'charset',
+              'metavar' : 'CHARSET',
+              'help' : """
+Set the CHARSET to use to decode the post text prior to running the text through
+markdown.
+"""
+             }
+
+    def check(self, opts):
+        if opts.charset:
+            self.charset = opts.charset
+            return True
+        else:
+            return False
+
+    def run(self, header, opts):
+        header.charset = self.charset
+        return 'runeditor' 
 
 ################################################################################
 '''
@@ -772,6 +804,7 @@ class OptionProcessor:
         self.o_list.append(SetPosttime())
         self.o_list.append(SetAllBlogs())
         self.o_list.append(SetPostComment())
+        self.o_list.append(SetCharset())
         self.o_list.append(DeletePost())
         self.o_list.append(DeleteComment())
         self.o_list.append(GetRecentTitles())
@@ -797,13 +830,14 @@ class OptionProcessor:
                 'posttime'    : self.opts.posttime,
                 'allblogs'    : self.opts.allblogs,
                 'comment'     : self.opts.comment,
+                'charset'     : self.opts.charset,
                }
 
     def check(self, header):
         rval = False
         for option in self.o_list:
             if option.check(self.opts):
-                if option.run(header) == 'runeditor':
+                if option.run(header, self.opts) == 'runeditor':
                      rval = True
 
         return rval
