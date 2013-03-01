@@ -23,13 +23,27 @@ def main():
  
     '''
     Make sure that this loop always executes, regardless of whether there 
-    are actually options.  The config file is processed throught this loop
+    are actually options.  The config file is processed through this loop
     and the program will break if that code does not run
     '''
     header = Header()
     runeditor = options.check(header)
     emptyheader_text = header.buildPostHeader(options)
-    if len(sys.argv) == 1 or (len(filelist) == 0 and runeditor) or \
+    '''
+    Unfortunately, determining when to run the editor for creating a blogpost is
+    a bit tricky.  If `blogtool` is invoked by itself do so.  If no files are
+    supplied and certain options are specified that logically mean we want to 
+    create a post (see options.py for which ones return `runeditor`) BUT we
+    haven't editted a comment, then do so.  Finally, if only 3 arguments are
+    supplied on the command line and the blogname is set, meaning the following
+    command was run:
+
+        > blogtool.py -b 'blogname'
+
+    then run the editor.
+    '''
+    if len(sys.argv) == 1 or \
+       (len(filelist) == 0 and runeditor and not options.opts.commentid) or \
        (len(sys.argv) == 3 and options.opts.blogname is not None):
         fd = utils.edit(emptyheader_text)
         if fd == None:
