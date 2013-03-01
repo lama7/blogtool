@@ -2,3 +2,5 @@
 *.swp
 *.posted
 old/
+dist/
+*.egg-info

@@ -1,5 +1,5 @@
 from headerparse import HeaderError
-from proxybase import ProxyError
+from xmlproxy.proxybase import ProxyError
 from fileprocessor import FileProcessor, FileProcessorError
 
 from optparse import OptionParser

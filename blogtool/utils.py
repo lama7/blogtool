@@ -1,5 +1,5 @@
 from xmlrpclib import DateTime
-from proxybase import ProxyError
+from xmlproxy.proxybase import ProxyError
 
 from tempfile import NamedTemporaryFile
 
