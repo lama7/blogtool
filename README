@@ -1,6 +1,6 @@
-# Blogtool #
+# `Blogtool` #
 
-Blogtool is a command line blog client for Wordpress weblogs.
+``Blogtool`` is a command line blog client for Wordpress weblogs.
 
 ## Huh? ##
 
@@ -18,9 +18,9 @@ publish it on my blog.  Actually, my blogs.  I had a backup that I posted
 everything to as well.  Remarkably, none of the clients I used really dealt well
 with multiple blogs.
 
-Thus was born blogtool.
+Thus was born `blogtool`.
 
-## What's it do? ##
+## Whats it do? ##
 
 In addition to writing a post to a blog via xmlrpc, it also supports post
 deletion and edits.  Categories and tags can be specified for the post.  A post
@@ -39,9 +39,9 @@ and the resulting file will be posted with the appropriate markup.
 
 ## The Details ##
 
-In order to do any of this stuff, blogtool needs some basic info about the blog.
+In order to do any of this stuff, `blogtool` needs some basic info about the blog.
 Also, as mentioned, it really only supports Wordpress blogs since that's what my
-blog software is and therefore what blogtool has been tested on.
+blog software is and therefore what `blogtool` has been tested on.
 
 The basic blog info is provided via keywords and values separated by colons.
 Dont' worry- there aren't a lot and they're intuitive with regards to blogging.
@@ -55,7 +55,7 @@ a post on the blog.
 
 ### Header Keywords ###
 
-A blogtool header can consist of any combination of the following keywords:
+A `blogtool` header can consists of any combination of the following keywords:
 
 + TITLE
 + BLOG
@@ -78,7 +78,7 @@ after that blank line is processed as post text and will be published on the
 blog.
 
 For the purposes of posting, the required keywords are XMLRPC, NAME, USERNAME,
-PASSWORD, and BLOGTYPE.  Without these, blogtool can't push anything up to a
+PASSWORD, and BLOGTYPE.  Without these, `blogtool` can't push anything up to a
 weblog.
 
 For keywords such as CATEGORIES and TAGS, a comma separated list can be supplied
@@ -134,17 +134,8 @@ as the value.
     list.
 
 +   POSTTIME
-    Used to schedule a post.  A number of formats are possible:
-    + YYYYMMDDThh:mm
-    + YYYYMMDDThh:mmAM/PM
-    + YYYYMMDDThh:mm:ss
-    + YYYYMMDDThh:mm:ssAM/PM
-    + Month Day, YYYY hh:mm
-    + Month Day, YYYY hh:mm AM/PM
-    + MM/DD/YYYY hh:mm
-    + MM/DD/YYYY hh:mmAM/PM
-    + hh:mm MM/DD/YYYY
-    + hh:mmAM/PM MM/DD/YYYY
+    Used to schedule a post.  See section at the end on time strings to see how
+    to spell this.
 
 ### Groups ###
 
@@ -173,15 +164,15 @@ EXAMPLE:
 ## Configuration Files ##
 
 To reduce the amount of header typing, it is possible to create a configuration
-file for blogtool to obtain parameter settings that are used all the time.  The
-file '~/.btrc' is automatically looked for when blogtool is started.
+file for `blogtool` to obtain parameter settings that are used all the time.  The
+file '~/.btrc' is automatically looked for when `blogtool` is started.
 Alternatively, a configuration file can be specified on the command line using
 the '-c' options.
 
 A configuration file basically consists of a header.  The most useful purpose is
 to supply redundant configuration information like XMLRPC, BLOGTYPE, NAME,
 USERNAME and PASSWORD so that each post file does not require this information.
-Given a configuration file with these four settings, then it is possible to
+Given a configuration file with these five settings, then it is possible to
 construct post files with only two lines in the header- namely the TITLE and
 CATEGORIES of the post.
 
@@ -197,6 +188,8 @@ the tedium of constantly entering the same values for every post.
 
 ## Command Line Options ##
 
+Following are command line options that can be specified for `blogtool`:
+
 +   -h, --help
     Command line help message
 
@@ -208,7 +201,7 @@ the tedium of constantly entering the same values for every post.
     Specifies a blog within a config file.  Should match the 'NAME' keyword.
     
 +   -a, --add-categories
-    Blogtool will attempt to verify categories specified in a post file to
+    `Blogtool` will attempt to verify categories specified in a post file to
     account for typos.  If the catgories aren't found, then the category will
     not be used.  This overrides that default.  Useful when adding a new
     category to the blog.
@@ -216,9 +209,8 @@ the tedium of constantly entering the same values for every post.
 +   --draft
     The post will not be published when it is pushed up to the blog.
 
-+   -s POSTTIME, --schedule=POSTTIME
-    Allows for scheduling of posts.  The formats allowed are identical to those
-    used for the POSTTIME keyword.
++   -s TIMESTR, --schedule=TIMESTR
+    Allows for scheduling of posts.   See below for how to spell TIMESTR.
 
 +   -A, --allblogs
     If multiple blogs are specified in a config file, normally they must be
@@ -253,10 +245,59 @@ the tedium of constantly entering the same values for every post.
 
     The returned post is printed out to STDOUT along with a header and an
     attempt is made to format it using Markdown syntax.  If the output is
-    captured, it should be possible to use blogtool to repost the captured
+    captured, it should be possible to use `blogtool` to repost the captured
     output.
 
 +   -u UPLOAD_FILE, --uploadmedia=UPLOAD_FILE
     Uploads a file to a blog.  Requires a config file to provide blog
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
+
++   --comment==POSTID
+    Post text from a file as a comment to post POSTID.
+
++   --charset=CHARSET
+    Set the CHARSET to use to decode text prior to running it through markdown.
+
++   -D COMMENTID, --deletecomment=COMMENTID
+    Delete COMMENTID from a blog.
+
++  -r POSTID, --readcomments=POSTID
+    Retrieves all comments for a post and displays them on the console.  Comment
+    text is converted to markdown syntax to ease reading.
+
++   --editcomment=COMMENTID
+    Edit comment COMMENTID already on the blog.  The comment will be downloaded
+    and an editor will be launched with the comment text formatted into Markdown
+    syntax.  A header is also generated with the metadata from the blog in it so
+    it can also be edited, for instance to approce a comment held in moderation.
+
+## Miscellaneous ##
+
+Time Strings
+
+The following strings may be used when scheduling a post for publication:
+
++   YYYYMMDDThh:mm
++   YYYYMMDDThh:mmAM/PM
++   YYYYMMDDThh:mm:ss
++   YYYYMMDDThh:mm:ssAM/PM
++   Month DD, YYYY hh:mm
++   Month DD, YYYY hh:mmAM/PM
++   MM/DD/YYYY hh:mm
++   MM/DD/YYYY hh:mmAM/PM
++   hh:mm MM/DD/YYYY
++   hh:mmAM/PM MM/DD/YYYY
+
+KEY:
++ YYYY = 4 digit year
++ MM = 2 digit month (padded with leading 0's if necessary)
++ DD = 2 digit day of month (padded with leading 0's if necessary)
++ hh = 2 digit hour
++ mm = 2 digit minute (padded with leading 0's if necessary)
++ AM/PM = specifies either 'AM' or 'PM' for time
++ Month = abbreviated month name
++ T = a literal 'T' character
++ / = a literal '/' character
++ : = a literal ':' character
+
