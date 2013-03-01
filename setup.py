@@ -10,6 +10,7 @@ def read(fname):
 
 setup(name = 'blogtool',
       version = '1.0',
+      url = 'https://github.com/lama7/blogtool',
       classifiers = [
           'Development Status :: 4 - Beta',
           'Environment :: Console',
@@ -22,7 +23,7 @@ setup(name = 'blogtool',
           ],
       long_description = read('README.md'),
       author = 'Gerry LaMontagne',
-      author_email = 'gjlama94@gmail.com',
+      author_email = 'gjlama94 [at] gmail [dot] com',
       license = 'MIT',
       description = 'A command line blog client',
       scripts = ['bin/bt'],
