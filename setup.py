@@ -1,4 +1,12 @@
+import os
 from setuptools import setup
+
+'''
+Helper function to read a file since it's easier to add text to the README file
+than to add it here.
+'''
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name = 'blogtool',
       version = '1.0',
@@ -12,6 +20,7 @@ setup(name = 'blogtool',
           'Topic :: Internet :: WWW/HTTP :: Site Management',
           'Topic :: Text Processing',
           ],
+      long_description = read('README'),
       author = 'Gerry LaMontagne',
       author_email = 'gjlama94@gmail.com',
       license = 'MIT',
