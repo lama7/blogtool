@@ -1,6 +1,6 @@
 # `Blogtool` #
 
-``Blogtool`` is a command line blog client for Wordpress weblogs.
+`Blogtool` is a command line blog client for Wordpress weblogs.
 
 ## Huh? ##
 
@@ -161,7 +161,7 @@ EXAMPLE:
             CATEGORIES: Tedium
           }
 
-## Configuration Files ##
+### Configuration Files ###
 
 To reduce the amount of header typing, it is possible to create a configuration
 file for `blogtool` to obtain parameter settings that are used all the time.  The
@@ -186,7 +186,7 @@ settings ALWAYS override configuration file settings.
 The configuration file was implemented as a courtesy to the user so as to avoid
 the tedium of constantly entering the same values for every post.
 
-## Command Line Options ##
+### Command Line Options ###
 
 Following are command line options that can be specified for `blogtool`:
 
@@ -272,7 +272,7 @@ Following are command line options that can be specified for `blogtool`:
     syntax.  A header is also generated with the metadata from the blog in it so
     it can also be edited, for instance to approce a comment held in moderation.
 
-## Miscellaneous ##
+### Miscellaneous ###
 
 Time Strings
 
