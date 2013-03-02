@@ -5,18 +5,17 @@
 Contents:
 
 1. [Intro](#intro)
-2. [The Details](#details)  
-    a. [Keywords](#keywords)  
-    b. [Definitions](#def)  
+2. [The Details](#the-details)  
+    a. [Keywords](#header-keywords)  
+    b. [Definitions](#keyword-definitions)  
     c. [Groups](#groups)  
-    d. [Configuration Files](#rcfile)  
-    e. [Command Line Options](#cloptions)  
-3. [Usage and Examples](#usage)  
-    a. [Command Line](#cl)  
+    d. [Configuration Files](#configuration-files)  
+    e. [Command Line Options](#command-line-options)  
+3. [Usage and Examples](#usage-and-examples)  
+    a. [Command Line](#command-line)  
     b. [Headers](#headers)  
-    c. [Multiple Blogs](#multi)  
+    c. [Multiple Blogs](#multiple-blogs)  
 
-<a id="intro"></a>
 ## Intro  ##
 
 ### Huh? ###
@@ -54,7 +53,6 @@ things with an entry on the command line.
 Also, it supports Markdown syntax.  So the post can be formatted using Markdown
 and the resulting file will be posted with the appropriate markup.
 
-<a id="details"></a>
 ## The Details ##
 
 In order to do any of this stuff, `blogtool` needs some basic info about the blog.
@@ -71,7 +69,6 @@ The keywords form the header.  Once the header is completed, a blank line
 follows.  Everything thereafter is considered post text and will be written into
 a post on the blog.
 
-<a id="keywords"></a>
 ### Header Keywords ###
 
 A `blogtool` header can consists of any combination of the following keywords:
@@ -103,7 +100,6 @@ weblog.
 For keywords such as CATEGORIES and TAGS, a comma separated list can be supplied
 as the value.
 
-<a id="def"></a>
 ### Keyword Definitions ###
 
 +   TITLE
@@ -157,7 +153,6 @@ as the value.
     Used to schedule a post.  See section at the end on time strings to see how
     to spell this.
 
-<a id="groups"></a>
 ### Groups ###
 
 The header syntax also supports grouping for the BLOG keyword.  Grouping
@@ -182,7 +177,6 @@ EXAMPLE:
             CATEGORIES: Tedium
           }
 
-<a id="rcfile"></a>
 ### Configuration Files ###
 
 To reduce the amount of header typing, it is possible to create a configuration
@@ -208,7 +202,6 @@ settings ALWAYS override configuration file settings.
 The configuration file was implemented as a courtesy to the user so as to avoid
 the tedium of constantly entering the same values for every post.
 
-<a id="cloptions"></a>
 ### Command Line Options ###
 
 Following are command line options that can be specified for `blogtool`:
@@ -324,7 +317,6 @@ KEY:
 + / = a literal '/' character
 + : = a literal ':' character
 
-<a id="usage"></a>
 ## Usage and Examples  ##
 
 Basic usage:
@@ -334,7 +326,6 @@ bt \[options\] \[filelist\]
 If no options nor files are specified, then `blogtool` will attempt to launch an
 editor as specified by the $EDITOR environment variable. 
 
-<a id="cl"></a>
 ### Command Line ###
 
 Assume the following `~/.btrc` file exists for the following examples:
@@ -395,7 +386,6 @@ Note that if you wish to *reply* to a comment, you'll need to note the
 
     PARENTID: 54321
 
-<a id="headers"></a>
 ### Headers ###
 
 Given the following `~/.btrc` file:
@@ -419,7 +409,6 @@ These are the minimal header entries that must be completed for blogtool to be
 able to process the file.  Make sure there is a blank line following the final
 header line or `blogtool` will not be able to parse the file properly.
 
-<a id="multi"></a>
 ### Multiple Blogs ###
 
 It is possible to specify multiple blogs in a single `~/.btrc` file:
