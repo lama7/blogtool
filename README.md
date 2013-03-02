@@ -2,7 +2,24 @@
 
 `Blogtool` is a command line blog client for Wordpress weblogs.
 
-## Huh? ##
+Contents:
+
+1. [Intro](#intro)
+2. [The Details](#details)  
+    a. [Keywords](#keywords)  
+    b. [Definitions](#def)  
+    c. [Groups](#groups)  
+    d. [Configuration Files](#rcfile)  
+    e. [Command Line Options](#cloptions)  
+3. [Usage and Examples](#usage)  
+    a. [Command Line](#cl)  
+    b. [Headers](#headers)  
+    c. [Multiple Blogs](#multi)  
+
+<a id="intro"></a>
+## Intro  ##
+
+### Huh? ###
 
 I've tried a variety of graphical blog clients.  All of them had spotty
 behavior.  As I continued blogging, I realized that the gui based clients were
@@ -20,7 +37,7 @@ with multiple blogs.
 
 Thus was born `blogtool`.
 
-## Whats it do? ##
+### Whats it do? ###
 
 In addition to writing a post to a blog via xmlrpc, it also supports post
 deletion and edits.  Categories and tags can be specified for the post.  A post
@@ -37,6 +54,7 @@ things with an entry on the command line.
 Also, it supports Markdown syntax.  So the post can be formatted using Markdown
 and the resulting file will be posted with the appropriate markup.
 
+<a id="details"></a>
 ## The Details ##
 
 In order to do any of this stuff, `blogtool` needs some basic info about the blog.
@@ -53,6 +71,7 @@ The keywords form the header.  Once the header is completed, a blank line
 follows.  Everything thereafter is considered post text and will be written into
 a post on the blog.
 
+<a id="keywords"></a>
 ### Header Keywords ###
 
 A `blogtool` header can consists of any combination of the following keywords:
@@ -84,6 +103,7 @@ weblog.
 For keywords such as CATEGORIES and TAGS, a comma separated list can be supplied
 as the value.
 
+<a id="def"></a>
 ### Keyword Definitions ###
 
 +   TITLE
@@ -137,6 +157,7 @@ as the value.
     Used to schedule a post.  See section at the end on time strings to see how
     to spell this.
 
+<a id="groups"></a>
 ### Groups ###
 
 The header syntax also supports grouping for the BLOG keyword.  Grouping
@@ -161,6 +182,7 @@ EXAMPLE:
             CATEGORIES: Tedium
           }
 
+<a id="rcfile"></a>
 ### Configuration Files ###
 
 To reduce the amount of header typing, it is possible to create a configuration
@@ -186,6 +208,7 @@ settings ALWAYS override configuration file settings.
 The configuration file was implemented as a courtesy to the user so as to avoid
 the tedium of constantly entering the same values for every post.
 
+<a id="cloptions"></a>
 ### Command Line Options ###
 
 Following are command line options that can be specified for `blogtool`:
@@ -300,4 +323,139 @@ KEY:
 + T = a literal 'T' character
 + / = a literal '/' character
 + : = a literal ':' character
+
+<a id="usage"></a>
+## Usage and Examples  ##
+
+Basic usage:
+
+bt \[options\] \[filelist\]
+
+If no options nor files are specified, then `blogtool` will attempt to launch an
+editor as specified by the $EDITOR environment variable. 
+
+<a id="cl"></a>
+### Command Line ###
+
+Assume the following `~/.btrc` file exists for the following examples:
+
+    BLOG: {
+            NAME: My Blog
+            XMLRPC: http://my.server/xmlrpc.php
+            USERNAME: user
+            PASSWORD: secret
+          }
+
+To post a file to the blog:
+
+    > bt mypostfile
+
+To post a file and make sure that all categories are added to the blog:
+
+    > bt -a mypostfile
+
+To manually add a new category to a blog:
+
+    > bt -n cat.subcat1.subcat2
+
+Catgories can be supplied as a hierarchy by using a dotted notation as above.
+All necessary categories will be added to the blog to fulfill the command.  So
+if all 3 categories are new, 3 new categories will be added.  If only the final
+`subcat2` is new, that is the only new one created with it's parent being
+`subcat1`.  This same syntax is used when specifying categories in the header of
+a post file.
+
+To retrieve the 5 latest blog titles:
+
+    > bt -t 5
+
+To retrieve a blogpost for editting:
+
+    > bt -g 12345 > postfile
+
+This assumes the `POSTID` of the post to edit is 12345.  The retrieve option
+will list blog post titles along with the ID to use for this command.  The
+resulting `postfile` will contain an appropriately filled out header and the
+post text in `markdown` syntax.
+
+To upload a picture:
+
+    > bt -u file_to_upload
+
+To see the comments for a post:
+
+    > bt -r 12345
+
+To write a comment:
+
+    > bt --comment 12345
+
+Note that if you wish to *reply* to a comment, you'll need to note the
+`commentid` and add a line like this to the header:
+
+    PARENTID: 54321
+
+<a id="headers"></a>
+### Headers ###
+
+Given the following `~/.btrc` file:
+
+    NAME: My Blog
+    XMLRPC: http://my.server/xmlrpc.php
+    USERNAME: user
+    PASSWORD: secret
+    BLOGTYPE: wp
+
+When simply launching blogtool with an empty command line like:
+
+    > bt
+
+The editor will launch with the following header:
+
+    TITLE:
+    CATEGORIES:
+
+These are the minimal header entries that must be completed for blogtool to be
+able to process the file.  Make sure there is a blank line following the final
+header line or `blogtool` will not be able to parse the file properly.
+
+<a id="multi"></a>
+### Multiple Blogs ###
+
+It is possible to specify multiple blogs in a single `~/.btrc` file:
+
+    BLOG: {
+           NAME: First Blog
+           XMLRPC: http://firstblog.server/xmlrpc.php
+           USERNAME: user
+           PASSWORD: secret
+          },
+          {
+           NAME: Other Blog
+           XMLRPC: http://otherblog.server/xmlrpc.php
+           USERNAME: user
+           PASSWORD: secret2
+          }
+    BLOGTYPE: wp
+
+If you wish to compose a new blog post that will go to both blogs:
+
+    > bt -A
+
+The resulting header that appears in the editor will be as so:
+
+    TITLE:
+    CATEGORIES:
+    BLOG: First Blog, Other Blog
+
+Now you'll know which blogs the post will be posted to.  If you don't want it to
+go to both blogs, simply remove the blog name from the `BLOG` header line.
+
+If you only want a post to go to a specific blog:
+
+    > bt -b 'Other Blog'
+
+Similarly, the `-b` option can be used in conjunction with other options like
+retrieving titles, categories or posts.
+
 
