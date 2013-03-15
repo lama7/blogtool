@@ -599,6 +599,9 @@ class Header():
                 text += ': \n'
             if flags['comment']:
                 text += 'POSTID: %s\n' % pl.get('postid')
+                parentid = pl.get('parentid')
+                if parentid != '0':
+                    text += 'PARENTID: %s\n' % parentid
             return text + 'BLOG: %s\n' % pl.get('name')
             
 

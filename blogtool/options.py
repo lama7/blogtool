@@ -747,13 +747,18 @@ class SetPostComment(CommandLineOption):
               'action' : 'store',
               'dest' : 'comment',
               'default' : False,
-              'metavar' : 'POSTID',
-              'help' : "Post text from file as a comment to post POSTID."
+              'metavar' : ('POSTID', 'COMMENTID'),
+              'nargs' : 2,
+              'help' : """
+Post text from file as a comment to post POSTID.  If the comment is in answer to
+another comment, supply the COMMENTID, otherwise set it to 0.
+"""
              }
 
     def check(self, opts):
         if opts.comment:
-            self.postid = opts.comment
+            self.postid = opts.comment[0]
+            self.parentid = opts.comment[1]
             opts.comment = True  # used by the headerparse module
             return True
         else:
@@ -761,6 +766,7 @@ class SetPostComment(CommandLineOption):
 
     def run(self, header, opts):
         header.postid = self.postid
+        header.parentid = self.parentid
         return 'runeditor'
 
 ################################################################################
