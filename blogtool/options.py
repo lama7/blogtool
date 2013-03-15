@@ -2,7 +2,7 @@ from headerparse import HeaderError
 from xmlproxy.proxybase import ProxyError
 from fileprocessor import FileProcessor, FileProcessorError
 
-from optparse import OptionParser
+import argparse
 
 import html2md
 import utils
@@ -815,13 +815,14 @@ class OptionProcessor:
         self.o_list.append(GetComments())
         self.o_list.append(EditComment())
 
-        self.parser = OptionParser("Usage: %prog [option] postfile1 postfile2 ...")
+        self.parser = argparse.ArgumentParser(description = "Command line based blog client")
         for option in self.o_list:
-            self.parser.add_option(*option.args, **option.kwargs)
+            self.parser.add_argument(*option.args, **option.kwargs)
+        self.parser.add_argument('postfile', nargs='*', help= "File or files to post to a blog")
 
     def parse(self):
-        self.opts, files = self.parser.parse_args()
-        return files
+        self.opts = self.parser.parse_args()
+        return self.opts.postfile
 
     def flags(self):
         return {
@@ -841,4 +842,3 @@ class OptionProcessor:
                      rval = True
 
         return rval
-
