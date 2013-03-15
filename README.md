@@ -15,6 +15,7 @@ Contents:
     a. [Command Line](#command-line)  
     b. [Headers](#headers)  
     c. [Multiple Blogs](#multiple-blogs)  
+    d. [Pictures](#pictures)  
 
 ## Intro  ##
 
@@ -50,8 +51,13 @@ entries can be retrieved and listed.  These actions are accomplished independent
 of posts.  As a matter of fact, it's possible to do any combination of these
 things with an entry on the command line.
 
-Also, it supports Markdown syntax.  So the post can be formatted using Markdown
-and the resulting file will be posted with the appropriate markup.
+In addition to post related processing, `blogtool` can also be used to read
+comments to a post, edit comments (for moderation purposes, for example) and
+write comments.  It even supports the ability to respond to specific comments.
+
+Finally, but not least, it supports Markdown syntax.  So the post file or
+comment can be formatted using Markdown syntax and the resulting file will be
+posted with the appropriate markup to the blog.
 
 ## The Details ##
 
@@ -66,12 +72,12 @@ multiple blogs.  If posting to a single blog, only two keywords are needed with
 any regularity.
 
 The keywords form the header.  Once the header is completed, a blank line
-follows.  Everything thereafter is considered post text and will be written into
-a post on the blog.
+follows.  Everything thereafter is considered post text or coment text and will
+be written as appropriate to a post on the blog.
 
 ### Header Keywords ###
 
-A `blogtool` header can consists of any combination of the following keywords:
+Following is a list of `blogtool` header keywords:
 
 + TITLE
 + BLOG
@@ -84,21 +90,27 @@ A `blogtool` header can consists of any combination of the following keywords:
 + TAGS
 + POSTTIME
 + BLOGTYPE 
++ COMMENTSTATUS
++ COMMENTID
++ PARENTID
++ AUTHOR
++ AUTHORURL
++ AUTHOREMAIL
 
 Notice, these are listed in caps.  That's because the keywords should be
 capitalized in the header.  Each keyword should be followed by a ':' and then an
 appropriate value.  More on those below.  Each line of the header is terminated
-simply with a carriage return.  So don't try to put all the header stuff on a
-single line.  To terminate a header, simply create a blank line.  Everything
-after that blank line is processed as post text and will be published on the
-blog.
+with a carriage return, so don't try to put all the header stuff on a single
+line.  To terminate the header, simply create a blank line.  Everything after
+that blank line is processed as post text and will be published on the blog.
+
+Keywords may also be given a list of values by using a comma (',') to separate
+each value.  Because of this, the comma character *cannot* be used as part of a
+keyword value, for instance in the title of a post.
 
 For the purposes of posting, the required keywords are XMLRPC, NAME, USERNAME,
 PASSWORD, and BLOGTYPE.  Without these, `blogtool` can't push anything up to a
 weblog.
-
-For keywords such as CATEGORIES and TAGS, a comma separated list can be supplied
-as the value.
 
 ### Keyword Definitions ###
 
@@ -474,4 +486,46 @@ If you only want a post to go to a specific blog:
 Similarly, the `-b` option can be used in conjunction with other options like
 retrieving titles, categories or posts.
 
+### Pictures ###
 
+It is possible with `blogtool` to add pictures to your post as provided by
+Markdown syntax.  In particular, the following syntax should be utilized:
+
+    ![](*path/to/picture.jpg* )
+
+When such a syntax is encountered by `blogtool` while processing a post file, it
+will attempt to locate the `JPG` file and upload it to the blog.  If successful,
+it will then modify the link information so that the image will be linked on the
+blog and the picture will appear in the post without further direction from you.
+Note that the space character preceding the closing paren is needed.  Also, if a
+URL is supplied instead of a path, then blogtool does nothing extra and simply
+posts the link as supplied.
+
+Because `blogtool` utilizes [`python-markdown`][1], it takes advantage of the
+attribute feature provided.  This is useful for resizing and locating a picture
+for display in a blogpost
+
+  [1]: https://pypi.python.org/pypi/Markdown/2.3
+
+For example, let's say `mypic.jpg` is a 1024x768 sized image.  The following
+can be used to display it:
+
+    {@class=aligncenter}
+    ![{@width=614}{@height=531}](path/to/mypic.jpg )
+
+This will set the `width` and `height` attributes in the subsequent markup for
+the picture.  It will also place the picture in a `p` tag with its `class`
+attribute set to `aligncenter` so the picture will appear centered in the post.
+This takes advantage of the builtin alignment classes for a Wordpress blog.
+
+Another possibility:
+
+    {@class=aligncenter}
+    ![{@width=614}{@height=531}](path/to/mypic.jpg )
+    ![{@width=614}{@height=531}](path/to/mypic.jpg )
+
+This would center 2 pictures, potentially both on the same line if width allows
+for it, within the same `p` tag.  Other alignment possibilities are `alignright`
+and `alignleft` or whatever other values are supported by your blog theme.
+Thus, while not exactly a tool for a photo blog, `blogtool` affords the user
+quite a bit of control over pictures.
