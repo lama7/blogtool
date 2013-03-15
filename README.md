@@ -102,10 +102,10 @@ as the value.
 
 ### Keyword Definitions ###
 
-+   TITLE
++   TITLE  
     Defines the post title that will appear on the blog.  
 
-+   BLOG
++   BLOG  
     Serves dual purposes.  With a single value it defines the name of the blog
     for posting to.  Again, basically any character can be used, excepting a
     comma.
@@ -115,43 +115,70 @@ as the value.
 
     Alternatively, a group can be assigned.  See "Groups" below.
 
-+   BLOGTYPE
++   BLOGTYPE  
     Specifies the blog type being posted to.  For now, this is only 'wp' for
     Wordpress blogs.
 
-+   NAME
++   NAME  
     Specifies the actual name of the blog.  If posting to an individual blog,
     then it is synonymous with the 'BLOG' keyword.  If posting to multiple
     blogs, then it should be used inside a group for the 'BLOG' keyword.
 
-+   XMLRPC
++   XMLRPC  
     The location of the xmlrpc file for the blog.
 
-+   CATEGORIES
++   CATEGORIES  
     The category the post should be filed under on the blog.  If filing under a
     subcategory, then it should be listed as a dotted representation of the
     category.  Example: parentcat.subcat1.subcat2
 
     Can be a single value or a comma separated list.
 
-+   POSTID
++   POSTID  
     The ID number of a post.  The presence of this in the header means that the
     post will be updated.
 
-+   USERNAME
++   USERNAME  
     The login name for posting to the blog.  The is required to be able to post to
     a weblog.
 
-+   PASSWORD
++   PASSWORD  
     The password for the USERNAME for gaining access to the weblog.
 
-+   TAGS
++   TAGS  
     For defining the tags for a post.  Can be a single value or a comma separated
     list.
 
-+   POSTTIME
++   POSTTIME  
     Used to schedule a post.  See section at the end on time strings to see how
     to spell this.
+
+The following keywords are specific to editting and or writing comments:
+
++   COMMENTSTATUS  
+    Valid values are `approve`, `hold` and `spam` and are determined by the
+    Wordpress blog software.  
+
++   COMMENTID  
+    Every Wordpress comment has a unique ID, like the posts.  The value for this
+    can be obtained with the `--readcomments` option or by hovering on the
+    comment link in a browser.
+
++   PARENTID  
+    The `comment_id` of the comment being replied to.  Typically used when
+    writing a comment using the `--comment` option.
+
++   AUTHOR  
+    Specifies the name to be associated with a comment.  When writing a comment
+    via the `--comment` option, this will default to the username for the blog
+    specified, but can be overwritten to anything.
+
++   AUTHORURL  
+    Specifies the URL for the comment's author's website.  Can be left blank.
+
++   AUTHOREMAIL  
+    Specifies an email address for the author of the comment.  Can be left
+    blank.
 
 ### Groups ###
 
@@ -206,55 +233,55 @@ the tedium of constantly entering the same values for every post.
 
 Following are command line options that can be specified for `blogtool`:
 
-+   -h, --help
++   -h, --help  
     Command line help message
 
-+   -c CONFIGFILE, --config=CONFIGFILE
++   -c CONFIGFILE, --config=CONFIGFILE  
     Specifies a config file.  This takes precedence over the default '.btrc'
     file if specified.
 
-+   -b BLOGNAME, --blog=BLOGNAME
++   -b BLOGNAME, --blog=BLOGNAME  
     Specifies a blog within a config file.  Should match the 'NAME' keyword.
     
-+   -a, --add-categories
++   -a, --add-categories  
     `Blogtool` will attempt to verify categories specified in a post file to
     account for typos.  If the catgories aren't found, then the category will
     not be used.  This overrides that default.  Useful when adding a new
     category to the blog.
 
-+   --draft
++   --draft  
     The post will not be published when it is pushed up to the blog.
 
-+   -s TIMESTR, --schedule=TIMESTR
++   -s TIMESTR, --schedule=TIMESTR  
     Allows for scheduling of posts.   See below for how to spell TIMESTR.
 
-+   -A, --allblogs
++   -A, --allblogs  
     If multiple blogs are specified in a config file, normally they must be
     specified using the 'NAME' or 'BLOG' keyword.  This provides a shortcut for
     sending a post to all the blogs listed in the config file.
 
-+   -d POSTID, --delete=POSTID
++   -d POSTID, --delete=POSTID  
     Delete the post.  Requires a config file to provide blog information.  If
     multiple blogs are defined, then specify which blog to delete from with the
     -b option.
 
-+   -t NUM_RECENT_TITLES, --recent-titles=NUM_RECENT_TITLES
++   -t NUM_RECENT_TITLES, --recent-titles=NUM_RECENT_TITLES  
     Returns a list of the most recent blog posts.  Requires a config file to
     provide blog information.  If multiple blogs are defined, then a list is
     returned for each blog.  If used with the -b option, only posts for that
     blog are listed.
 
-+   -C, --catgories
++   -C, --catgories  
     Returns a list of categories for a blog.  Requires a config file to provide
     blog information.  If multiple blogs are defined, then specify the blog
     using the -b option.
 
-+   -n NEWCAT_NAME, --new-categories=NEWCAT_NAME
++   -n NEWCAT_NAME, --new-categories=NEWCAT_NAME  
     Adds NEWCAT_NAME to the category list for the blog.  Requires a config file
     to provide blog information.  If multiple blogs are defined, then use the
     -b option to specify which one to add the category to.
 
-+   -g GET_POSTID, --getpost=GET_POSTID
++   -g GET_POSTID, --getpost=GET_POSTID  
     Retrieves a post from a blog.  Requires a config file to provide blog
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
@@ -264,25 +291,25 @@ Following are command line options that can be specified for `blogtool`:
     captured, it should be possible to use `blogtool` to repost the captured
     output.
 
-+   -u UPLOAD_FILE, --uploadmedia=UPLOAD_FILE
++   -u UPLOAD_FILE, --uploadmedia=UPLOAD_FILE  
     Uploads a file to a blog.  Requires a config file to provide blog
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
 
-+   --comment==POSTID
++   --comment==POSTID  
     Post text from a file as a comment to post POSTID.
 
-+   --charset=CHARSET
++   --charset=CHARSET  
     Set the CHARSET to use to decode text prior to running it through markdown.
 
-+   -D COMMENTID, --deletecomment=COMMENTID
++   -D COMMENTID, --deletecomment=COMMENTID  
     Delete COMMENTID from a blog.
 
-+  -r POSTID, --readcomments=POSTID
++  -r POSTID, --readcomments=POSTID  
     Retrieves all comments for a post and displays them on the console.  Comment
     text is converted to markdown syntax to ease reading.
 
-+   --editcomment=COMMENTID
++   --editcomment=COMMENTID  
     Edit comment COMMENTID already on the blog.  The comment will be downloaded
     and an editor will be launched with the comment text formatted into Markdown
     syntax.  A header is also generated with the metadata from the blog in it so
