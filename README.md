@@ -2,7 +2,24 @@
 
 `Blogtool` is a command line blog client for Wordpress weblogs.
 
-## Huh? ##
+Contents:
+
+1. [Intro](#intro)
+2. [The Details](#the-details)  
+    a. [Keywords](#header-keywords)  
+    b. [Definitions](#keyword-definitions)  
+    c. [Groups](#groups)  
+    d. [Configuration Files](#configuration-files)  
+    e. [Command Line Options](#command-line-options)  
+3. [Usage and Examples](#usage-and-examples)  
+    a. [Command Line](#command-line)  
+    b. [Headers](#headers)  
+    c. [Multiple Blogs](#multiple-blogs)  
+    d. [Pictures](#pictures)  
+
+## Intro  ##
+
+### Huh? ###
 
 I've tried a variety of graphical blog clients.  All of them had spotty
 behavior.  As I continued blogging, I realized that the gui based clients were
@@ -20,7 +37,7 @@ with multiple blogs.
 
 Thus was born `blogtool`.
 
-## Whats it do? ##
+### Whats it do? ###
 
 In addition to writing a post to a blog via xmlrpc, it also supports post
 deletion and edits.  Categories and tags can be specified for the post.  A post
@@ -34,8 +51,13 @@ entries can be retrieved and listed.  These actions are accomplished independent
 of posts.  As a matter of fact, it's possible to do any combination of these
 things with an entry on the command line.
 
-Also, it supports Markdown syntax.  So the post can be formatted using Markdown
-and the resulting file will be posted with the appropriate markup.
+In addition to post related processing, `blogtool` can also be used to read
+comments to a post, edit comments (for moderation purposes, for example) and
+write comments.  It even supports the ability to respond to specific comments.
+
+Finally, but not least, it supports Markdown syntax.  So the post file or
+comment can be formatted using Markdown syntax and the resulting file will be
+posted with the appropriate markup to the blog.
 
 ## The Details ##
 
@@ -50,12 +72,12 @@ multiple blogs.  If posting to a single blog, only two keywords are needed with
 any regularity.
 
 The keywords form the header.  Once the header is completed, a blank line
-follows.  Everything thereafter is considered post text and will be written into
-a post on the blog.
+follows.  Everything thereafter is considered post text or coment text and will
+be written as appropriate to a post on the blog.
 
 ### Header Keywords ###
 
-A `blogtool` header can consists of any combination of the following keywords:
+Following is a list of `blogtool` header keywords:
 
 + TITLE
 + BLOG
@@ -68,28 +90,34 @@ A `blogtool` header can consists of any combination of the following keywords:
 + TAGS
 + POSTTIME
 + BLOGTYPE 
++ COMMENTSTATUS
++ COMMENTID
++ PARENTID
++ AUTHOR
++ AUTHORURL
++ AUTHOREMAIL
 
 Notice, these are listed in caps.  That's because the keywords should be
 capitalized in the header.  Each keyword should be followed by a ':' and then an
 appropriate value.  More on those below.  Each line of the header is terminated
-simply with a carriage return.  So don't try to put all the header stuff on a
-single line.  To terminate a header, simply create a blank line.  Everything
-after that blank line is processed as post text and will be published on the
-blog.
+with a carriage return, so don't try to put all the header stuff on a single
+line.  To terminate the header, simply create a blank line.  Everything after
+that blank line is processed as post text and will be published on the blog.
+
+Keywords may also be given a list of values by using a comma (',') to separate
+each value.  Because of this, the comma character *cannot* be used as part of a
+keyword value, for instance in the title of a post.
 
 For the purposes of posting, the required keywords are XMLRPC, NAME, USERNAME,
 PASSWORD, and BLOGTYPE.  Without these, `blogtool` can't push anything up to a
 weblog.
 
-For keywords such as CATEGORIES and TAGS, a comma separated list can be supplied
-as the value.
-
 ### Keyword Definitions ###
 
-+   TITLE
++   TITLE  
     Defines the post title that will appear on the blog.  
 
-+   BLOG
++   BLOG  
     Serves dual purposes.  With a single value it defines the name of the blog
     for posting to.  Again, basically any character can be used, excepting a
     comma.
@@ -99,43 +127,70 @@ as the value.
 
     Alternatively, a group can be assigned.  See "Groups" below.
 
-+   BLOGTYPE
++   BLOGTYPE  
     Specifies the blog type being posted to.  For now, this is only 'wp' for
     Wordpress blogs.
 
-+   NAME
++   NAME  
     Specifies the actual name of the blog.  If posting to an individual blog,
     then it is synonymous with the 'BLOG' keyword.  If posting to multiple
     blogs, then it should be used inside a group for the 'BLOG' keyword.
 
-+   XMLRPC
++   XMLRPC  
     The location of the xmlrpc file for the blog.
 
-+   CATEGORIES
++   CATEGORIES  
     The category the post should be filed under on the blog.  If filing under a
     subcategory, then it should be listed as a dotted representation of the
     category.  Example: parentcat.subcat1.subcat2
 
     Can be a single value or a comma separated list.
 
-+   POSTID
++   POSTID  
     The ID number of a post.  The presence of this in the header means that the
     post will be updated.
 
-+   USERNAME
++   USERNAME  
     The login name for posting to the blog.  The is required to be able to post to
     a weblog.
 
-+   PASSWORD
++   PASSWORD  
     The password for the USERNAME for gaining access to the weblog.
 
-+   TAGS
++   TAGS  
     For defining the tags for a post.  Can be a single value or a comma separated
     list.
 
-+   POSTTIME
++   POSTTIME  
     Used to schedule a post.  See section at the end on time strings to see how
     to spell this.
+
+The following keywords are specific to editting and or writing comments:
+
++   COMMENTSTATUS  
+    Valid values are `approve`, `hold` and `spam` and are determined by the
+    Wordpress blog software.  
+
++   COMMENTID  
+    Every Wordpress comment has a unique ID, like the posts.  The value for this
+    can be obtained with the `--readcomments` option or by hovering on the
+    comment link in a browser.
+
++   PARENTID  
+    The `comment_id` of the comment being replied to.  Typically used when
+    writing a comment using the `--comment` option.
+
++   AUTHOR  
+    Specifies the name to be associated with a comment.  When writing a comment
+    via the `--comment` option, this will default to the username for the blog
+    specified, but can be overwritten to anything.
+
++   AUTHORURL  
+    Specifies the URL for the comment's author's website.  Can be left blank.
+
++   AUTHOREMAIL  
+    Specifies an email address for the author of the comment.  Can be left
+    blank.
 
 ### Groups ###
 
@@ -190,55 +245,55 @@ the tedium of constantly entering the same values for every post.
 
 Following are command line options that can be specified for `blogtool`:
 
-+   -h, --help
++   -h, --help  
     Command line help message
 
-+   -c CONFIGFILE, --config=CONFIGFILE
++   -c CONFIGFILE, --config=CONFIGFILE  
     Specifies a config file.  This takes precedence over the default '.btrc'
     file if specified.
 
-+   -b BLOGNAME, --blog=BLOGNAME
++   -b BLOGNAME, --blog=BLOGNAME  
     Specifies a blog within a config file.  Should match the 'NAME' keyword.
     
-+   -a, --add-categories
++   -a, --add-categories  
     `Blogtool` will attempt to verify categories specified in a post file to
     account for typos.  If the catgories aren't found, then the category will
     not be used.  This overrides that default.  Useful when adding a new
     category to the blog.
 
-+   --draft
++   --draft  
     The post will not be published when it is pushed up to the blog.
 
-+   -s TIMESTR, --schedule=TIMESTR
++   -s TIMESTR, --schedule=TIMESTR  
     Allows for scheduling of posts.   See below for how to spell TIMESTR.
 
-+   -A, --allblogs
++   -A, --allblogs  
     If multiple blogs are specified in a config file, normally they must be
     specified using the 'NAME' or 'BLOG' keyword.  This provides a shortcut for
     sending a post to all the blogs listed in the config file.
 
-+   -d POSTID, --delete=POSTID
++   -d POSTID, --delete=POSTID  
     Delete the post.  Requires a config file to provide blog information.  If
     multiple blogs are defined, then specify which blog to delete from with the
     -b option.
 
-+   -t NUM_RECENT_TITLES, --recent-titles=NUM_RECENT_TITLES
++   -t NUM_RECENT_TITLES, --recent-titles=NUM_RECENT_TITLES  
     Returns a list of the most recent blog posts.  Requires a config file to
     provide blog information.  If multiple blogs are defined, then a list is
     returned for each blog.  If used with the -b option, only posts for that
     blog are listed.
 
-+   -C, --catgories
++   -C, --catgories  
     Returns a list of categories for a blog.  Requires a config file to provide
     blog information.  If multiple blogs are defined, then specify the blog
     using the -b option.
 
-+   -n NEWCAT_NAME, --new-categories=NEWCAT_NAME
++   -n NEWCAT_NAME, --new-categories=NEWCAT_NAME  
     Adds NEWCAT_NAME to the category list for the blog.  Requires a config file
     to provide blog information.  If multiple blogs are defined, then use the
     -b option to specify which one to add the category to.
 
-+   -g GET_POSTID, --getpost=GET_POSTID
++   -g GET_POSTID, --getpost=GET_POSTID  
     Retrieves a post from a blog.  Requires a config file to provide blog
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
@@ -248,25 +303,25 @@ Following are command line options that can be specified for `blogtool`:
     captured, it should be possible to use `blogtool` to repost the captured
     output.
 
-+   -u UPLOAD_FILE, --uploadmedia=UPLOAD_FILE
++   -u UPLOAD_FILE, --uploadmedia=UPLOAD_FILE  
     Uploads a file to a blog.  Requires a config file to provide blog
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
 
-+   --comment==POSTID
++   --comment==POSTID  
     Post text from a file as a comment to post POSTID.
 
-+   --charset=CHARSET
++   --charset=CHARSET  
     Set the CHARSET to use to decode text prior to running it through markdown.
 
-+   -D COMMENTID, --deletecomment=COMMENTID
++   -D COMMENTID, --deletecomment=COMMENTID  
     Delete COMMENTID from a blog.
 
-+  -r POSTID, --readcomments=POSTID
++  -r POSTID, --readcomments=POSTID  
     Retrieves all comments for a post and displays them on the console.  Comment
     text is converted to markdown syntax to ease reading.
 
-+   --editcomment=COMMENTID
++   --editcomment=COMMENTID  
     Edit comment COMMENTID already on the blog.  The comment will be downloaded
     and an editor will be launched with the comment text formatted into Markdown
     syntax.  A header is also generated with the metadata from the blog in it so
@@ -301,3 +356,176 @@ KEY:
 + / = a literal '/' character
 + : = a literal ':' character
 
+## Usage and Examples  ##
+
+Basic usage:
+
+bt \[options\] \[filelist\]
+
+If no options nor files are specified, then `blogtool` will attempt to launch an
+editor as specified by the $EDITOR environment variable. 
+
+### Command Line ###
+
+Assume the following `~/.btrc` file exists for the following examples:
+
+    BLOG: {
+            NAME: My Blog
+            XMLRPC: http://my.server/xmlrpc.php
+            USERNAME: user
+            PASSWORD: secret
+          }
+
+To post a file to the blog:
+
+    > bt mypostfile
+
+To post a file and make sure that all categories are added to the blog:
+
+    > bt -a mypostfile
+
+To manually add a new category to a blog:
+
+    > bt -n cat.subcat1.subcat2
+
+Catgories can be supplied as a hierarchy by using a dotted notation as above.
+All necessary categories will be added to the blog to fulfill the command.  So
+if all 3 categories are new, 3 new categories will be added.  If only the final
+`subcat2` is new, that is the only new one created with it's parent being
+`subcat1`.  This same syntax is used when specifying categories in the header of
+a post file.
+
+To retrieve the 5 latest blog titles:
+
+    > bt -t 5
+
+To retrieve a blogpost for editting:
+
+    > bt -g 12345 > postfile
+
+This assumes the `POSTID` of the post to edit is 12345.  The retrieve option
+will list blog post titles along with the ID to use for this command.  The
+resulting `postfile` will contain an appropriately filled out header and the
+post text in `markdown` syntax.
+
+To upload a picture:
+
+    > bt -u file_to_upload
+
+To see the comments for a post:
+
+    > bt -r 12345
+
+To write a comment:
+
+    > bt --comment 12345
+
+Note that if you wish to *reply* to a comment, you'll need to note the
+`commentid` and add a line like this to the header:
+
+    PARENTID: 54321
+
+### Headers ###
+
+Given the following `~/.btrc` file:
+
+    NAME: My Blog
+    XMLRPC: http://my.server/xmlrpc.php
+    USERNAME: user
+    PASSWORD: secret
+    BLOGTYPE: wp
+
+When simply launching blogtool with an empty command line like:
+
+    > bt
+
+The editor will launch with the following header:
+
+    TITLE:
+    CATEGORIES:
+
+These are the minimal header entries that must be completed for blogtool to be
+able to process the file.  Make sure there is a blank line following the final
+header line or `blogtool` will not be able to parse the file properly.
+
+### Multiple Blogs ###
+
+It is possible to specify multiple blogs in a single `~/.btrc` file:
+
+    BLOG: {
+           NAME: First Blog
+           XMLRPC: http://firstblog.server/xmlrpc.php
+           USERNAME: user
+           PASSWORD: secret
+          },
+          {
+           NAME: Other Blog
+           XMLRPC: http://otherblog.server/xmlrpc.php
+           USERNAME: user
+           PASSWORD: secret2
+          }
+    BLOGTYPE: wp
+
+If you wish to compose a new blog post that will go to both blogs:
+
+    > bt -A
+
+The resulting header that appears in the editor will be as so:
+
+    TITLE:
+    CATEGORIES:
+    BLOG: First Blog, Other Blog
+
+Now you'll know which blogs the post will be posted to.  If you don't want it to
+go to both blogs, simply remove the blog name from the `BLOG` header line.
+
+If you only want a post to go to a specific blog:
+
+    > bt -b 'Other Blog'
+
+Similarly, the `-b` option can be used in conjunction with other options like
+retrieving titles, categories or posts.
+
+### Pictures ###
+
+It is possible with `blogtool` to add pictures to your post as provided by
+Markdown syntax.  In particular, the following syntax should be utilized:
+
+    ![](*path/to/picture.jpg* )
+
+When such a syntax is encountered by `blogtool` while processing a post file, it
+will attempt to locate the `JPG` file and upload it to the blog.  If successful,
+it will then modify the link information so that the image will be linked on the
+blog and the picture will appear in the post without further direction from you.
+Note that the space character preceding the closing paren is needed.  Also, if a
+URL is supplied instead of a path, then blogtool does nothing extra and simply
+posts the link as supplied.
+
+Because `blogtool` utilizes [`python-markdown`][1], it takes advantage of the
+attribute feature provided.  This is useful for resizing and locating a picture
+for display in a blogpost
+
+  [1]: https://pypi.python.org/pypi/Markdown/2.3
+
+For example, let's say `mypic.jpg` is a 1024x768 sized image.  The following
+can be used to display it:
+
+    {@class=aligncenter}
+    ![{@width=614}{@height=531}](path/to/mypic.jpg )
+
+This will set the `width` and `height` attributes in the subsequent markup for
+the picture.  It will also place the picture in a `p` tag with its `class`
+attribute set to `aligncenter` so the picture will appear centered in the post.
+This takes advantage of the builtin alignment classes for a Wordpress blog.
+
+Another possibility:
+
+    {@class=aligncenter}
+    ![{@width=614}{@height=531}](path/to/mypic.jpg )
+    ![{@width=614}{@height=531}](path/to/mypic.jpg )
+
+This would center 2 pictures, potentially both on the same line if width allows
+for it, within the same `p` tag.  Other alignment possibilities are `alignright`
+and `alignleft` or whatever other values are supported by your blog theme.
+Thus, while not exactly a tool for a photo blog, `blogtool` affords the user
+quite a bit of control over pictures.
