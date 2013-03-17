@@ -363,7 +363,11 @@ Basic usage:
 bt \[options\] \[filelist\]
 
 If no options nor files are specified, then `blogtool` will attempt to launch an
-editor as specified by the $EDITOR environment variable. 
+editor as specified by the $EDITOR environment variable.  Data will be written
+to a `tmp` file.  If an empty file name is supplied on the command line,
+`blogtool` will attempt to launch $EDITOR using the supplied file name.  The
+file name STDIN should be considered reserved and if used will cause `blogtool`
+to accept data from the standard input.
 
 ### Command Line ###
 

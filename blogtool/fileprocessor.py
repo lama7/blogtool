@@ -260,7 +260,10 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
     '''
     def parsePostFile(self, filename, hdrtext):
         try:
-            f = open(filename, 'r')
+            if filename == 'STDIN':
+                f = sys.stdin
+            else:
+                f = open(filename, 'r')
             lines = f.readlines()
         except IOError:
             try:
