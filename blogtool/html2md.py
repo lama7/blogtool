@@ -433,10 +433,7 @@ class Html2Markdown:
                     self._links.pop()
                     self._reflinks -= 1
 
-                self._blocklist.append(etree.tostring(element, 
-                                                      pretty_print=True,
-                                                      method="html").rstrip()
-                                                                         + '\n')
+                self._blocklist.append(etree.tostring(element, pretty_print=True).rstrip() + '\n')
             # now add any referenced links as the final block
             if links_snapshot < len(self._links):
                 self._blocklist.append(self._refLinkText(links_snapshot))
@@ -486,8 +483,11 @@ class Html2Markdown:
         else:
             if element.text and element.text.find('more') != -1:
                 text = "### MORE ###\n\n"
-            else:
+            # certain elements are better printed using HTML method than XML
+            elif element.tag in ['iframe']:
                 return etree.tostring(element, pretty_print=True, method="html")
+            else:
+                return etree.tostring(element, pretty_print=True)
 
         return text + self.checkTail(element)
 
