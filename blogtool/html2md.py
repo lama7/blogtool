@@ -398,12 +398,18 @@ class Html2Markdown:
     def convert(self, html):
         try:
             #nhtml = str(unicodedata.normalize('NFKD', html))
-            nhtml = unicodedata.normalize('NFKD', html).encode("utf-8")
+            nhtml = unicodedata.normalize('NFKD', html)
         except TypeError:
             nhtml = html
         except UnicodeEncodeError:
             print repr(html)
             sys.exit()
+
+        # this is a negative-lookahead re- we're looking for '&' that are
+        # unescaped in the data, the lxml parser chokes on those
+        for m in re.finditer(u'&(?!amp;)', nhtml):
+            if m:
+                nhtml = nhtml[:m.start()] + u'&amp;' + nhtml[m.end():]
 #        print nhtml
         root = etree.fromstring("<post>%s</post>" % nhtml)
 
@@ -483,11 +489,15 @@ class Html2Markdown:
         else:
             if element.text and element.text.find('more') != -1:
                 text = "### MORE ###\n\n"
-            # certain elements are better printed using HTML method than XML
-            elif element.tag in ['iframe']:
-                return etree.tostring(element, pretty_print=True, method="html")
             else:
-                return etree.tostring(element, pretty_print=True)
+                # certain elements are better printed using HTML method than XML
+                # NOTE: Should use my own serializer rather than relying on
+                # tostring
+                if element.tag in ['iframe']:
+                    text = etree.tostring(element, pretty_print=True, method="html")
+                else:
+                    text = etree.tostring(element, pretty_print=True)
+                return text.replace(u'&amp;', u'&')
 
         return text + self.checkTail(element)
 
