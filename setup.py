@@ -12,7 +12,7 @@ setup(name = 'blogtool',
       version = '1.1.0',
       url = 'https://github.com/lama7/blogtool',
       classifiers = [
-          'Development Status :: 4 - Beta',
+          'Development Status :: 5 - Production/Stable',
           'Environment :: Console',
           'License :: OSI Approved :: MIT License',
           'Intended Audience :: End Users/Desktop',
