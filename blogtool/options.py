@@ -370,7 +370,7 @@ updating with blogtool.
         header_str += 'CATEGORIES: %s\n' % self._buildCatStr(post['categories'])
         if post['mt_keywords']:
             header_str += 'TAGS: %s\n' % post['mt_keywords']
-        print header_str + '\n' + text
+        print (header_str + '\n' + text).encode("utf8")
         return None
 
     def _buildCatStr(self, catlist):

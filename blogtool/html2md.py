@@ -65,9 +65,20 @@ class InlineTagHandler(TagHandler):
 
     def convert(self, e):
         addspace = False
-        if e.text.endswith(' '):
-            addspace = True
-        text = "%s%s%s" % (self.inlinechars, e.text.rstrip(), self.inlinechars)
+        '''
+        EDGE CASE: it's possible to have nested inline elements, like ***strong
+        and emphasis*** in which case, the outer element won't have any text.
+        In this case, we'll assume that there must be a child element with text,
+        so we'll parse that first to get some text, then place complete
+        processing here.  
+        '''
+        if e.text is None:
+            text = self._txtConverter.childHandler(e)
+        else:
+            if e.text.endswith(' '):
+                addspace = True
+            text = e.text
+        text = "%s%s%s" % (self.inlinechars, text.rstrip(), self.inlinechars)
         if addspace:
             text += ' '
 
@@ -397,7 +408,6 @@ class Html2Markdown:
 
     def convert(self, html):
         try:
-            #nhtml = str(unicodedata.normalize('NFKD', html))
             nhtml = unicodedata.normalize('NFKD', html)
         except TypeError:
             nhtml = html
@@ -407,9 +417,11 @@ class Html2Markdown:
 
         # this is a negative-lookahead re- we're looking for '&' that are
         # unescaped in the data, the lxml parser chokes on those
-        for m in re.finditer(u'&(?!amp;)', nhtml):
+        i = 0
+        for m in re.finditer(u'&(?!amp;|gt;|lt;|quot;|#\d+;)', nhtml):
             if m:
-                nhtml = nhtml[:m.start()] + u'&amp;' + nhtml[m.end():]
+                nhtml = nhtml[:m.start()+(i*4)] + u'&amp;' + nhtml[m.end()+(i*4):]
+                i = i + 1
 #        print nhtml
         root = etree.fromstring("<post>%s</post>" % nhtml)
 

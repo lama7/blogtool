@@ -175,17 +175,24 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
             return
 
         def _ptEscapeCData(text, attrib=False):
-            if "&" in text:
-                text = text.replace("&", "&amp;")
-            if "<" in text:
-                text = text.replace("<", "&lt;")
-            if ">" in text:
-                text = text.replace(">", "&gt;")
+            c_replace = dict([( "&", "&amp;"),
+                              ( "<", "&lt;"),
+                              ( ">", "&gt;"),
+                              ( u'\u2019', "&#8217;"), #apostrophe
+                              ( u'\u201c', "&#8220;"), #left double quote
+                              ( u'\u201d', "&#8221;"), #right double quote
+                            ])
+            for c in c_replace.keys():
+                if c in text:
+                    text = text.replace(c, c_replace[c])
+
             if attrib:
-                if "\"" in text:
-                    text = text.replace("\"", "&quot;")
-                if "\n" in text:
-                    text = text.replace("\n", "&#10;")
+                attrib_replace = dict([("\"", "&quot;"),
+                                       ("\n", "&#10;"),
+                                     ])
+                for c in attrib_replace.keys():
+                    if c in text:
+                        text = text.replace(c, attrib_replace[c])
             return text
 
         def _ptSerialize(e):
@@ -265,6 +272,11 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                 # The text is marked up at this stage, but we need to clean it
                 # up prior to shipping it out, so we parse it using lxml and
                 # then rebuild it as a string as we fix each tag
+                i = 0
+                for m in re.finditer(u'&(?!amp|gt|lt|#\d+;)', xhtml):
+                    if m:
+                        xhtml = xhtml[:m.start()+(i*4)] + u'&amp;' + xhtml[m.end()+(i*4):]
+                        i = i + 1
                 return _ptFixUp(etree.XML('<post>%s</post>' % xhtml))
         else:
             raise FileProcessorError("In FileProcessor._procText: %s\n" %
