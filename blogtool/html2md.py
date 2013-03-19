@@ -65,9 +65,20 @@ class InlineTagHandler(TagHandler):
 
     def convert(self, e):
         addspace = False
-        if e.text.endswith(' '):
-            addspace = True
-        text = "%s%s%s" % (self.inlinechars, e.text.rstrip(), self.inlinechars)
+        '''
+        EDGE CASE: it's possible to have nested inline elements, like ***strong
+        and emphasis*** in which case, the outer element won't have any text.
+        In this case, we'll assume that there must be a child element with text,
+        so we'll parse that first to get some text, then place complete
+        processing here.  
+        '''
+        if e.text is None:
+            text = self._txtConverter.childHandler(e)
+        else:
+            if e.text.endswith(' '):
+                addspace = True
+            text = e.text
+        text = "%s%s%s" % (self.inlinechars, text.rstrip(), self.inlinechars)
         if addspace:
             text += ' '
 
@@ -397,13 +408,20 @@ class Html2Markdown:
 
     def convert(self, html):
         try:
-            #nhtml = str(unicodedata.normalize('NFKD', html))
-            nhtml = unicodedata.normalize('NFKD', html).encode("utf-8")
+            nhtml = unicodedata.normalize('NFKD', html)
         except TypeError:
             nhtml = html
         except UnicodeEncodeError:
             print repr(html)
             sys.exit()
+
+        # this is a negative-lookahead re- we're looking for '&' that are
+        # unescaped in the data, the lxml parser chokes on those
+        i = 0
+        for m in re.finditer(u'&(?!amp;|gt;|lt;|quot;|#\d+;)', nhtml):
+            if m:
+                nhtml = nhtml[:m.start()+(i*4)] + u'&amp;' + nhtml[m.end()+(i*4):]
+                i = i + 1
 #        print nhtml
         root = etree.fromstring("<post>%s</post>" % nhtml)
 
@@ -433,10 +451,7 @@ class Html2Markdown:
                     self._links.pop()
                     self._reflinks -= 1
 
-                self._blocklist.append(etree.tostring(element, 
-                                                      pretty_print=True,
-                                                      method="html").rstrip()
-                                                                         + '\n')
+                self._blocklist.append(etree.tostring(element, pretty_print=True).rstrip() + '\n')
             # now add any referenced links as the final block
             if links_snapshot < len(self._links):
                 self._blocklist.append(self._refLinkText(links_snapshot))
@@ -487,7 +502,14 @@ class Html2Markdown:
             if element.text and element.text.find('more') != -1:
                 text = "### MORE ###\n\n"
             else:
-                return etree.tostring(element, pretty_print=True, method="html")
+                # certain elements are better printed using HTML method than XML
+                # NOTE: Should use my own serializer rather than relying on
+                # tostring
+                if element.tag in ['iframe']:
+                    text = etree.tostring(element, pretty_print=True, method="html")
+                else:
+                    text = etree.tostring(element, pretty_print=True)
+                return text.replace(u'&amp;', u'&')
 
         return text + self.checkTail(element)
 

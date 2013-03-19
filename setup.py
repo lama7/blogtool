@@ -9,7 +9,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name = 'blogtool',
-      version = '1.0',
+      version = '1.0.1',
       url = 'https://github.com/lama7/blogtool',
       classifiers = [
           'Development Status :: 4 - Beta',
