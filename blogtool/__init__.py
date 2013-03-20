@@ -9,6 +9,8 @@
     here.
 """
 
+from __version__ import __version__
+
 from headerparse import Header
 from fileprocessor import FileProcessor, FileProcessorError, FileProcessorRetry
 from options import OptionProcessor
