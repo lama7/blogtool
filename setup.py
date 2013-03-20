@@ -1,3 +1,4 @@
+import re
 import os
 from setuptools import setup
 
@@ -8,8 +9,15 @@ than to add it here.
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
+def get_version():
+    m = re.search("^__version__ = [\"](.*?)[\"]", open("blogtool/__version__.py").read())
+    if m:
+        return m.group(1)
+    else:
+        raise RuntimeError("Unable to find version string in blogtool/__version__.py")
+
 setup(name = 'blogtool',
-      version = '1.0.1',
+      version = get_version(),
       url = 'https://github.com/lama7/blogtool',
       classifiers = [
           'Development Status :: 4 - Beta',
