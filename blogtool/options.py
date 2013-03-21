@@ -1,4 +1,4 @@
-import blogtool
+from blogtool import __version__
 
 from headerparse import HeaderError
 from xmlproxy.proxybase import ProxyError
@@ -807,7 +807,7 @@ class GetVersion(CommandLineOption):
         return opts.version
 
     def run(self, header, opts):
-        print "blogtool %s" % blogtool.__version__
+        print "blogtool version  %s" % __version__
         return None
 
 
