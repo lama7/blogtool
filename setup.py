@@ -2,22 +2,29 @@ import re
 import os
 from setuptools import setup
 
-'''
-Helper function to read a file since it's easier to add text to the README file
-than to add it here.
-'''
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+m = re.search("^__version__ = [\"](.*?)[\"]", open("blogtool/__version__.py").read())
+if m:
+    version_str =  m.group(1)
+else:
+    raise RuntimeError("Unable to find version string in blogtool/__version__.py")
 
-def get_version():
-    m = re.search("^__version__ = [\"](.*?)[\"]", open("blogtool/__version__.py").read())
-    if m:
-        return m.group(1)
-    else:
-        raise RuntimeError("Unable to find version string in blogtool/__version__.py")
+long_description = \
+'''
+This is a blog client for Wordpress blogs.  It is command line, rather than GUI,
+based and reads markdown formatted text files to post to a web log.  The text
+files must also be formatted with a header, see the `usage documentation`_ for
+details.
+
+In addition to support for posting, a number of blog related administrative
+actions are supported like commenting, comment editting and moderation, post
+deletion and so forth.  See the documentation_ for a full description.
+
+.. _usage documentation: http://pythonhosted.org/blogtool/usage.html
+.. _documentation: http://pythonhosted.org/blogtool/
+'''
 
 setup(name = 'blogtool',
-      version = get_version(),
+      version = version_str,
       url = 'https://github.com/lama7/blogtool',
       classifiers = [
           'Development Status :: 4 - Beta',
@@ -31,7 +38,7 @@ setup(name = 'blogtool',
           'Topic :: Text Processing',
           'Topic :: Utilities',
           ],
-      long_description = read('README.md'),
+      long_description = long_description,
       author = 'Gerry LaMontagne',
       author_email = 'gjlama94 [at] gmail [dot] com',
       license = 'MIT',
