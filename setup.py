@@ -26,6 +26,7 @@ deletion and so forth.  See the documentation_ for a full description.
 setup(name = 'blogtool',
       version = version_str,
       url = 'https://github.com/lama7/blogtool',
+      download_url = "https://pypi.python.org/packages/source/b/blogtool/blogtool-%s.tar.gz" % version_str,
       classifiers = [
           'Development Status :: 4 - Beta',
           'Environment :: Console',
