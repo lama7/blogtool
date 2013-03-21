@@ -1,3 +1,5 @@
+from blogtool import __version__
+
 from headerparse import HeaderError
 from xmlproxy.proxybase import ProxyError
 from fileprocessor import FileProcessor, FileProcessorError
@@ -798,6 +800,25 @@ markdown.
 
 ################################################################################
 '''
+    GetVersion
+'''
+class GetVersion(CommandLineOption):
+    args = ('--version',)
+    kwargs = {
+              'action' : 'store_true',
+              'dest' : 'version',
+             }
+
+    def check(self, opts):
+        return opts.version
+
+    def run(self, header, opts):
+        print "blogtool version  %s" % __version__
+        return None
+
+
+################################################################################
+'''
     OptionProcessor
 '''
 class OptionProcessor:
@@ -820,6 +841,7 @@ class OptionProcessor:
         self.o_list.append(UploadMediaFile())
         self.o_list.append(GetComments())
         self.o_list.append(EditComment())
+        self.o_list.append(GetVersion())
 
         self.parser = argparse.ArgumentParser(description = "Command line based blog client")
         for option in self.o_list:

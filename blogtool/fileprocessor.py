@@ -272,6 +272,8 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                 # The text is marked up at this stage, but we need to clean it
                 # up prior to shipping it out, so we parse it using lxml and
                 # then rebuild it as a string as we fix each tag
+                # Start by escaping any stray '&' characters- just make sure
+                # they aren't already part of an escape sequence
                 i = 0
                 for m in re.finditer(u'&(?!amp|gt|lt|#\d+;)', xhtml):
                     if m:
