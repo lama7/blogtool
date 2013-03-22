@@ -1,19 +1,19 @@
-Usage and Examples
-==================
+.. contents::
+
+Usage
+=====
 
 Basic usage::
 
     bt [options] [filelist]
 
 If no options nor files are specified, then blogtool_ will attempt to launch an
-editor as specified by the $EDITOR environment variable. 
+editor as specified by the $EDITOR environment variable.
 
-Contents:
-
-- `Command Line`_
-- `Post Files`_
-- `Multiple Blogs`_
-- `Pictures`_
+It is possible to specify a number of files on the command line.  blogtool_ will
+iterate through each one.  In general, blogtool_ tries to fail such that it will
+continue to process files.  Header syntax errors are one error, however, where
+all processing ceases.
 
 Command Line
 ------------
@@ -31,9 +31,20 @@ To post a file to the blog::
 
     > bt mypostfile
 
+To post several files to a blog::
+
+    > bt postfile1 postfile2 postfile3
+
+This is useful when scheduling posts.  Each post can have its own post time
+set in the header while all 3 files are uploaded at the same time.
+
 To post a file and make sure that all categories are added to the blog::
 
     > bt -a mypostfile
+
+Any categories specified in the file will now be added to the blog automatically
+if they are not already valid categories.  The default is not to do so in the
+case of typos, in which case the default category for the blog is will be used.
 
 To manually add a new category to a blog::
 
@@ -50,6 +61,19 @@ To retrieve the 5 latest blog titles::
 
     > bt -t 5
 
+This command will produce the following output::
+
+    POSTID  TITLE                                   DATE CREATED
+    ======  ===================================     =====================
+    1000    My Latest Blog Post                     Mar 21, 2012 at 08:31
+    999     Something I Thought Was Interesting     Mar 20, 2012 at 07:07
+    995     You Won't Believe This                  Mar 19, 2012 at 20:34
+    993     The Dog Ate My Homework                 Mar 19, 2012 at 10:39
+    991     An Obligatory baz and foo Ref           Mar 18, 2012 at 22:03
+
+If there are multiple blogs specified in the configuration file, blogtool_ will
+iterate through each of them and retrieve a recent entry list.
+
 To retrieve a blogpost for editting::
 
     > bt -g 12345 > postfile
@@ -57,7 +81,8 @@ To retrieve a blogpost for editting::
 This assumes the ``POSTID`` of the post to edit is 12345.  The retrieve option
 will list blog post titles along with the ID to use for this command.  The
 resulting post file will contain an appropriately filled out header and the
-post text will be formatted using markdown_ syntax.
+post text will be formatted using markdown_ syntax.  Without the shell
+redirection, it will just spill the post text to the standard output.
 
 To upload a picture::
 
@@ -67,14 +92,20 @@ To see the comments for a post::
 
     > bt -r 12345
 
+Retrieving comments will retrieve *all* comments for the post requested.  It
+will also list the usual information about the commenter as well as the comment
+ID.  The ID can be used when replying to a comment.
+
 To write a comment::
 
-    > bt --comment 12345
+    > bt --comment 12345 67890
 
-Note that if you wish to *reply* to a comment, you'll need to note the
-``COMMENTID`` and add a line like this to the header::
+This command will result in an editor being opened with a header setup for a
+comment.  The comment will be associated with post ID 12345 and will be in reply
+to comment 67890.  If just writing a comment that isn't doesn't need to be a
+reply, just use 0 as the comment ID::
 
-    PARENTID: 54321
+    > bt --comment 12345 0
 
 Post Files
 ----------
@@ -123,7 +154,13 @@ The post will be assigned the category ``Misc`` rather than ``Software``.  Note
 the blank line following the header.
 
 To facilitate reading from the standard input, it is possible to supply
-``STDIN`` as a file name on the command line.
+``STDIN`` as a file name on the command line::
+
+    > bt STDIN
+
+To be honest, I'm not sure what it can be practically used for.  I added it for
+testing purposes and it seemed harmless to leave as a possibility for a user.
+Someone more clever than I might be able to come up with a practical use.
 
 Multiple Blogs
 --------------
@@ -211,4 +248,4 @@ affords the user quite a bit of control over pictures.
 .. _markdown: http://daringfireball.net/projects/markdown/
 .. _python-markdown: http://pythonhosted.org/Markdown/index.html
 .. _blogtool: https://pypi.python.org/pypi/blogtool
-.. _-b: commandline.html#blog
+.. _-b: commandline.html#options

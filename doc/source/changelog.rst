@@ -1,3 +1,5 @@
+.. contents::
+
 Change Log
 ==========
 
@@ -5,6 +7,14 @@ Latest Version: 1.1.0
 ---------------------
 
 by Gerry LaMontagne
+
+Minor rev change because of switch from ``optparse`` library to ``argparse``.
+Also incorporated the ``STDIN`` file as a special file name case for reading
+from the standard input.  Finally, the Comment_ option now requires 2
+arguments, a ``POSTID`` and a ``COMMENTID`` which is the ID of the comment being
+replied to.
+
+.. _Comment: commandline.html#options
 
 - Added *test/parserecent*
 - Added *test/serializertest.sh*
@@ -68,17 +78,12 @@ by Gerry LaMontagne
 
   + Changed Development Status::Beta classifier to Production/ Stable
 
-Contents:
-
-- `Version 1.0.3`_
-- `Version 1.0.2`_
-- `Version 1.0.1`_
-- `Version 1.0`_
-
 Version 1.0.3
 -------------
 
 by Gerry LaMontagne
+
+A maintenance revision.  No new functionality added.
 
 - Added sphinx generated HTML based documentation
 
@@ -104,6 +109,9 @@ Version 1.0.2
 
 by Gerry LaMontagne
 
+Basically a maintenance revision, although the ``--version`` options was added
+in this version.
+
 - Created *blogtool/__main__.py*
 - Created *blogtool/__version__.py*
 - *blogtool/__init__.py*
@@ -123,6 +131,8 @@ Version 1.0.1
 -------------
 
 by Gerry LaMontagne
+
+A bug fix revision.
 
 - Added *INSTALL.md*
 - Added *LICENSE.md*

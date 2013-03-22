@@ -1,26 +1,38 @@
+.. contents:: 
+
 Configuration
 =============
 
-In order to do any of this stuff, blogtool_ needs some basic info about the blog.
-Also, as mentioned, it really only supports Wordpress blogs since that's what my
-blog software is and therefore what blogtool_ has been tested on.
+In order to post to a blog, blogtool_ needs some basic info about it: location
+of the XMLRPC file, a user name and a password to name a few.  At this time,
+blogtool_ only supports Wordpress blogs since that's what my blog software is
+and therefore what blogtool_ has been tested on.
 
-The basic blog info is provided via keywords and values separated by colons.
-Dont' worry- there aren't a lot and they're intuitive with regards to blogging.
-Where repetition is concerned, only three would be used on a regular basis for
-multiple blogs.  If posting to a single blog, only two keywords are needed with
-any regularity.
+The basic blog info is provided in a header section of a file via keywords and
+values separated by colons.  Dont' worry- there aren't a lot and they're
+intuitive with regards to blogging.  Further, it's possible to setup a
+configuration file that will default the crucial settings, reducing the amount
+of header keywords that are used during normal blogging to 2 or 3.
 
-The keywords form the header.  Once the header is completed, a blank line
-follows.  Everything thereafter is considered post text or coment text and will
-be written as appropriate to a post on the blog.
+The keywords are used to form the header, which must precede the post text when
+composing a post file.  Once the header is completed, a blank line follows.
+Everything thereafter is considered post content or comment content and will be
+written as appropriate to a post on the blog::
 
-Contents:
+    TITLE: My First Post with Blogtool
+    CATEGORIES: Misc
+    TAGS: blogtool, software
+    BLOG: The Most Interesting Blog in the World
+    XMLRPC: http://myblog.mydomain.org/xmlrpc.php
+    USERNAME: fred
+    PASSWORD: secret
+    BLOGYPE: wp
 
-- `Header Keywords`_
-- `Keyword Definitions`_
-- `Groups`_
-- `Configuration Files`_
+    Everything preceding this was the header for this post file.  The text you
+    are reading now is considered the content.  You can use [markdown][1] syntax
+    to add *emphasis* and other text markup features.
+
+      [1]: http://daringfireball.net/projects/markdown
 
 Header Keywords
 ---------------
@@ -46,22 +58,33 @@ Following is a list of blogtool_ header keywords:
 + AUTHOREMAIL_
 
 Notice, these are listed in caps.  That's because the keywords should be
-capitalized in the header.  Each keyword should be followed by a ':' and then an
-appropriate value.  More on those below.  Each line of the header is terminated
-with a carriage return, so don't try to put all the header stuff on a single
-line.  To terminate the header, simply create a blank line.  Everything after
-that blank line is processed as post text and will be published on the blog.
+capitalized in the header. 
+
+Each keyword should be followed by a ': ' and then an appropriate value, more
+on those below.  Each line of the header is terminated with a carriage return,
+so don't try to put all the header stuff on a single line.  To terminate the
+header, simply create a blank line.  Everything after that blank line is
+processed as post text and will be published on the blog.
 
 Keywords may also be given a list of values by using a comma (',') to separate
 each value.  Because of this, the comma character *cannot* be used as part of a
 keyword value, for instance in the title of a post.
 
-For the purposes of posting, the required keywords are ``XMLRPC``, ``NAME``,
-``USERNAME``, ``PASSWORD``, and ``BLOGTYPE``.  Without these, blogtool_ can't
-push anything up to a weblog.
+For the purposes of posting, the required keywords are:
+
++ XMLRPC_
++ NAME_
++ USERNAME_
++ PASSWORD_
++ BLOGTYPE_
+
+Without these, blogtool_ can't push anything up to a weblog.
 
 Keyword Definitions
--------------------
+~~~~~~~~~~~~~~~~~~~
+
+Following are the keywords that blogtool_ supports along with a description of
+what they are used for and what an appropriate value is for them.
 
 .. _title:
 
@@ -83,7 +106,7 @@ BLOG
 .. _blogtype:
 
 BLOGTYPE  
-    Specifies the blog type being posted to.  For now, this is only 'wp' for
+    Specifies the blog type being posted to.  For now, this is only **wp** for
     Wordpress blogs.
 
 .. _name:
@@ -148,20 +171,20 @@ COMMENTSTATUS
 
 COMMENTID  
     Every Wordpress comment has a unique ID, like the posts.  The value for this
-    can be obtained with the `readcomments`_ option or by hovering on the
+    can be obtained with the readcomments_ option or by hovering on the
     comment link in a browser.
 
 .. _parentid:
 
 PARENTID  
     The ``COMMENT_ID`` of the comment being replied to.  Typically used when
-    writing a comment using the `comment`_ option.
+    writing a comment using the comment_ option.
 
 .. _author:
 
 AUTHOR  
     Specifies the name to be associated with a comment.  When writing a comment
-    via the `comment`_ option, this will default to the username for the blog
+    via the comment_ option, this will default to the username for the blog
     specified, but can be overwritten to anything.
 
 .. _authorurl:
@@ -176,7 +199,7 @@ AUTHOREMAIL
     blank.
 
 Groups
-------
+~~~~~~
 
 The header syntax also supports grouping for the BLOG keyword.  Grouping
 provides a means to supply information for multiple blogs.  Use the 'NAME'
@@ -193,6 +216,7 @@ using a comma::
           },
           {
             NAME: My Other Blog
+            XMLRPC: http://myotherblog.server/xmlrpc.php
             USERNAME: user
             PASSWORD: secret
             CATEGORIES: Tedium
@@ -203,9 +227,12 @@ Configuration Files
 
 To reduce the amount of header typing, it is possible to create a configuration
 file for blogtool_ to obtain parameter settings that are used all the time.  The
-file '~/.btrc' is automatically looked for when blogtool_ is started.
-Alternatively, a configuration file can be specified on the command line using
-the `-c`_ option.
+file *~/.btrc* is automatically looked for when blogtool_ is started.  It is not
+an error if it does not exist unless an attempt it made to perform a blog
+operation that requires minimal blog configuration info, like deleting a post.
+If just trying to post a file, the file can be successfully processed by
+providing all the necessary configuration fields.  An alternate configuration
+file can be specified on the command line using the `-c`_ option.
 
 A configuration file basically consists of a header.  The most useful purpose is
 to supply redundant configuration information like XMLRPC, BLOGTYPE, NAME,
@@ -225,6 +252,6 @@ The configuration file was implemented as a courtesy to the user so as to avoid
 the tedium of constantly entering the same values for every post.
 
 .. _blogtool: https://pypi.python.org/pypi/blogtool
-.. _readcomments: commandline.html#readcomments
-.. _comment: commandline.html#comment
-.. _-c: commandline.html#config
+.. _readcomments: commandline.html#options
+.. _comment: commandline.html#options
+.. _-c: commandline.html#options
