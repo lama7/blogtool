@@ -8,6 +8,13 @@ Basic usage::
 If no options nor files are specified, then blogtool_ will attempt to launch an
 editor as specified by the $EDITOR environment variable. 
 
+Contents:
+
+- `Command Line`_
+- `Post Files`_
+- `Multiple Blogs`_
+- `Pictures`_
+
 Command Line
 ------------
 
@@ -114,6 +121,9 @@ and the following post file::
 
 The post will be assigned the category ``Misc`` rather than ``Software``.  Note
 the blank line following the header.
+
+To facilitate reading from the standard input, it is possible to supply
+``STDIN`` as a file name on the command line.
 
 Multiple Blogs
 --------------

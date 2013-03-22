@@ -12,7 +12,7 @@ posting to your blog, deleting posts, commenting to your blog, editting
 comments, retrieving category lists and recent post activity, and even editting
 posts.
 
-To facilitate posting, blogtool reads files written using `markdown`_ text
+To facilitate posting, blogtool reads files written using markdown_ text
 markup.  These files can be pre-written and passed to blogtool on the command
 line or blogtool can be run standalone, at which point it launches an editor for
 entering a post into.
@@ -27,4 +27,4 @@ Contents:
     configuration.rst
     commandline.rst
     usage.rst
-
+    changelog.rst

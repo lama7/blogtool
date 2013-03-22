@@ -14,6 +14,13 @@ well as several others.
 A number of these options require a `configuration file`_ in order to work.
 They are marked with an '\*' below.
 
+Contents:
+
+- Options_
+- `Time Strings`_
+
+  - `Time String Key`_
+
 Options
 -------
 Following are command line options that can be specified for `blogtool`_:
@@ -37,7 +44,7 @@ Following are command line options that can be specified for `blogtool`_:
     category to the blog. `\*`_
 
 --draft  
-    The post will not be published when it is pushed up to the blog.
+        The post will not be published when it is pushed up to the blog.
 
 -s TIMESTR, --schedule=TIMESTR  
     Allows for scheduling of posts.   See `Time Strings`_ below for how to spell
