@@ -308,7 +308,7 @@ Following are command line options that can be specified for `blogtool`:
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
 
-+   --comment==POSTID  
++   --comment==POSTID COMMENTID
     Post text from a file as a comment to post POSTID.
 
 +   --charset=CHARSET  
@@ -422,12 +422,35 @@ To see the comments for a post:
 
 To write a comment:
 
-    > bt --comment 12345
+    > bt --comment 12345 0
 
-Note that if you wish to *reply* to a comment, you'll need to note the
-`commentid` and add a line like this to the header:
+The `0` means the comment is a standalone comment.  If replying to a comment,
+note the `commentid` from the `readcomment` option and then enter:
 
+    > bt --comment 12345 54321
+
+This usage will result in the use of the `PARENTID` in the header of the ensuing
+comment file, like so:
+
+    POSTID: 12345
     PARENTID: 54321
+
+As of version 1.1.0, `blogtool` accepts input from the standard input using the
+following incantation:
+
+    > bt STDIN
+
+The filename `STDIN` is processed like any other file, so any option appropriate
+for use with a post file will work here as well.  Note that the following piece
+of silliness will also work:
+
+    > cat - | bt STDIN
+
+Header entries for `TITLE` and `CATEGORIES` must be manually entered in this
+way, but it will work.  Perhaps such a method is useful for a quicky post where
+the need for full-blown editting capabilities is unnecessary.  Perhaps if
+nothing else, users will be excited to know that esoteric command line usage is
+possible.
 
 ### Headers ###
 
