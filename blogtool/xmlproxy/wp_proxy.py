@@ -58,14 +58,28 @@ class WordpressProxy(proxybase.BlogProxy):
     def getRecentTitles(self, number):
         blogid = self._getBlogID()
         try:
-            recent = self.mt.getRecentPostTitles(blogid,
-                                                 self._username,
-                                                 self._password,
-                                                 number)
+            response = self.wp.getPosts(blogid,
+                                        self._username,
+                                        self._password,
+                                        { # filter parameter
+                                          'post_type'   : 'post',      # or 'page', 'attachment'
+                                          'post_status' : 'publish',   # or 'draft', 'private, 'pending'
+                                          'number'      : number,
+                                          'offset'      : 0,           # offset by # posts
+                                          'orderby'     : '',          # appears to have no effect
+                                          'order'       : '',          # appears to have no effect
+                                        },
+                                        ['post_id', 'post_title', 'post_date'])
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.getRecentTitles", error)
-
+        
+        # the calling code expects things in a certain format, so let's oblige
+        recent = []
+        for postmeta in response:
+            recent.append({'postid'      : postmeta['post_id'],
+                           'title'       : postmeta['post_title'],
+                           'dateCreated' : postmeta['post_date']})
         return recent
 
     ############################################################################ 
