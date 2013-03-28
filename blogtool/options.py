@@ -76,7 +76,7 @@ class DeletePost(CommandLineOption):
         return False
 
     def run(self, header, opts):
-        print "Deleting post %s from %s" % (self.postid, header.name)
+        print "Attempting to delete post %s from %s..." % (self.postid, header.name)
 
         proxy = _getProxy(header)
         try:
@@ -85,6 +85,11 @@ class DeletePost(CommandLineOption):
             print "Caught in options.DeletePost.run:"
             print err
             sys.exit()
+
+        if postid:
+            print "Post %s deleted." % self.postid
+        else:
+            print "Could not delete post %s." % self.postid
 
         return None
 

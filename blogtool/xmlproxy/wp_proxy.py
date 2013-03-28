@@ -129,16 +129,15 @@ class WordpressProxy(proxybase.BlogProxy):
     ############################################################################ 
     def deletePost(self, postid):
         try:
-            postdelete = self.blogger.deletePost('',
-                                                 postid,
-                                                 self._username,
-                                                 self._password,
-                                                 True)
+            response = self.wp.deletePost(self._getBlogID(),
+                                          self._username,
+                                          self._password,
+                                          postid)
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.deletePost", error)
 
-        return postdelete
+        return response
 
     ############################################################################ 
     def upload(self, filename):
