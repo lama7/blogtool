@@ -165,10 +165,10 @@ class WordpressProxy(proxybase.BlogProxy):
             mediaStruct['name'] = os.path.basename(filename)
             mediaStruct['bits'] = xmlrpclib.Binary(mediaData)
         
-            res = self.metaWeblog.newMediaObject(blogid,
-                                                 self._username,
-                                                 self._password,
-                                                 mediaStruct )
+            res = self.wp.uploadFile(blogid,
+                                     self._username,
+                                     self._password,
+                                     mediaStruct )
 
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.upload", error)
