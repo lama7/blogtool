@@ -26,7 +26,6 @@ class WordpressProxy(proxybase.BlogProxy):
                 self._categories = self.metaWeblog.getCategories(blogid,
                                                                 self._username,
                                                                 self._password)
-
             except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
                 raise proxybase.ProxyError("wp.getCategories", error)
 
@@ -48,7 +47,6 @@ class WordpressProxy(proxybase.BlogProxy):
                                      self._username,
                                      self._password,
                                      newcStruct)
-
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.newCategory", error)
 
@@ -56,31 +54,52 @@ class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
     def getRecentTitles(self, number):
-        blogid = self._getBlogID()
-        try:
-            response = self.wp.getPosts(blogid,
-                                        self._username,
-                                        self._password,
-                                        { # filter parameter
-                                          'post_type'   : 'post',      # or 'page', 'attachment'
-                                          'post_status' : 'publish',   # or 'draft', 'private, 'pending'
-                                          'number'      : number,
-                                          'offset'      : 0,           # offset by # posts
-                                          'orderby'     : '',          # appears to have no effect
-                                          'order'       : '',          # appears to have no effect
-                                        },
-                                        ['post_id', 'post_title', 'post_date'])
 
-        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.ProxyError("wp.getRecentTitles", error)
-        
+        '''
+            Function to maintain backwards compatibility with previous WP blog
+            versions.
+        '''
+        def _tryMethods(blogid, number):
+            # First, try the Wordpress XMLRPC API calls
+            try:
+                response = self.wp.getPosts(blogid,
+                                            self._username,
+                                            self._password,
+                                            { # filter parameter
+                                              'post_type'   : 'post',      # or 'page', 'attachment'
+                                              'post_status' : 'publish',   # or 'draft', 'private, 'pending'
+                                              'number'      : number,
+                                              'offset'      : 0,           # offset by # posts
+                                              'orderby'     : '',          # appears to have no effect
+                                              'order'       : '',          # appears to have no effect
+                                            },
+                                            ['post_id', 'post_title', 'post_date'])
+            except xmlrpclib.Fault:
+                pass
+            except xmlrpclib.ProtocolError, error:
+                raise proxybase.ProxyError("wp.getRecentTitles", error)
+            else:
+                recent = []
+                for postmeta in response:
+                    recent.append({'postid'      : postmeta['post_id'],
+                                   'title'       : postmeta['post_title'],
+                                   'dateCreated' : postmeta['post_date']})
+
+            # The Wordpress XMLRPC API is not available, try the old MT API
+            try:
+                recent = self.mt.getRecentPostTitles(blogid,
+                                                     self._username,
+                                                     self._password,
+                                                     number)
+            except (xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+                raise proxybase.ProxyError("wp.getRecentTitles", error)
+
+            return recent
+
+        ########################################################################
+        # getRecentTitles starts here
         # the calling code expects things in a certain format, so let's oblige
-        recent = []
-        for postmeta in response:
-            recent.append({'postid'      : postmeta['post_id'],
-                           'title'       : postmeta['post_title'],
-                           'dateCreated' : postmeta['post_date']})
-        return recent
+        return _tryMethods(self._getBlogID(), number)
 
     ############################################################################ 
     def publishPost(self, post):
@@ -94,7 +113,6 @@ class WordpressProxy(proxybase.BlogProxy):
                                              self._password,
                                              post,
                                              post.publish)
-
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.publishPost", error)
 
@@ -108,7 +126,6 @@ class WordpressProxy(proxybase.BlogProxy):
                                      self._password,
                                      post,
                                      post.publish)
-
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.editPost", error)
 
@@ -120,7 +137,6 @@ class WordpressProxy(proxybase.BlogProxy):
             post = self.metaWeblog.getPost(postid, 
                                            self._username, 
                                            self._password)
-
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.getPost", error)
 
@@ -128,23 +144,69 @@ class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
     def deletePost(self, postid):
-        try:
-            response = self.wp.deletePost(self._getBlogID(),
+        
+        '''
+            Function to try different XMLRPC API methods to maintain backwards
+            compatibility
+        '''
+        def _tryMethods(blogid, postid):
+            # try the newer Wordpress XMLRPC API first...
+            try:
+                return self.wp.deletePost(blogid,
                                           self._username,
                                           self._password,
                                           postid)
+            except xmlrpclib.Fault:
+                pass
+            except xmlrpclib.ProtocolError, error:
+                raise proxybase.ProxyError("wp.deletePost", error)
 
-        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.ProxyError("wp.deletePost", error)
+            # if Wordpress API failed, try older XMLRPC API call
+            try:
+                return self.blogger.deletePost('',
+                                               postid, 
+                                               self._username,
+                                               self._password,
+                                               True)
+            except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+                raise proxybase.ProxyError("wp.deletePost", error)
 
-        return response
+        ########################################################################
+        # deletePost starts here
+        return _tryMethods(self._getBlogID, postid)
 
     ############################################################################ 
     def upload(self, filename):
-        mediaStruct = {}
 
-        blogid = self._getBlogID()
+        '''
+            _tryMethods
+            Helper function to maintain compatibility with older version of 
+            Wordpress.  Tries the newest methods first and then older ones if
+            they fail.
+        '''
+        def _tryMethods(blogid, mediaStruct):
+            # try newer Wordpress API first...
+            try:
+                return self.wp.uploadFile(blogid,
+                                          self._username,
+                                          self._password,
+                                          mediaStruct )
+            except xmlrpclib.Fault:
+                pass
+            except xmlrpclib.ProtocolError, error:
+                raise proxybase.ProxyError("wp.upload", error)
 
+            # fall back to older XMLRPC API call
+            try:
+                return self.metaWeblog.newMediaObject(blogid,
+                                                      self._username,
+                                                      self._password,
+                                                      mediaStruct )
+            except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+                raise proxybase.ProxyError("wp.upload", error)
+
+        #######################################################################
+        # upload starts here...
         # see if user supplied full path name
         if os.path.isfile(filename) != 1:
             # if not, anchor to user's home directory
@@ -156,24 +218,17 @@ class WordpressProxy(proxybase.BlogProxy):
             f = open(filename, 'rb')
             mediaData = f.read()
             f.close()
-
-            mediaStruct['type'], encoding = mimetypes.guess_type(filename)
-            if mediaStruct['type'] == None:
-                print "Can't determine MIME type for %s" % filename
-                sys.exit()
-
-            mediaStruct['name'] = os.path.basename(filename)
-            mediaStruct['bits'] = xmlrpclib.Binary(mediaData)
-        
-            res = self.wp.uploadFile(blogid,
-                                     self._username,
-                                     self._password,
-                                     mediaStruct )
-
-        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+        except IOError, error:
             raise proxybase.ProxyError("wp.upload", error)
 
-        return res
+        mediaStruct = {}
+        mediaStruct['type'], encoding = mimetypes.guess_type(filename)
+        if mediaStruct['type'] == None:
+            print "Can't determine MIME type for %s" % filename
+            sys.exit()
+        mediaStruct['name'] = os.path.basename(filename)
+        mediaStruct['bits'] = xmlrpclib.Binary(mediaData)
+        return tryUpload(self._getBlogID(), mediadata)
 
     ############################################################################ 
     def getComments(self, postid):
@@ -287,5 +342,3 @@ class WordpressProxy(proxybase.BlogProxy):
             raise proxybase.ProxyError("wp.getCommentCount", error)
 
         return count
-
-
