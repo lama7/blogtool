@@ -17,6 +17,7 @@ def getInst(url, user, password):
 # are "directly" accessible through my blogproxy class
 #
 class WordpressProxy(proxybase.BlogProxy):
+
     ############################################################################ 
     def getCategories(self):
 
@@ -89,57 +90,42 @@ class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
     def getRecentTitles(self, number):
+        blogid = self._getBlogID()
 
-        '''
-            Function to maintain backwards compatibility with previous WP blog
-            versions.
-        '''
-        def _tryMethods(blogid, number):
-            # First, try the Wordpress XMLRPC API calls
-            try:
-                response = self.wp.getPosts(blogid,
-                                            self._username,
-                                            self._password,
-                                            { # filter parameter
-                                              'post_type'   : 'post',      # or 'page', 'attachment'
-                                              'post_status' : 'publish',   # or 'draft', 'private, 'pending'
-                                              'number'      : number,
-                                              'offset'      : 0,           # offset by # posts
-                                              'orderby'     : '',          # appears to have no effect
-                                              'order'       : '',          # appears to have no effect
-                                            },
-                                            ['post_id', 'post_title', 'post_date'])
-            except xmlrpclib.Fault:
-                pass
-            except xmlrpclib.ProtocolError, error:
-                raise proxybase.ProxyError("wp.getRecentTitles", error)
-            else:
-                recent = []
-                for postmeta in response:
-                    recent.append({'postid'      : postmeta['post_id'],
-                                   'title'       : postmeta['post_title'],
-                                   'dateCreated' : postmeta['post_date']})
+        # First, try the Wordpress XMLRPC API calls
+        try:
+            response = self.wp.getPosts(blogid,
+                                        self._username,
+                                        self._password,
+                                        { # filter parameter
+                                          'post_type'   : 'post',      # or 'page', 'attachment'
+                                          'post_status' : 'publish',   # or 'draft', 'private, 'pending'
+                                          'number'      : number,
+                                          'offset'      : 0,           # offset by # posts
+                                          'orderby'     : '',          # appears to have no effect
+                                          'order'       : '',          # appears to have no effect
+                                        },
+                                        ['post_id', 'post_title', 'post_date'])
+        except xmlrpclib.Fault:
+            pass
+        except xmlrpclib.ProtocolError, error:
+            raise proxybase.ProxyError("wp.getRecentTitles", error)
+        else:
+            return [{'postid'      : postmeta['post_id'],
+                     'title'       : postmeta['post_title'],
+                     'dateCreated' : postmeta['post_date']} for postmeta in response ]
 
-            # The Wordpress XMLRPC API is not available, try the old MT API
-            try:
-                recent = self.mt.getRecentPostTitles(blogid,
-                                                     self._username,
-                                                     self._password,
-                                                     number)
-            except (xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-                raise proxybase.ProxyError("wp.getRecentTitles", error)
-
-            return recent
-
-        ########################################################################
-        # getRecentTitles starts here
-        # the calling code expects things in a certain format, so let's oblige
-        return _tryMethods(self._getBlogID(), number)
+        # The Wordpress XMLRPC API is not available, try the old MT API
+        try:
+            return self.mt.getRecentPostTitles(blogid,
+                                               self._username,
+                                               self._password,
+                                               number)
+        except (xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.getRecentTitles", error)
 
     ############################################################################ 
     def publishPost(self, post):
-        # this code is based on the similar blogtk2.0 code that performs 
-        # a similar task
         blogid = self._getBlogID()
 
         try:
@@ -168,84 +154,67 @@ class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
     def getPost(self, postid):
+        blogid = self._getBlogID()
+        try:
+            response = self.wp.getPost(blogid, 
+                                       self._username, 
+                                       self._password,
+                                       postid,
+                                       ['postid', 'post_title', 'post_content', 'terms'])
+        except xmlrpclib.Fault:
+            pass
+        except xmlrpclib.ProtocolError, error:
+            raise proxybase.ProxyError("wp.getPost", error)
+        else:
+            # process response from server
+            # to maintain compatiblity with existing code, massage response
+            # into the expected form
+            post = {
+                    'description'  : response['post_content'],
+                    'title'        : response['post_title'],
+                    'mt_text_more' : '',
+                    'mt_keywords'  : '',
+                    'categories'   : []}
+            for term in response['terms']:
+                if term['taxonomy'] == 'category':
+                    post['categories'].append(term['name'])
+                elif term['taxonomy'] == 'post_tag':
+                    if post['mt_keywords'] != '':
+                        post['mt_keywords'] += ', '
+                    post['mt_keywords'] += term['name']
+            return post
 
-        '''
-            _tryMethods
-            Function to try the newer Wordpress XMLRPC API and fallback to older
-            methods if those fail.
-        '''
-        def _tryMethods(blogid, postid):
-            try:
-                response = self.wp.getPost(blogid, 
+        # fallback to older XMLRPC method
+        try:
+            return self.metaWeblog.getPost(postid, 
                                            self._username, 
-                                           self._password,
-                                           postid,
-                                           ['postid', 'post_title', 'post_content', 'terms'])
-            except xmlrpclib.Fault:
-                pass
-            except xmlrpclib.ProtocolError, error:
-                raise proxybase.ProxyError("wp.getPost", error)
-            else:
-                # process response from server
-                # to maintain compatiblity with existing code, massage response
-                # into the expected form
-                post = {
-                        'description'  : response['post_content'],
-                        'title'        : response['post_title'],
-                        'mt_text_more' : '',
-                        'mt_keywords'  : '',
-                        'categories'   : [],}
-                for term in response['terms']:
-                    if term['taxonomy'] == 'category':
-                        post['categories'].append(term['name'])
-                    elif term['taxonomy'] == 'post_tag':
-                        if post['mt_keywords'] != '':
-                            post['mt_keywords'] += ', '
-                        post['mt_keywords'] += term['name']
-                return post
- 
-            # fallback to older XMLRPC method
-            try:
-                return self.metaWeblog.getPost(postid, 
-                                               self._username, 
-                                               self._password)
-            except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-                raise proxybase.ProxyError("wp.getPost", error)
-
-        return _tryMethods(self._getBlogID(), postid)
+                                           self._password)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.getPost", error)
 
     ############################################################################ 
     def deletePost(self, postid):
-        
-        '''
-            Function to try different XMLRPC API methods to maintain backwards
-            compatibility
-        '''
-        def _tryMethods(blogid, postid):
-            # try the newer Wordpress XMLRPC API first...
-            try:
-                return self.wp.deletePost(blogid,
-                                          self._username,
-                                          self._password,
-                                          postid)
-            except xmlrpclib.Fault:
-                pass
-            except xmlrpclib.ProtocolError, error:
-                raise proxybase.ProxyError("wp.deletePost", error)
+        blogid = self._getBlogID()
+        # try the newer Wordpress XMLRPC API first...
+        try:
+            return self.wp.deletePost(blogid,
+                                      self._username,
+                                      self._password,
+                                      postid)
+        except xmlrpclib.Fault:
+            pass
+        except xmlrpclib.ProtocolError, error:
+            raise proxybase.ProxyError("wp.deletePost", error)
 
-            # if Wordpress API failed, try older XMLRPC API call
-            try:
-                return self.blogger.deletePost('',
-                                               postid, 
-                                               self._username,
-                                               self._password,
-                                               True)
-            except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-                raise proxybase.ProxyError("wp.deletePost", error)
-
-        ########################################################################
-        # deletePost starts here
-        return _tryMethods(self._getBlogID, postid)
+        # if Wordpress API failed, try older XMLRPC API call
+        try:
+            return self.blogger.deletePost('',
+                                           postid, 
+                                           self._username,
+                                           self._password,
+                                           True)
+        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+            raise proxybase.ProxyError("wp.deletePost", error)
 
     ############################################################################ 
     def upload(self, filename):
@@ -254,7 +223,7 @@ class WordpressProxy(proxybase.BlogProxy):
             _tryMethods
             Helper function to maintain compatibility with older version of 
             Wordpress.  Tries the newest methods first and then older ones if
-            they fail.
+            the newer fail.
         '''
         def _tryMethods(blogid, mediaStruct):
             # try newer Wordpress API first...
@@ -300,7 +269,7 @@ class WordpressProxy(proxybase.BlogProxy):
             sys.exit()
         mediaStruct['name'] = os.path.basename(filename)
         mediaStruct['bits'] = xmlrpclib.Binary(mediaData)
-        return tryUpload(self._getBlogID(), mediadata)
+        return _tryMethods(self._getBlogID(), mediaStruct)
 
     ############################################################################ 
     def getComments(self, postid):
