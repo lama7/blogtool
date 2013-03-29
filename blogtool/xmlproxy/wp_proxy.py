@@ -19,15 +19,36 @@ def getInst(url, user, password):
 class WordpressProxy(proxybase.BlogProxy):
     ############################################################################ 
     def getCategories(self):
-        blogid = self._getBlogID()
 
-        if self._categories == None:
+        def _tryMethods(blogid):
             try:
-                self._categories = self.metaWeblog.getCategories(blogid,
-                                                                self._username,
-                                                                self._password)
+                response = self.wp.getTerms(blogid, 
+                                            self._username,
+                                            self._password,
+                                            'category',
+                                            {})
+            except xmlrpclib.Fault:
+                pass
+            except xmlrpclib.ProtocolError, error:
+                raise proxybase.ProxyError("wp.getCategories", error)
+            else:
+                return [ { 'categoryName'        : cat['name'],
+                           'parentId'            : cat['parent'],
+                           'categoryId'          : cat['term_id'],
+                           'categoryDescription' : cat['description'],} for cat in response ]
+
+            # fallback to old method
+            try:
+                return self.metaWeblog.getCategories(blogid,
+                                                     self._username,
+                                                     self._password)
             except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
                 raise proxybase.ProxyError("wp.getCategories", error)
+
+        ########################################################################
+        # getCategories starts here...
+        if self._categories == None:
+            self._categories = _tryMethods(self._getBlogID)
 
         return self._categories
 
@@ -133,14 +154,51 @@ class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
     def getPost(self, postid):
-        try:
-            post = self.metaWeblog.getPost(postid, 
-                                           self._username, 
-                                           self._password)
-        except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
-            raise proxybase.ProxyError("wp.getPost", error)
 
-        return post
+        '''
+            _tryMethods
+            Function to try the newer Wordpress XMLRPC API and fallback to older
+            methods if those fail.
+        '''
+        def _tryMethods(blogid, postid):
+            try:
+                response = self.wp.getPost(blogid, 
+                                           self._username, 
+                                           self._password,
+                                           postid,
+                                           ['postid', 'post_title', 'post_content', 'terms'])
+            except xmlrpclib.Fault:
+                pass
+            except xmlrpclib.ProtocolError, error:
+                raise proxybase.ProxyError("wp.getPost", error)
+            else:
+                # process response from server
+                # to maintain compatiblity with existing code, massage response
+                # into the expected form
+                post = {
+                        'description'  : response['post_content'],
+                        'title'        : response['post_title'],
+                        'mt_text_more' : '',
+                        'mt_keywords'  : '',
+                        'categories'   : [],}
+                for term in response['terms']:
+                    if term['taxonomy'] == 'category':
+                        post['categories'].append(term['name'])
+                    elif term['taxonomy'] == 'post_tag':
+                        if post['mt_keywords'] != '':
+                            post['mt_keywords'] += ', '
+                        post['mt_keywords'] += term['name']
+                return post
+ 
+            # fallback to older XMLRPC method
+            try:
+                return self.metaWeblog.getPost(postid, 
+                                               self._username, 
+                                               self._password)
+            except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
+                raise proxybase.ProxyError("wp.getPost", error)
+
+        return _tryMethods(self._getBlogID(), postid)
 
     ############################################################################ 
     def deletePost(self, postid):
