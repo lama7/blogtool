@@ -57,15 +57,19 @@ class WordpressProxy(proxybase.BlogProxy):
         blogid = self._getBlogID()
 
         # start by trying newer Wordpress API call
+        term = { 'name'        : newcat,
+                 'taxonomy'    : 'category',
+                 'slug'        : slug,
+                 'description' : desc}
+        # it appears that if parent is 0, the call won't work to add the
+        # category, but will work if parent is not present.
+        if int(parent) != 0:
+            term['parent'] = int(parent)
         try:
-            return self.wp.newTerm(blogid, 
+           return self.wp.newTerm(blogid, 
                                    self._username,
                                    self._password,
-                                   { 'name'        : newcat,
-                                     'taxonomy'    : 'category',
-                                     'slug'        : slug,
-                                     'description' : desc,
-                                     'parent'      : parent })
+                                   term)
         except xmlrpclib.Fault:
             pass
         except xmlrpclib.ProtocolError, error:
