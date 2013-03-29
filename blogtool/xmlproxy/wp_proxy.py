@@ -55,23 +55,33 @@ class WordpressProxy(proxybase.BlogProxy):
     ############################################################################ 
     def newCategory(self, newcat, parent, slug='', desc=''):
         blogid = self._getBlogID()
- 
-        newcStruct = {}
 
-        newcStruct['name'] = newcat
-        newcStruct['slug'] = slug
-        newcStruct['description'] = desc
-        newcStruct['parent_id'] = parent 
-
+        # start by trying newer Wordpress API call
         try:
-            id = self.wp.newCategory(blogid,
-                                     self._username,
-                                     self._password,
-                                     newcStruct)
+            return self.wp.newTerm(blogid, 
+                                   self._username,
+                                   self._password,
+                                   { 'name'        : newcat,
+                                     'taxonomy'    : 'category',
+                                     'slug'        : slug,
+                                     'description' : desc,
+                                     'parent'      : parent })
+        except xmlrpclib.Fault:
+            pass
+        except xmlrpclib.ProtocolError, error:
+            raise proxybase.ProxyError("wp.newCategory", error)
+ 
+        # fallback to old call
+        try:
+            return self.wp.newCategory(blogid,
+                                       self._username,
+                                       self._password,
+                                       { 'name'        : newcat,
+                                         'slug'        : slug,
+                                         'description' : desc,
+                                         'parent_id'   : parent})
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.newCategory", error)
-
-        return id
 
     ############################################################################ 
     def getRecentTitles(self, number):
