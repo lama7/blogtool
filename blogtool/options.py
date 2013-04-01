@@ -372,6 +372,13 @@ updating with blogtool.
         header_str += 'CATEGORIES: %s\n' % self._buildCatStr(post['categories'])
         if post['mt_keywords']:
             header_str += 'TAGS: %s\n' % post['mt_keywords']
+        if post['mt_excerpt']:
+            if any([c in post['mt_excerpt'] for c in [',','\n','{','}']]):
+                header_str += 'EXCERPT: """%s"""' % post['mt_excerpt']
+            else:
+                header_str += 'EXCERPT: %s' % post['mt_excerpt']
+            header_str = header_str.rstrip() + '\n' # ensure header is terminated
+
         print (header_str + '\n' + text).encode("utf8")
         return None
 

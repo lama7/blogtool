@@ -6,6 +6,10 @@ import types
 import copy
 
 ################################################################################
+"""HeaderError
+
+    Error class for header format errors.
+"""
 class HeaderError(Exception):
     NAMENOTFOUND = 0
     NOCONFIGFILE = 1
@@ -32,6 +36,10 @@ using the -b option.''',
         return self.message
 
 ################################################################################
+"""HeaderParseError
+
+    Error class for parsing errors.
+"""
 class HeaderParseError(Exception):
     def __init__(self, msg):
         self.message = "HeaderParseError: %s" % msg
@@ -40,12 +48,10 @@ class HeaderParseError(Exception):
         return self.message
 
 ################################################################################
-'''
-    HeaderParms
+"""HeaderParms
 
     Essentially a data class for the various header settings.
-
-'''    
+"""    
 class HeaderParms():
 
     def __init__(self):
@@ -65,6 +71,7 @@ class HeaderParms():
         self.author = ''
         self.authorurl = ''
         self.authoremail = ''
+        self.excerpt = ''
 
     def __str__(self):
         l = ["%s:  %s" % (attr, val) for attr, val in self.__dict__.iteritems()]
@@ -108,23 +115,28 @@ class HeaderParms():
         return self.__dict__
 
 ################################################################################
+"""Keyword
+    
+    A Container class for keywords useful for storing certain info about
+    keyword types.
+"""
 class Keyword():
     def __init__(self, kwtype):
         self.kwtype = kwtype
 
 ################################################################################
-'''
-    HeaderParse
+"""HeaderParse
 
     Class for parsing header text and creating a HeaderParms object.
 
-'''
+"""
 class HeaderParse():
     __hdr_value = re.compile('([^\n,}]+)\s*(.*)', re.DOTALL)
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
     __hdr_comma = re.compile(',\s*(.*)', re.DOTALL)
-    #__hdr_keyword = re.compile('([A-Z]+)\s*[:]\s*(.*)', re.DOTALL)
+    __hdr_openingquote = re.compile(r'"{3}(.*)', re.DOTALL)
+    __hdr_closingquote = re.compile(r'(.*?)"{3}\s+(.*)', re.DOTALL)
     __hdr_keyword = re.compile('([A-Z]+)\s*[:][ \t\f\v]*(.*)', re.DOTALL)
 
     KTYPE_SINGLEVAL = 0
@@ -150,12 +162,16 @@ class HeaderParse():
                               ( 'AUTHOR', Keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'AUTHORURL', Keyword(self.KTYPE_SINGLEVAL) ),
                               ( 'AUTHOREMAIL', Keyword(self.KTYPE_SINGLEVAL) ),
-                              ( 'COMMENTSTATUS', Keyword(self.KTYPE_SINGLEVAL) )
+                              ( 'COMMENTSTATUS', Keyword(self.KTYPE_SINGLEVAL) ),
+                              ( 'EXCERPT', Keyword(self.KTYPE_SINGLEVAL) )
                              ]
                             )
 
-    # the 'parsestring' should be the ENTIRE string to parse, not a piece-meal
-    # version of it
+    """parse
+
+        The 'parsestring' should be the ENTIRE string to parse, not a piece-meal
+        version of it.
+    """
     def parse(self, parsestring):
         ast = {}
 
@@ -172,7 +188,10 @@ class HeaderParse():
 
         return self.__interpAST(ast, postconfig)
 
-    # entry point to for parsing- basically, pass in any string to this
+    """__parseAssignment
+       
+        Entry point to for parsing- basically, pass in any string to this.
+    """
     def __parseAssignment(self, parsestring):
         m = self.__hdr_keyword.match(parsestring)
         if m == None:
@@ -187,7 +206,11 @@ class HeaderParse():
 
         return keyword, val, parsestring
 
-    # at this point, a 'KEYWORD:' has been parsed
+    """__parseElement
+
+        At this point, a 'KEYWORD:' has been parsed, now continue to parse
+        either a value or a group.
+    """
     def __parseElement(self, parsestring):
         # if next character is a '{' then  parse a GROUP
         # otherwise, look for VALUE
@@ -199,19 +222,32 @@ class HeaderParse():
         # an opening brackets starts a group
         return self.__parseGroup(m.group(1))
 
-    # a VALUE is anything up to a newline or a ','
+    """__parseValue
+
+       A VALUE is anything up to a newline or a ',' or a string enclosed by
+       pythonic triple double-quotes.
+    """
     def __parseValue(self, parsestring):
-        m = self.__hdr_value.match(parsestring)
-        if m == None:
-            raise HeaderParseError( "Could not parse keyword value: %s" %
-                                    parsestring)
+        m = self.__hdr_openingquote.match(parsestring)
+        if m != None:
+            value, parsestring = self.__parseQuote(m.group(1))
+        else:
+            m = self.__hdr_value.match(parsestring)
+            if m == None:
+                raise HeaderParseError( "Could not parse keyword value: %s" %
+                                        parsestring)
+            value = m.group(1).rstrip()
+            parsestring = m.group(2)
 
         # if next character is a comma, then we have a list otherwise
         # it's a single value assignment
-        return self.__parseComma(m.group(1).rstrip(), m.group(2))
+        return self.__parseComma(value, parsestring)
 
-    # a KEYWORD has been parse followed by a '{', so we need to start
-    # parsing assignmens again.
+    """__parseGroup
+
+        A KEYWORD has been parse followed by a '{', so we need to start
+        parsing assignmens again.
+    """
     def __parseGroup(self, parsestring):
         sub_ast = {}
 
@@ -228,7 +264,24 @@ class HeaderParse():
         # if next character is a comma, then we have a list
         return self.__parseComma(sub_ast, m.group(1))
 
-    # common comma processing
+    """__parseQuote
+
+        A '"""' has been parsed, so parse a string up to the closing '"""' and
+        return the string and whatever is left of the parsestring.
+    """
+    def __parseQuote(self, parsestring):
+        m = self.__hdr_closingquote.match(parsestring)
+        if m == None:
+            raise HeaderParseError( "Error in quoted string, no closing quotes: %s" %
+                                    parsestring)
+        return m.group(1), m.group(2)
+
+    """__parseComma
+        
+        Actually, the name of this is a bit misleading as the comma has already
+        been parsed.  The idea here is to build a list and continue parsing
+        recursively.
+    """
     def __parseComma(self, obj, parsestring):
         m = self.__hdr_comma.match(parsestring)
         if m == None:
@@ -238,7 +291,10 @@ class HeaderParse():
             vallist.insert(0, obj)
             return vallist, parsestring
 
-    # adds a key value pair into the ast as appropriate
+    """__add2AST
+
+        Adds a key value pair into the AST as appropriate.
+    """
     def __add2AST(self, ast, keyword, val):
         # first, make sure the value is agreeable with the keyword type
         kwtype = self.__kw_tbl[keyword].kwtype
@@ -267,7 +323,10 @@ class HeaderParse():
         else:
             ast[keyword].extend(val)
 
-    # takes an AST and creates config objects from it
+    """__interpAST
+
+        Takes an AST and creates config objects from it.
+    """
     def __interpAST(self, ast, postconfig):
         # start by looking for the BLOG entry- process if it's a group
         # entries under the BLOG keyword define settings specific to 1 config
@@ -293,22 +352,26 @@ class HeaderParse():
 
         return self.__interpASTcommon(ast, postconfig)
 
-    # this takes entries that are common to all configs- basically, for each
-    # setting, look at each config and if a value isn't already set then set
-    # it, otherwise leave it alone
+    """__interpASTcommon
+
+        This takes entries that are common to all configs- basically, for each
+        setting, look at each config and if a value isn't already set then set
+        it, otherwise leave it alone.
+    """
     def __interpASTcommon(self, ast, postconfig):
         # processing is pretty straight forward now- iterate through the AST
         # and fill in the config objects.  
         for k, vallist in ast.iteritems():
-            '''
-             helper function to assign a value to an attirbute of a config
-             object.  The actual loop is implemented as a list comprehension
-             Done this way for practice- the more verbose form of the 
-             comprehension is the commented out code immediately below the 
-             comprehension- for future reference I'm leaving it this way in
-             case something needs to change
-            '''
-            def assignConfigAttr(attr, val, cf):
+            """_assignConfigAttr
+
+                Helper function to assign a value to an attirbute of a config
+                object.  The actual loop is implemented as a list comprehension
+                Done this way for practice- the more verbose form of the 
+                comprehension is the commented out code immediately below the 
+                comprehension- for future reference I'm leaving it this way in
+                case something needs to change
+            """
+            def __assignConfigAttr(attr, val, cf):
                 if attr == 'blog':
                     attr = 'name'
                 elif type(val) != types.ListType and \
@@ -323,8 +386,11 @@ class HeaderParse():
                    vallist.index(val) == postconfig.index(cf):
                     setattr(cf, attr, val)   
                     
-            [ assignConfigAttr(k.lower(), x, config) for config in postconfig \
-                                                     for x in vallist ]
+            [ __assignConfigAttr(k.lower(), x, config) for config in postconfig \
+                                                       for x in vallist ]
+                                                     
+#    The above list comprehension is equivalent to the following piece of code:
+#
 #            for o in v:
 #                for config in postconfig:
 #                    if k == 'blog':
@@ -337,18 +403,22 @@ class HeaderParse():
 #                    # matches the list index for the value, then assign
 #                    if config.get(k) == None or v.index(o) == postconfig.index(config):
 #                        config.set(k, o)
-#
+
+
+## For testing purposes:
 #        for pc in postconfig:
-#            print pc.__dict__
+#            print pc
 #        sys.exit()
 
+
         return postconfig
+
 ################################################################################
-'''
+"""
     reverseParse
     
     Reverse parses a HeaderParms object making into a parsable string.
-'''
+"""
 class reverseParser:
     def _getdefault(self, name):
         if self._default_parms:
@@ -380,7 +450,12 @@ class reverseParser:
         if isinstance(val, list):
             return ', '.join(val).strip("'")
         else:
-            return val
+            # look for characters special for header indicating need for triple
+            # quoted string
+            if re.search(r'[,\n{}]', val):
+                return '"""%s"""' % val
+            else:
+                return val
 
     def _clean(self, d):
         ''' remove dict entries that have empy lists '''
@@ -430,6 +505,12 @@ class reverseParser:
                     i = i + 1   
         return text.strip(',\n\t')
 
+    """toString
+
+       This is the only public function for the reverse parser object.  It takes
+       a parameter list dict and default parameter dict and then sets about
+       turning them into a valid header string suitable for use in a post file
+    """
     def toString(self, parms, defaultparms):
         self._default_parms = defaultparms
         d = {}
@@ -447,14 +528,14 @@ class reverseParser:
         return hdrtext + '\n'
 
 ################################################################################
-'''
+"""
     Header
 
     Container class for dealing with headers.  
     
     This is the public class that a header is accessed through.
 
-'''
+"""
 class Header():
     _parser = HeaderParse()
     _revparser = reverseParser()
