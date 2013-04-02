@@ -80,6 +80,7 @@ be written as appropriate to a post on the blog.
 Following is a list of `blogtool` header keywords:
 
 + TITLE
++ EXCERPT *(as of v1.1.1)*
 + BLOG
 + NAME
 + XMLRPC
@@ -112,10 +113,33 @@ For the purposes of posting, the required keywords are XMLRPC, NAME, USERNAME,
 PASSWORD, and BLOGTYPE.  Without these, `blogtool` can't push anything up to a
 weblog.
 
+#### As of V1.1.1 ####
+In V1.1.1, the `EXCERPT` header keyword was added.  This is a summary of the
+blogpost and can be displayed on the blog if enabled by the theme.  Some search
+engines will also display it if present.
+
+In order to support the possiblity of having an excerpt span several lines in an
+editor, the ability to use a quoted string has been added to headers.  A quoted
+string for a `blogtool` header is the equivalent of a python docstring- a string
+delimited by three consecutive double-quotes.  For example:
+
+    """This is a quoted string that can be used in a header.  In addition to
+    being able to span multiple lines, any character can appear within the
+    triple double-quote delimiters, including commas and colons.  This is useful
+    for titles as well since it is now possible to include commas in a title
+    where before it was not."""
+
+A quoted string is valid for any header keyword that accepts a string as a valid
+value.
+
 ### Keyword Definitions ###
 
 +   TITLE  
     Defines the post title that will appear on the blog.  
+
++   EXCERPT
+    The equivalent of a summary and will be displayed on the blog if enabled by
+    the theme.
 
 +   BLOG  
     Serves dual purposes.  With a single value it defines the name of the blog
@@ -556,3 +580,10 @@ for it, within the same `p` tag.  Other alignment possibilities are `alignright`
 and `alignleft` or whatever other values are supported by your blog theme.
 Thus, while not exactly a tool for a photo blog, `blogtool` affords the user
 quite a bit of control over pictures.
+:A
+ZZ
+
+
+
+
+?help
