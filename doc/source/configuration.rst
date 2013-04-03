@@ -40,6 +40,7 @@ Header Keywords
 Following is a list of blogtool_ header keywords:
 
 + TITLE_
++ EXCERPT_
 + BLOG_
 + NAME_
 + XMLRPC_
@@ -90,6 +91,12 @@ what they are used for and what an appropriate value is for them.
 
 TITLE  
     Defines the post title that will appear on the blog.  
+
+.. _excerpt:
+
+EXCERPT
+    The equivalent of a summary entry for the blog post.  The text will be
+    displayed if the blog theme is setup to do so.
 
 .. _blog:
 
@@ -197,6 +204,26 @@ AUTHORURL
 AUTHOREMAIL  
     Specifies an email address for the author of the comment.  Can be left
     blank.
+
+Keyword Values
+~~~~~~~~~~~~~~
+
+The values that correspond to keywords consist of strings.  Almost all strings
+are terminated by the appropriate end-of-line marker.  There are two exceptions:
+groups and quoted strings.  Groups are explained in the next section.  Quoted
+strings are supported as of version 1.1.1.
+
+A quoted string is like the python docstring- a string that is delimited by a
+triple double-quote character pattern.  Within the delimiters, all characters
+are allowed and the string may span multiple lines.  Quoted strings may be used
+anywhere a string value is allowed and can be useful if its desired to use
+certain characters that the header parsing recognizes as special like colons or
+commas.  For instance, if it's desired to use a comma in a title, enclose the
+title string in triple quotes like so::
+
+    TITLE: """A Title, With a Comma in it"""
+
+Without the quoting, this title would cause an error.
 
 Groups
 ~~~~~~
