@@ -137,7 +137,7 @@ value.
 +   TITLE  
     Defines the post title that will appear on the blog.  
 
-+   EXCERPT
++   EXCERPT  
     The equivalent of a summary and will be displayed on the blog if enabled by
     the theme.
 
