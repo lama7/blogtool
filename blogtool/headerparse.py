@@ -167,6 +167,7 @@ class HeaderParse():
                              ]
                             )
 
+    ############################################################################
     """parse
 
         The 'parsestring' should be the ENTIRE string to parse, not a piece-meal
@@ -188,6 +189,7 @@ class HeaderParse():
 
         return self.__interpAST(ast, postconfig)
 
+    ############################################################################
     """__parseAssignment
        
         Entry point to for parsing- basically, pass in any string to this.
@@ -206,6 +208,7 @@ class HeaderParse():
 
         return keyword, val, parsestring
 
+    ############################################################################
     """__parseElement
 
         At this point, a 'KEYWORD:' has been parsed, now continue to parse
@@ -222,6 +225,7 @@ class HeaderParse():
         # an opening brackets starts a group
         return self.__parseGroup(m.group(1))
 
+    ############################################################################
     """__parseValue
 
        A VALUE is anything up to a newline or a ',' or a string enclosed by
@@ -243,6 +247,7 @@ class HeaderParse():
         # it's a single value assignment
         return self.__parseComma(value, parsestring)
 
+    ############################################################################
     """__parseGroup
 
         A KEYWORD has been parse followed by a '{', so we need to start
@@ -264,6 +269,7 @@ class HeaderParse():
         # if next character is a comma, then we have a list
         return self.__parseComma(sub_ast, m.group(1))
 
+    ############################################################################
     """__parseQuote
 
         A '"""' has been parsed, so parse a string up to the closing '"""' and
@@ -276,6 +282,7 @@ class HeaderParse():
                                     parsestring)
         return m.group(1), m.group(2)
 
+    ############################################################################
     """__parseComma
         
         Actually, the name of this is a bit misleading as the comma has already
@@ -291,6 +298,7 @@ class HeaderParse():
             vallist.insert(0, obj)
             return vallist, parsestring
 
+    ############################################################################
     """__add2AST
 
         Adds a key value pair into the AST as appropriate.
@@ -323,6 +331,7 @@ class HeaderParse():
         else:
             ast[keyword].extend(val)
 
+    ############################################################################
     """__interpAST
 
         Takes an AST and creates config objects from it.
@@ -352,6 +361,7 @@ class HeaderParse():
 
         return self.__interpASTcommon(ast, postconfig)
 
+    ############################################################################
     """__interpASTcommon
 
         This takes entries that are common to all configs- basically, for each
@@ -362,6 +372,8 @@ class HeaderParse():
         # processing is pretty straight forward now- iterate through the AST
         # and fill in the config objects.  
         for k, vallist in ast.iteritems():
+
+            ###################################################################
             """_assignConfigAttr
 
                 Helper function to assign a value to an attirbute of a config
@@ -456,9 +468,12 @@ class reverseParser:
                 return '"""%s"""' % val
             else:
                 return val
-
+    ###########################################################################
+    """_clean
+     
+        Remove dict entries that have empty lists.
+    """
     def _clean(self, d):
-        ''' remove dict entries that have empy lists '''
         cleaned_keys = []
         for k,v in d.iteritems():
             if self._valsequal(v, None):
@@ -505,6 +520,7 @@ class reverseParser:
                     i = i + 1   
         return text.strip(',\n\t')
 
+    ############################################################################
     """toString
 
        This is the only public function for the reverse parser object.  It takes
@@ -528,13 +544,11 @@ class reverseParser:
         return hdrtext + '\n'
 
 ################################################################################
-"""
-    Header
+"""Header
 
     Container class for dealing with headers.  
     
     This is the public class that a header is accessed through.
-
 """
 class Header():
     _parser = HeaderParse()

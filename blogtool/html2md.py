@@ -14,17 +14,19 @@ except ImportError:
     LXML_PRESENT = False
 
 #################################################################################
+"""Html2MdException
+
+    Base exception class for module.
+"""
 class Html2MdException(Exception):
 
     pass
 
 #################################################################################
-'''
-    class TagHandler
+"""TagHandler
 
     Base class for objects that convert a tag into text
-
-'''
+"""
 class TagHandler:
 
     def __init__(self, txtConverter):
@@ -55,12 +57,11 @@ class TagHandler:
 
 
 #################################################################################
-'''
-    InlineTagHandler
+"""InlineTagHandler
 
     Subclass of TagHandler- base class for inline tag objects like <em>, <code>,
     <strong>, etc. due to common conversion processing
-'''
+"""
 class InlineTagHandler(TagHandler):
 
     def convert(self, e):
@@ -85,18 +86,21 @@ class InlineTagHandler(TagHandler):
         return text
 
 #################################################################################
-'''
-    FixedStringTagHandler
+"""FixedStringTagHandler
 
     subclass of TagHandler, baseclass for tag objects that process tags which
     return a fixed string, eg <br /> and <hr /> tags
-'''
+"""
 class FixedStringTagHandler(TagHandler):
 
     def convert(self, e):
         return self.conversion_str
 
 #################################################################################
+"""InlineCodeHandler
+
+    Class for inline HTML elements like <em>text</em>
+"""
 class InlineCodeHandler(InlineTagHandler):
 
     tag = 'code'
@@ -108,36 +112,60 @@ class InlineCodeHandler(InlineTagHandler):
         return False
 
 #################################################################################
+"""EmHandler
+
+    Specific class for ``em`` tags.
+"""
 class EmHandler(InlineTagHandler):
     
     tag = 'em'
     inlinechars = '*'
 
 #################################################################################
+"""StrongHandler
+
+    Specific class for ``strong`` tags.
+"""
 class StrongHandler(InlineTagHandler):
     
     tag = 'strong'
     inlinechars = '**'
 
 #################################################################################
+"""StrikeHandler
+
+    Specific class for ``strike`` tags- NOT IN MARKDOWN SPEC.
+"""
 class StrikeHandler(InlineTagHandler):
 
     tag = 'strike'
     inlinechars = '-'
 
 #################################################################################
+"""BrHandler
+
+    Specific classs for ``br`` tags.
+"""
 class BrHandler(FixedStringTagHandler):
     
     tag = 'br'
     conversion_str = '  \n'
 
 #################################################################################
+"""HorizontalRuleHandler
+
+    Specific class for ``hr`` tags.
+"""
 class HorizontalRuleHandler(FixedStringTagHandler):
     
     tag = 'hr'
     conversion_str = '* * *\n\n'
     
 #################################################################################
+"""AHandler
+
+    Specific class for ``a`` tags.
+"""
 class AHandler(TagHandler):
 
     tag = 'a'
@@ -175,6 +203,10 @@ class AHandler(TagHandler):
         return None
 
 #################################################################################
+"""ImgHandler
+
+    Specific class for ``img`` tags.
+"""
 class ImgHandler(TagHandler):
 
     tag = 'img'
@@ -201,6 +233,10 @@ class ImgHandler(TagHandler):
         return attr_str
  
 #################################################################################
+"""PHandler
+
+    Specific class for ``p`` tags.
+"""
 class PHandler(TagHandler):
     
     tag = 'p'
@@ -214,6 +250,10 @@ class PHandler(TagHandler):
 
 
 #################################################################################
+"""HeadingHandler
+
+    Specific class for ``h1-6`` tags.
+"""
 class HeadingHandler(TagHandler):
     
     tag = re.compile('^h(\d)$')
@@ -240,6 +280,10 @@ class HeadingHandler(TagHandler):
         return h_text + '\n' + hdr_char*len(h_text) + '\n\n'
         
 #################################################################################
+"""BlockQuoteHandler
+
+    Specific class for ``blockquote`` tags.
+"""
 class BlockQuoteHandler(TagHandler):
 
     tag = 'blockquote'
@@ -261,6 +305,10 @@ class BlockQuoteHandler(TagHandler):
         return text
 
 #################################################################################
+"""PreHandler
+
+    Specific class for ``pre`` tags.
+"""
 class PreHandler(TagHandler):
 
     tag = 'pre'
@@ -269,6 +317,10 @@ class PreHandler(TagHandler):
         return self._txtConverter.childHandler(pre)
 
 #################################################################################
+"""CodeBlockHandler
+ 
+    Specfic class for ``code`` tags.
+"""
 class CodeBlockHandler(TagHandler):
 
     tag = 'code'
@@ -283,13 +335,11 @@ class CodeBlockHandler(TagHandler):
         return self._txtConverter.prepend(cb.text, self.prepend_char)
 
 #################################################################################
-'''
-    class OListHandler
+"""OListHandler
 
     Object that converts ordered list tags to text- serves as a base class for
     the UListHandler as well
-
-'''
+"""
 class OListHandler(TagHandler):
 
     tag = 'ol'
@@ -362,6 +412,10 @@ class OListHandler(TagHandler):
         return text + self._txtConverter.childHandler(e)
 
 #################################################################################
+"""UListHandler
+
+    Subclass of OListHandler, for ``ul`` tags.
+"""
 class UListHandler(OListHandler):
 
     tag = 'ul'
@@ -377,6 +431,10 @@ class UListHandler(OListHandler):
         return text
 
 #################################################################################
+"""Html2Morkdown
+
+    Creates a converter object for turning HTML markup into markdown text.
+"""
 class Html2Markdown:
 
     _inlinetags = ['code', 'em', 'strong', 'br', 'strike', 'img', 'a']
@@ -485,15 +543,17 @@ class Html2Markdown:
 
         return rtext
 
+    ############################################################################
+    """_tagHandler
+
+        Scans the `_taghandlers` list for a handler of the element type
+        based on the element's tag.  Calls the `convert` method of the
+        handler object.
+        If no handler is found, then perform a simple check to see if the
+        element is a 'comment'
+        Otherwise return the tag as a string
+    """
     def _tagHandler(self, element):
-        ''' 
-            Scans the `_taghandlers` list for a handler of the element type
-            based on the element's tag.  Calls the `convert` method of the
-            handler object.
-            If no handler is found, then perform a simple check to see if the
-            element is a 'comment'
-            Otherwise return the tag as a string
-        '''
         for handler in self._taghandlers:
             if handler.test(element):
                 text = handler.convert(element)
@@ -539,6 +599,11 @@ class Html2Markdown:
         return False
 
 ################################################################################
+"""convert
+
+    Function that for instantiating an Html2Markdown object then converting the
+    HTML.
+"""
 def convert(html):
     md = Html2Markdown()
  

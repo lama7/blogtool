@@ -9,6 +9,11 @@ import os
 import subprocess
 
 ################################################################################
+"""UtilsError
+
+    Error class for utilities module.  Just accepts an error string explaining
+    the exception.
+"""
 class UtilsError(Exception):
     def __init__(self, msg):
         self.message = msg
@@ -17,25 +22,21 @@ class UtilsError(Exception):
         return self.message
 
 ################################################################################
-'''
-    dataStruct
+"""dataStruct
     
     Empty container class for creating miscellaneous data structures.
-'''
+"""
 class dataStruct:
     pass
 
 ################################################################################
-'''
-    _convertTime
+""" _convertTime
 
     Function that attempts to convert a date time string to a datetime object
     in UTC time.  Defaults to assuming string is a local time representation.
-'''
+"""
 def _convertTime(timestr, local = True):
-    '''
-        List of formats to attempt to match up.
-    '''
+    # List of formats to attempt to match up.
     time_fmts = [
                   "%Y%m%dT%H:%M",        #YYYYMMDDThh:mm
                   "%Y%m%dT%I:%M%p",      #YYYYMMDDThh:mmAM/PM
@@ -72,11 +73,12 @@ def _convertTime(timestr, local = True):
         raise UtilsError("Unable to parse timestring: %s" % timestamp)
 
 ################################################################################
-'''
+"""chkFile
+
     attempts to verify a file exists by checking the home directory as well as
     the absolute path to the file
-'''
-def chkfile(file):
+"""
+def chkFile(file):
     tmpfile = file
     if not os.path.isfile(tmpfile):
         tmpfile = os.path.join(os.path.expanduser('~'), tmpfile)
@@ -86,13 +88,13 @@ def chkfile(file):
     return tmpfile
 
 ################################################################################
-'''
+"""edit
+
     Launches an editor
 
-    Arguments:
-    fh:  filehandle of file to edit
-    hdr_string:  optional string to write to file 
-'''
+    `fh`:  filehandle of file to edit
+    `hdr_string`:  optional string to write to file 
+"""
 def edit(hdr_string = '', fh = None):
     editor = os.getenv('EDITOR', 'editor')
     if fh == None:
@@ -116,9 +118,10 @@ def edit(hdr_string = '', fh = None):
         return None
 
 ################################################################################
-'''
-    returns a post dictionary suitable for publishing
-'''
+"""buildPost
+
+    Returns a post dictionary suitable for publishing
+"""
 def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
 
     postStruct = dataStruct()
@@ -149,9 +152,11 @@ def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
     return postStruct
 
 ################################################################################
-'''
-    buildComment
-'''
+"""buildComment
+
+    Returns a comment structure for use with the XMLRPC layer for posting a
+    comment to the blog.
+"""
 def buildComment(header, comment_text):
     commentStruct = dataStruct()
     commentStruct.comment_parent = header.parentid or 0
@@ -164,16 +169,21 @@ def buildComment(header, comment_text):
     return commentStruct
 
 ################################################################################
-'''
-    isBlogCategory
+"""isBlogCategory
 
-    blogcats is a dictionary- the main thing we'll be interested in are the
+    Determines if a category is a valid category for the blog.  Validates a
+    single category at a time, which includes the dotted subcategory notation.
+    Returns ``None`` is the category is valid, returns a tuple of the category
+    name and the category ID of the parent category.
+
+    ``blogcats`` is a dictionary- the main thing we'll be interested in are the
     categoryName, parentId, categoryId
-    postcat is a string representing the name of a category.  The string can
+
+    ``postcat`` is a string representing the name of a category.  The string can
     contain '.' separating parent categories from subcategories.  In this case
     the individual entities will need to be checked against parentId's and
     so forth
-'''
+"""
 def isBlogCategory(blogcats, postcat):
     pcatlist = postcat.split('.')
 
@@ -189,6 +199,17 @@ def isBlogCategory(blogcats, postcat):
     return None
 
 ###############################################################################
+"""addCategory
+
+    Adds a category to a blog.
+
+    ``c`` is the full, dotted-notation category string that includes the parent
+    categories.
+
+    ``substart`` is the first potential subcategory that isn't on the blog.
+
+    ``parentID`` is the parent ID of the subcategory to add.
+"""
 def addCategory(proxy, c, substart, parentId):
     # subcategories are demarked by '.'
     newcatlist = c.split('.')

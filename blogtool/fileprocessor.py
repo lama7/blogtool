@@ -34,15 +34,12 @@ Also, this annoying message will be displayed everytime you run blogtool.
     raw_input('Press <ENTER> to continue...')
     MARKDOWN_PRESENT = False
 
+######################### Error classes for blogtool ###########################
 ################################################################################
-'''   
-    Error classes for blogtool
-'''
+"""FileProcessor
 
-################################################################################
-'''   
-    define base class for errors
-'''
+    Define base class for errors
+"""
 class FileProcessorError(Exception): 
     # to be overriden by the subclass
     def __init__(self, msg):
@@ -53,18 +50,20 @@ class FileProcessorError(Exception):
         return self.message
 
 ################################################################################
-'''
-'''
+"""FileProcessorRetry
+  
+    Simple exception to facilitate cross module looping based on success or
+    failure of an action here in the fileprocessor module.
+"""
 class FileProcessorRetry(Exception):
     pass
 
 ################################################################################
-'''
-    FileProcessor Class
+"""FileProcessor
 
     This class contains methods to process a file for posting to a blog.
 
-'''
+"""
 class FileProcessor():
 
     if MARKDOWN_PRESENT:
@@ -78,7 +77,12 @@ class FileProcessor():
             setattr(self, key, kwargs[key])
 
     ############################################################################
-    def _getHeaderandPostText(self, linelist):
+    """_getHeaderandContent
+
+        Separates the text of a file into it's header section and content
+        section.
+    """
+    def _getHeaderandContent(self, linelist):
         # find first blank line so we can split the list
         for line in linelist:
             if line.isspace():
@@ -86,24 +90,29 @@ class FileProcessor():
                 break
 
         else:
-            raise FileProcessorError("""
-FileProcessor._getHeaderandPostText: Post file must have a blank line separating
+            raise FileProcessorError('''
+FileProcessor._getHeaderandContent: Post file must have a blank line separating
 header and post text.
-""" )
+''' )
 
         if len(linelist[0:i]) == 0:
             raise FileProcessorError('''
-FileProcessor._getHeaderandPostText: No header found, aborting.
+FileProcessor._getHeaderandContent: No header found, aborting.
 ''')
         elif len(linelist[i+1:]) == 0:
             raise FileProcessorError('''
-FileProcessor._getHeaderandPostText: No text for post, aborting.
+FileProcessor._getHeaderandContent: No text for post, aborting.
 ''')
 
         return ''.join(linelist[0:i]), ''.join(linelist[i + 1:])
 
     ############################################################################ 
-    def _procPost(self, posttext):
+    """_procContent
+
+        Processes the content portion of the file, running any plaintext markup
+        converters.
+    """
+    def _procContent(self, posttext):
         if not MARKDOWN_PRESENT:
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
@@ -116,27 +125,31 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
             description = posttext
             extended = ''
 
-        html_desc = self._procText(description)
+        html_desc = self._procHTML(description)
         if extended:
-            html_ext = self._procText(extended)
+            html_ext = self._procHTML(extended)
         else:
             html_ext = ''
 
         return html_desc, html_ext
 
     ############################################################################ 
-    '''
+    """_procHTML
+
        Handles extra processing after markdown processing is complete.  For now,
        this consists of uploading image files and fixing up links to the
        uploaded image. 
-    '''
-    def _procText(self, text):
+    """
+    def _procHTML(self, text):
+
+        ######################################################################## 
+        """_ptFixElement
+
+            Fixes some whitespace issues and also takes care of uploading
+            JPG files and then setting the link based on the result of the
+            upload.
+        """
         def _ptFixElement(e):
-            '''
-                Fixes some whitespace issues and also takes care of uploading
-                JPG files and then setting the link based on the result of the
-                upload.
-            '''
             if e.text and e.tag not in ['pre', 'code', 'comment']:
                 e.text = e.text.replace('\n', u' ')
             if e.tail:
@@ -148,13 +161,13 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                     return
 
                 try:
-                    ifile = utils.chkfile(ifile)
+                    ifile = utils.chkFile(ifile)
                     print "Attempting to upload '%s'..." % ifile
                     res = self._blogproxy.upload(ifile)
                 except utils.UtilsError, err:
                     raise FileProcessorError("File not found: %s\n" % err)
                 except ProxyError, err:
-                    raise FileProcessorError("In FileProcessor._procText: %s\n" % err)
+                    raise FileProcessorError("In FileProcessor._procHTML: %s\n" % err)
 
                 # FIX ME- don't know if this is necessary
                 if res == None:
@@ -195,10 +208,12 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                         text = text.replace(c, attrib_replace[c])
             return text
 
+        #######################################################################
+        """_ptSerialize
+
+            Serializes an individual element as well as its child elements.
+        """
         def _ptSerialize(e):
-            '''
-                Serializes an individual element as well as its child elements.
-            '''
             _ptFixElement(e)
             e_str = '<%s' % (e.tag)
             for a in e.attrib.keys():
@@ -225,14 +240,16 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
 
             return e_str
 
+        #######################################################################
+        """_ptFixUp
+
+            Facilitates adjustments to the markup.  Accepts a parsed tree
+            which is then reserialized with all adjustments.  I tried to use
+            the etree.tostring function, but there were certain tags that
+            couldn't be rendered properly in xhtml, like the iframe tag.
+            Thus, I have to serialize it myself.
+        """ 
         def _ptFixUp(tree):
-            '''
-                Facilitates adjustments to the markup.  Accepts a parsed tree
-                which is then reserialized with all adjustments.  I tried to use
-                the etree.tostring function, but there were certain tags that
-                couldn't be rendered properly in xhtml, like the iframe tag.
-                Thus, I have to serialize it myself.
-            ''' 
             xhtml = ''
             for element in tree:
                 if element.tag != 'post':
@@ -248,7 +265,7 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
 
             return xhtml
 
-        # _procText function code starts here- basically, decode the post text
+        # _procHTML function code starts here- basically, decode the post text
         # then run it through Markdown, then parse it with lxml so we can
         # process certain tags(ptHelper above), finally return the final
         # product as a string
@@ -281,11 +298,25 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                         i = i + 1
                 return _ptFixUp(etree.XML('<post>%s</post>' % xhtml))
         else:
-            raise FileProcessorError("In FileProcessor._procText: %s\n" %
+            raise FileProcessorError("In FileProcessor._procHTML: %s\n" %
                                                                      last_error)
 
     ############################################################################ 
-    def _procPostCategories(self, header):
+    """_procCategories
+
+        Takes the categories specified in the post header and validates them
+        against the actual categories on the blog.  Takes into accout
+        subcategories, so potentially categories can be similarly named but
+        still be distinct based on their parent category, i.e. category "code"
+        could be duplicated because there is a "lua.code" category and a
+        "python.code" category.
+
+        If any categories are NOT on the blog, then checks to see if they should
+        be added or not.  Basically, we're checking for typos.  A default
+        category is used and a notification is output so the user can correct
+        the issue if they so desire.
+    """
+    def _procCategories(self, header):
         # first, build a list of catgories that aren't on the blog from the
         # post's category list
         nonCats = []
@@ -293,7 +324,7 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
             try:
                 cat_list = self._blogproxy.getCategories()
             except ProxyError, err:
-                print "Caught in FileProcessor._procPostCategories:"
+                print "Caught in FileProcessor._procCategories:"
                 print err
                 sys.exit()
 
@@ -328,13 +359,12 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                                       [c.split('.') for c in header.categories])))
 
     ############################################################################ 
-    ''' parsePostFile
+    """parsePostFile
 
         Attempts to read a post file.  If successful, then a header and text
         portion are created.  The header portion can be parsed for so the
         text portion can be sent to the appropriate blogs.
-
-    '''
+    """
     def parsePostFile(self, filename, hdrtext):
         try:
             if filename == 'STDIN':
@@ -354,11 +384,10 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
         else:
             f.close()
 
-        return self._getHeaderandPostText(lines)
+        return self._getHeaderandContent(lines)
 
     ############################################################################ 
-    '''
-        pushContent
+    """pushContent
 
         Takes care of pushing a post up to a blog as defined by a header.
         Creates a blogproxy, processes the blog categories and builds a post
@@ -367,11 +396,11 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
         updated with the post ID assigned at the blog.
         Added: Also can be used to write a comment for the blog- thus the name
                change from pushPost to pushContent
-    '''
+    """
     def pushContent(self, post_text, header):
         rval = None
         self._blogproxy = header.proxy()
-        html_desc, html_ext = self._procPost(post_text)
+        html_desc, html_ext = self._procContent(post_text)
         if self.comment:
             comment = utils.buildComment(header, html_desc)
             try:
@@ -391,7 +420,7 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
                 sys.exit()
         else:
             print "Checking post categories..."
-            self._procPostCategories(header)
+            self._procCategories(header)
             try:
                 post = utils.buildPost(header,
                                        html_desc,
@@ -420,6 +449,12 @@ FileProcessor._getHeaderandPostText: No text for post, aborting.
         return rval
 
     ############################################################################ 
+    """updateFile
+
+        If a post is successfully published on the blog, we update the file with
+        POSTID information so the file can potentially be used for post updates
+        later on.
+    """
     def updateFile(self, filename, hdr_text, post_text):
         # alter the file name so we don't overwrite
         filename += '.posted'
