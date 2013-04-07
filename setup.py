@@ -19,9 +19,12 @@ In addition to support for posting, a number of blog related administrative
 actions are supported like commenting, comment editting and moderation, post
 deletion and so forth.  See the documentation_ for a full description.
 
+The source for ``blogtool`` lives here_.
+
 .. _markdown: http://daringfireball.net/projects/markdown/
 .. _usage documentation: http://pythonhosted.org/blogtool/usage.html
 .. _documentation: http://pythonhosted.org/blogtool/
+.. _here: https://github.com/lama7/blogtool
 '''
 
 setup(name = 'blogtool',
