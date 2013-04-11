@@ -88,7 +88,6 @@ class FileProcessor():
             if line.isspace():
                 i = linelist.index(line)
                 break
-
         else:
             raise FileProcessorError('''
 FileProcessor._getHeaderandContent: Post file must have a blank line separating
@@ -283,8 +282,8 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
                 last_error = err
                 continue
             except:
-                print "Unexpected error: %s" % sys.exc_info()[0]
-                sys.exit(1)    
+                raise FileProcessorError("In FileProcessor._procHTML: %s\n" %
+                                                             sys.exc_info()[0])
             else:
                 # The text is marked up at this stage, but we need to clean it
                 # up prior to shipping it out, so we parse it using lxml and
@@ -315,6 +314,10 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         be added or not.  Basically, we're checking for typos.  A default
         category is used and a notification is output so the user can correct
         the issue if they so desire.
+
+        This modifies the original header category string.  It's most noticable
+        where subcategories are concerned, the dotted notation will be lost and
+        duplicate names are lost.
     """
     def _procCategories(self, header):
         # first, build a list of catgories that aren't on the blog from the
@@ -324,10 +327,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
             try:
                 cat_list = self._blogproxy.getCategories()
             except ProxyError, err:
-                print "Caught in FileProcessor._procCategories:"
-                print err
-                sys.exit()
-
+                raise FileProcessorError("In FileProcessor._procCategories:  %s\n" % err)
             t = utils.isBlogCategory(cat_list, c)
             if t != None:
                 nonCats.append((c,) + t)
@@ -355,7 +355,9 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
             print "This post has no valid categories, the default blog category\n\
                    \rwill be used.\n"
         else:
-            header.categories =  list(set(reduce(lambda l1, l2: l1 + l2, 
+#            header.categories = list(set(reduce(lambda l1, l2: l1 + l2, 
+#                                      [c.split('.') for c in header.categories])))
+            return list(set(reduce(lambda l1, l2: l1 + l2, 
                                       [c.split('.') for c in header.categories])))
 
     ############################################################################ 
@@ -415,16 +417,15 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
                                                            comment)
                     rval = commentid
             except ProxyError, err:
-                print "Caught in FileProcessor.pushContent:"
-                print err
-                sys.exit()
+                raise FileProcessorError("In FileProcessor.pushContent: %s\n" % err)
         else:
             print "Checking post categories..."
-            self._procCategories(header)
+            categories = self._procCategories(header)
             try:
                 post = utils.buildPost(header,
                                        html_desc,
                                        html_ext,
+                                       categories,
                                        timestamp = self.posttime,
                                        publish = self.publish )
                 if header.postid:
@@ -439,12 +440,11 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
                     postid = self._blogproxy.publishPost(post)
                     rval = postid
             except utils.UtilsError, timestr:
-                print timestr
-                sys.exit()
+                raise FileProcessorError("In FileProcessor.pushContent: %s\n" %
+                                                                       timestr)
             except ProxyError, err:
-                print "Caught in FileProcessor.pushContent:"
-                print err
-                sys.exit()
+                raise FileProcessorError("In FileProcessor.pushContent: %s\n" %
+                                                                           err)
 
         return rval
 

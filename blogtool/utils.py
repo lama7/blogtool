@@ -122,12 +122,12 @@ def edit(hdr_string = '', fh = None):
 
     Returns a post dictionary suitable for publishing
 """
-def buildPost(hdrobj, desc, more, timestamp = None, publish = True):
+def buildPost(hdrobj, desc, more, categories, timestamp = None, publish = True):
 
     postStruct = dataStruct()
 
     postStruct.title = hdrobj.title
-    postStruct.categories = hdrobj.categories
+    postStruct.categories = categories
     postStruct.mt_keywords = hdrobj.tags
     postStruct.description = desc
     postStruct.mt_excerpt = hdrobj.excerpt
