@@ -366,8 +366,9 @@ updating with blogtool.
             sys.exit()
 
         if post['mt_text_more']:
+            more = "<!--%s-->" % (post['wp_more_text'] or "more")
             text = html2md.convert("%s%s%s" % (post['description'], 
-                                               "<!--more-->",
+                                               more,
                                                post['mt_text_more']))
         else:
             text = html2md.convert(post['description'])

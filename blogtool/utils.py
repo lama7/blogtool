@@ -122,18 +122,22 @@ def edit(hdr_string = '', fh = None):
 
     Returns a post dictionary suitable for publishing
 """
-def buildPost(hdrobj, desc, more, categories, timestamp = None, publish = True):
+def buildPost(hdrobj, desc, more, categories, more_text, timestamp = None, publish = True):
 
     postStruct = dataStruct()
+
+    if more_text:
+        postStruct.description = "%s<!--more %s-->%s" % (desc, more_text, more)
+    else:
+        postStruct.description = desc
+        postStruct.mt_text_more = more
 
     postStruct.title = hdrobj.title
     postStruct.categories = categories
     postStruct.mt_keywords = hdrobj.tags
-    postStruct.description = desc
     postStruct.mt_excerpt = hdrobj.excerpt
     postStruct.mt_allow_comments = 1
     postStruct.mt_allow_pings = 1
-    postStruct.mt_text_more = more
     postStruct.mt_convert_breaks = 1
 
     if publish:

@@ -69,7 +69,7 @@ class FileProcessor():
     if MARKDOWN_PRESENT:
         md = markdown.Markdown(extensions=['typed_list'])
 
-    EXTENDED_ENTRY_RE = re.compile(r'\n### MORE ###\s*\n')
+    EXTENDED_ENTRY_RE = re.compile(r'\n\n(?:(?:### MORE ###\s*)|(?:(?:\+\ *){3,}(.*?)(?:\+\ *)*))\n\n')
 
     ############################################################################
     def __init__(self, **kwargs):
@@ -116,13 +116,20 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
 
+        extended = ''
+        more_text = ''
         m = self.EXTENDED_ENTRY_RE.search(posttext)
         if m:
-            description = posttext[:m.start()]
-            extended = posttext[m.end():]
+            description = posttext[:m.start() + 1]
+            extended = posttext[m.end() - 1:]
+            # If present, this is the text that will appear in the "MORE" link 
+            # on the blog
+            if m.group(1):
+                more_text = m.group(1)
+            else:
+                more_text = ''
         else:
             description = posttext
-            extended = ''
 
         html_desc = self._procHTML(description)
         if extended:
@@ -130,7 +137,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         else:
             html_ext = ''
 
-        return html_desc, html_ext
+        return html_desc, html_ext, more_text
 
     ############################################################################ 
     """_procHTML
@@ -402,7 +409,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
     def pushContent(self, post_text, header):
         rval = None
         self._blogproxy = header.proxy()
-        html_desc, html_ext = self._procContent(post_text)
+        html_desc, html_ext, more_text = self._procContent(post_text)
         if self.comment:
             comment = utils.buildComment(header, html_desc)
             try:
@@ -426,6 +433,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
                                        html_desc,
                                        html_ext,
                                        categories,
+                                       more_text,
                                        timestamp = self.posttime,
                                        publish = self.publish )
                 if header.postid:

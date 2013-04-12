@@ -559,8 +559,11 @@ class Html2Markdown:
                 text = handler.convert(element)
                 break
         else:
-            if element.text and element.text.find('more') != -1:
-                text = "### MORE ###\n\n"
+            if element.tag is etree.Comment:
+                text = "+ + +"
+                if element.text != "more":
+                    text +=  ' ' + element.text + " + + +"
+                text += "\n\n"
             else:
                 # certain elements are better printed using HTML method than XML
                 # NOTE: Should use my own serializer rather than relying on
