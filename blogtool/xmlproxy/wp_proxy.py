@@ -165,7 +165,11 @@ class WordpressProxy(proxybase.BlogProxy):
                                        self._username, 
                                        self._password,
                                        postid,
-                                       ['postid', 'post_title', 'post_content', 'terms'])
+                                       ['postid', 
+                                        'post_title', 
+                                        'post_content',
+                                        'post_excerpt', 
+                                        'terms'])
         except xmlrpclib.Fault:
             pass
         except xmlrpclib.ProtocolError, error:
@@ -177,6 +181,7 @@ class WordpressProxy(proxybase.BlogProxy):
             post = {
                     'description'  : response['post_content'],
                     'title'        : response['post_title'],
+                    'mt_excerpt'   : response['post_excerpt'],
                     'mt_text_more' : '',
                     'mt_keywords'  : '',
                     'categories'   : []}
