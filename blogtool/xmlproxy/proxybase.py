@@ -5,9 +5,10 @@ class.'''
 import xmlrpclib
 
 ################################################################################
-#
-# base class for api errors
-#
+"""ProxyError
+
+    Base class for api errors
+"""
 class ProxyError(Exception):
     def __init__(self, method, errmsg):
         self.message = "Exception in %s:\n\t%s" % (method, errmsg)
@@ -16,15 +17,14 @@ class ProxyError(Exception):
         return self.message
 
 ################################################################################
-#
-# BlogProxy
-#
-#   Defines a baseclass for blogproxy objects.  It, in turn, uses the
-#   xmlrpclib.ServerProxy as a baseclass.
-#
-#   The actual objects should implement the following methods in order to work i
-#   with blogtool.
-#
+"""BlogProxy
+
+    Defines a baseclass for blogproxy objects.  It, in turn, uses the
+    xmlrpclib.ServerProxy as a baseclass.
+ 
+    The actual objects should implement the following methods in order to work i
+    with blogtool.
+"""
 class BlogProxy(xmlrpclib.ServerProxy):
     def __init__(self, url, user, password):
         # for debugging info related to xmlrpc, add "verbose=True" to the 

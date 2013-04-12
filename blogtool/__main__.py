@@ -6,6 +6,10 @@ from headerparse import Header
 from fileprocessor import FileProcessor, FileProcessorError, FileProcessorRetry
 
 ################################################################################
+"""run
+
+    If importing ``blogtool``, this is the function that runs it.
+"""
 def run():
     fp = FileProcessor(**options.flags())
     tmp_fn = None

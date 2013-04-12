@@ -11,6 +11,7 @@ Contents:
     c. [Groups](#groups)  
     d. [Configuration Files](#configuration-files)  
     e. [Command Line Options](#command-line-options)  
+    f. [Miscellaneous](#miscellaneous)
 3. [Usage and Examples](#usage-and-examples)  
     a. [Command Line](#command-line)  
     b. [Headers](#headers)  
@@ -80,6 +81,7 @@ be written as appropriate to a post on the blog.
 Following is a list of `blogtool` header keywords:
 
 + TITLE
++ EXCERPT *(as of v1.1.1)*
 + BLOG
 + NAME
 + XMLRPC
@@ -112,10 +114,33 @@ For the purposes of posting, the required keywords are XMLRPC, NAME, USERNAME,
 PASSWORD, and BLOGTYPE.  Without these, `blogtool` can't push anything up to a
 weblog.
 
+#### As of V1.1.1 ####
+In V1.1.1, the `EXCERPT` header keyword was added.  This is a summary of the
+blogpost and can be displayed on the blog if enabled by the theme.  Some search
+engines will also display it if present.
+
+In order to support the possiblity of having an excerpt span several lines in an
+editor, the ability to use a quoted string has been added to headers.  A quoted
+string for a `blogtool` header is the equivalent of a python docstring- a string
+delimited by three consecutive double-quotes.  For example:
+
+    """This is a quoted string that can be used in a header.  In addition to
+    being able to span multiple lines, any character can appear within the
+    triple double-quote delimiters, including commas and colons.  This is useful
+    for titles as well since it is now possible to include commas in a title
+    where before it was not."""
+
+A quoted string is valid for any header keyword that accepts a string as a valid
+value.
+
 ### Keyword Definitions ###
 
 +   TITLE  
     Defines the post title that will appear on the blog.  
+
++   EXCERPT  
+    The equivalent of a summary and will be displayed on the blog if enabled by
+    the theme.
 
 +   BLOG  
     Serves dual purposes.  With a single value it defines the name of the blog
@@ -308,7 +333,7 @@ Following are command line options that can be specified for `blogtool`:
     information.  If multiple blogs are defined, then use the -b option to
     specify which blog to retrieve from.
 
-+   --comment==POSTID  
++   --comment==POSTID COMMENTID
     Post text from a file as a comment to post POSTID.
 
 +   --charset=CHARSET  
@@ -329,20 +354,20 @@ Following are command line options that can be specified for `blogtool`:
 
 ### Miscellaneous ###
 
-Time Strings
+#### Time Strings ####
 
 The following strings may be used when scheduling a post for publication:
 
-+   YYYYMMDDThh:mm
-+   YYYYMMDDThh:mmAM/PM
-+   YYYYMMDDThh:mm:ss
-+   YYYYMMDDThh:mm:ssAM/PM
-+   Month DD, YYYY hh:mm
-+   Month DD, YYYY hh:mmAM/PM
-+   MM/DD/YYYY hh:mm
-+   MM/DD/YYYY hh:mmAM/PM
-+   hh:mm MM/DD/YYYY
-+   hh:mmAM/PM MM/DD/YYYY
++ YYYYMMDDThh:mm
++ YYYYMMDDThh:mmAM/PM
++ YYYYMMDDThh:mm:ss
++ YYYYMMDDThh:mm:ssAM/PM
++ Month DD, YYYY hh:mm
++ Month DD, YYYY hh:mmAM/PM
++ MM/DD/YYYY hh:mm
++ MM/DD/YYYY hh:mmAM/PM
++ hh:mm MM/DD/YYYY
++ hh:mmAM/PM MM/DD/YYYY
 
 KEY:
 + YYYY = 4 digit year
@@ -355,6 +380,45 @@ KEY:
 + T = a literal 'T' character
 + / = a literal '/' character
 + : = a literal ':' character
+
+#### Extended Entry and Custom 'more' Text ###
+
+It is possible to create posts which are split up to conserve space on the main
+blog page.  These sorts of posts typically have a `MORE` link when viewed on the
+main page.  Clicking that link will bring up the entire post for reading.
+
+To create a post like this using `blogtool`, insert a line with a minimum of 3
+'+' characters at the start of the line.  The line should be preceded and
+followed by blank lines.  The pluses can be space separated or not.  Here's an
+example:
+
+    This text would be seen on the main blog page.
+
+    + + +
+
+    This text will not be seen on the main page.  It will be visible after
+    clicking the `MORE` link.
+
+It is also possible to supply custom text for the `MORE` link by simply adding
+the custom text after the sequence of pluses.  It is optional to add trailing
+pluses to the text, they will be stripped out and not included in the custom
+`MORE` text.  For example:
+
+    This text would be seen on the main blog page.
+
+    + + + + + + + + + Click Here For the Exciting Conclusion + + + + + + + + + 
+
+    This text is seen after clicking on the `MORE` link, which will contain the
+    above text.  The trailing pluses are not included in the custom text.
+
+Notice in the above example that there are more than 3 pluses to start.  These
+extra pluses are ignored- only the text following the final plus character is
+used.  The above extended entry marker line could also have been written as:
+
+    + + + + + + + + + Click Here For the Exciting Conclusion
+
+The trailing pluses are optional and purely for the aesthetics of the text
+version of the post file.
 
 ## Usage and Examples  ##
 
@@ -422,12 +486,35 @@ To see the comments for a post:
 
 To write a comment:
 
-    > bt --comment 12345
+    > bt --comment 12345 0
 
-Note that if you wish to *reply* to a comment, you'll need to note the
-`commentid` and add a line like this to the header:
+The `0` means the comment is a standalone comment.  If replying to a comment,
+note the `commentid` from the `readcomment` option and then enter:
 
+    > bt --comment 12345 54321
+
+This usage will result in the use of the `PARENTID` in the header of the ensuing
+comment file, like so:
+
+    POSTID: 12345
     PARENTID: 54321
+
+As of version 1.1.0, `blogtool` accepts input from the standard input using the
+following incantation:
+
+    > bt STDIN
+
+The filename `STDIN` is processed like any other file, so any option appropriate
+for use with a post file will work here as well.  Note that the following piece
+of silliness will also work:
+
+    > cat - | bt STDIN
+
+Header entries for `TITLE` and `CATEGORIES` must be manually entered in this
+way, but it will work.  Perhaps such a method is useful for a quicky post where
+the need for full-blown editting capabilities is unnecessary.  Perhaps if
+nothing else, users will be excited to know that esoteric command line usage is
+possible.
 
 ### Headers ###
 
@@ -533,3 +620,10 @@ for it, within the same `p` tag.  Other alignment possibilities are `alignright`
 and `alignleft` or whatever other values are supported by your blog theme.
 Thus, while not exactly a tool for a photo blog, `blogtool` affords the user
 quite a bit of control over pictures.
+:A
+ZZ
+
+
+
+
+?help

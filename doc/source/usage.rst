@@ -153,6 +153,50 @@ and the following post file::
 The post will be assigned the category ``Misc`` rather than ``Software``.  Note
 the blank line following the header.
 
+As of V1.1.2, for blog software that supports hiding a portion of the post
+content behind a link, blogtool_ has a simple means of supporting this feature.
+Simply add a line that starts with at least 3 **'+'** characters, spacing between
+them is optional, into the post content where you want the software to split the
+post.  Make sure the line is preceded by a blank line and followed by a blank
+line.
+
+For example::
+
+    This is the beginning of the post content.  Not all of it will be visible
+    until you click on the link created by the following line:
+
+    + + +
+
+    All content from this point forward is hidden until the `MORE` link is
+    clicked on.  Note the preceding blank line and trailing blank line- those
+    are both necessary.
+
+For Wordpress blogs, the `MORE` text in the link can be replaced with custom
+text by simply adding the desired text after the leading **'+'** characters.  The
+text can then optionally be followed by more **'+'** characters, which will not
+appear in the resulting custom text::
+
+    This is the beginning of the post content.  Not all of it will be visible
+    until you click on the link created by the following line:
+
+    + + + + + + + +  Bang It Here for the Exciting Conclusion  + + + + + + + + 
+
+    All of this is hidden.  The trailing plus characters will not appear in the
+    `MORE` text field.  Also note the extra plus characters preceding the text.
+    Again, all of those are discarded, it is the leading 3 that mark the line as
+    the separator for the blog software.
+
+The spacing between the **'+'** characters is optional as well::
+
+    This is the beginning of the post content.  Not all of it will be visible
+    until you click on the link created by the following line:
+
+    ++++++++++++++++++++++++++ Click Here to Read the Rest
+
+    The above will also be parsed as a content separator for the post.  No
+    spacing between the plus characters and no trailing plus characters, but
+    with custom text for the link.
+
 To facilitate reading from the standard input, it is possible to supply
 ``STDIN`` as a file name on the command line::
 

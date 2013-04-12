@@ -10,17 +10,21 @@ else:
 
 long_description = \
 '''
-This is a blog client for Wordpress blogs.  It is command line, rather than GUI,
-based and reads markdown formatted text files to post to a web log.  The text
-files must also be formatted with a header, see the `usage documentation`_ for
-details.
+This is an XMLRPC client for Wordpress blogs.  It is command-line, rather than
+GUI, based and reads markdown_ formatted text files to post to a web log.  The
+text files must also be formatted with a header, see the `usage documentation`_
+for details.
 
 In addition to support for posting, a number of blog related administrative
 actions are supported like commenting, comment editting and moderation, post
 deletion and so forth.  See the documentation_ for a full description.
 
+The source for ``blogtool`` lives here_.
+
+.. _markdown: http://daringfireball.net/projects/markdown/
 .. _usage documentation: http://pythonhosted.org/blogtool/usage.html
 .. _documentation: http://pythonhosted.org/blogtool/
+.. _here: https://github.com/lama7/blogtool
 '''
 
 setup(name = 'blogtool',
@@ -43,7 +47,7 @@ setup(name = 'blogtool',
       author = 'Gerry LaMontagne',
       author_email = 'gjlama94 [at] gmail [dot] com',
       license = 'MIT',
-      description = 'A command line blog client',
+      description = 'A command-line, XMLRPC based blog client',
       scripts = ['bin/bt'],
       packages = ['blogtool', 'blogtool.xmlproxy'],
       install_requires = ['markdown', 'lxml'],

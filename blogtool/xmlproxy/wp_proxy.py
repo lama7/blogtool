@@ -4,18 +4,23 @@ import mimetypes
 import os
 
 ################################################################################
-# returns an instance of a wpproxy object
+""" getInst
+
+     returns an instance of a wpproxy object
+"""
 def getInst(url, user, password):
    wp = WordpressProxy(url, user, password)
    return wp
 
 ################################################################################
-# the following defines a blogproxy class that inherits methods from the 
-# xmlrpclib.  To make this work, the __init__ method of the ancestor
-# class(xmlrpclib.ServerProxy in this case) must be called explicitly as 
-# part of the initialization.  From that point, the various server methods
-# are "directly" accessible through my blogproxy class
-#
+"""WordpressProxy
+
+    The following defines a blogproxy class that inherits methods from the 
+    xmlrpclib.  To make this work, the __init__ method of the ancestor
+    class(xmlrpclib.ServerProxy in this case) must be called explicitly as 
+    part of the initialization.  From that point, the various server methods
+    are "directly" accessible through my blogproxy class
+"""
 class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
@@ -345,9 +350,7 @@ class WordpressProxy(proxybase.BlogProxy):
 
         return status
 
-    ############################################################################ 
-    ### START PRIVATE METHODS 
-
+    ##################### START PRIVATE METHODS ################################
     ############################################################################ 
     def _getBlogID(self):
         self._getUsersBlogs()
