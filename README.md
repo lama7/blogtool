@@ -11,6 +11,7 @@ Contents:
     c. [Groups](#groups)  
     d. [Configuration Files](#configuration-files)  
     e. [Command Line Options](#command-line-options)  
+    f. [Miscellaneous](#miscellaneous)
 3. [Usage and Examples](#usage-and-examples)  
     a. [Command Line](#command-line)  
     b. [Headers](#headers)  
@@ -353,20 +354,20 @@ Following are command line options that can be specified for `blogtool`:
 
 ### Miscellaneous ###
 
-Time Strings
+#### Time Strings ####
 
 The following strings may be used when scheduling a post for publication:
 
-+   YYYYMMDDThh:mm
-+   YYYYMMDDThh:mmAM/PM
-+   YYYYMMDDThh:mm:ss
-+   YYYYMMDDThh:mm:ssAM/PM
-+   Month DD, YYYY hh:mm
-+   Month DD, YYYY hh:mmAM/PM
-+   MM/DD/YYYY hh:mm
-+   MM/DD/YYYY hh:mmAM/PM
-+   hh:mm MM/DD/YYYY
-+   hh:mmAM/PM MM/DD/YYYY
++ YYYYMMDDThh:mm
++ YYYYMMDDThh:mmAM/PM
++ YYYYMMDDThh:mm:ss
++ YYYYMMDDThh:mm:ssAM/PM
++ Month DD, YYYY hh:mm
++ Month DD, YYYY hh:mmAM/PM
++ MM/DD/YYYY hh:mm
++ MM/DD/YYYY hh:mmAM/PM
++ hh:mm MM/DD/YYYY
++ hh:mmAM/PM MM/DD/YYYY
 
 KEY:
 + YYYY = 4 digit year
@@ -379,6 +380,45 @@ KEY:
 + T = a literal 'T' character
 + / = a literal '/' character
 + : = a literal ':' character
+
+#### Extended Entry and Custom 'more' Text ###
+
+It is possible to create posts which are split up to conserve space on the main
+blog page.  These sorts of posts typically have a `MORE` link when viewed on the
+main page.  Clicking that link will bring up the entire post for reading.
+
+To create a post like this using `blogtool`, insert a line with a minimum of 3
+'+' characters at the start of the line.  The line should be preceded and
+followed by blank lines.  The pluses can be space separated or not.  Here's an
+example:
+
+    This text would be seen on the main blog page.
+
+    + + +
+
+    This text will not be seen on the main page.  It will be visible after
+    clicking the `MORE` link.
+
+It is also possible to supply custom text for the `MORE` link by simply adding
+the custom text after the sequence of pluses.  It is optional to add trailing
+pluses to the text, they will be stripped out and not included in the custom
+`MORE` text.  For example:
+
+    This text would be seen on the main blog page.
+
+    + + + + + + + + + Click Here For the Exciting Conclusion + + + + + + + + + 
+
+    This text is seen after clicking on the `MORE` link, which will contain the
+    above text.  The trailing pluses are not included in the custom text.
+
+Notice in the above example that there are more than 3 pluses to start.  These
+extra pluses are ignored- only the text following the final plus character is
+used.  The above extended entry marker line could also have been written as:
+
+    + + + + + + + + + Click Here For the Exciting Conclusion
+
+The trailing pluses are optional and purely for the aesthetics of the text
+version of the post file.
 
 ## Usage and Examples  ##
 

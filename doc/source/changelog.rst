@@ -3,7 +3,117 @@
 Change Log
 ==========
 
-Latest Version: 1.1.0 
+
+Latest Version: 1.1.2
+---------------------
+
+by Gerry LaMontagne
+
+Feature addition supporting content separation of a blog post from within a post
+file.  A line separate line, preceded and followed by blank lines, starting with
+at least 3 leading **'+'** characters will split the content so that on the web
+page a ``MORE`` link will be shown.  All content prior to the separator line
+will be displayed on the main blog page, and all content following will be
+displayed after clicking on the ``MORE`` link.
+
+Also fixed a bug in header processing where categories were not being
+regenerated properly.
+
+- *README.md*
+
+  + Documentation of custom ``MORE`` text.
+
+- *blogtool/__main__.py*
+
+  + Updated commenting style
+
+- *blogtool/__version__.py*
+
+  + Bumped version revision number
+
+- *blogtool/fileprocessor.py*
+
+  + Support for extended entry blog posts
+  + Support for custom ``MORE`` link text
+  + Updated for commenting consistency
+  + Modified function and method names to better reflect their use
+  + No longer exit the program, but raise ``FileProcessorError``
+  + No longer modify header category attribute
+
+- *blogtool/headerparse.py*
+
+  + Commenting consistency modifications
+
+- *blogtool/html2md.py*
+
+  + Commenting consistency modifications
+  + Support for handling post files with the ``MORE`` link for hiding a portions
+    of the content.
+
+- *blogtool/options.py*
+
+  + Commenting consistency modifications
+
+- *blogtool/utils.py*
+
+  + Comment consistency modifications
+  + Support for custom text in the ``MORE`` link
+
+- *blogtool/__init__.py*, *blogtool/xmlproxy/__init__.py*,
+    *blogtool/xmlproxy/proxybase.py*, *blogtool/wp_proxy.py*
+
+  + Comment consistency modifications
+
+- *doc/source/changelog.rst*
+
+  + Updated with latest modifications
+
+- *doc/source/configuration.rst*
+
+  + Added documentation for ``EXCERPT`` header keyword
+  + Added documentation for triple-double-quoted strings
+
+- *doc/source/usage.rst*
+
+  + Documented use of the content separator syntax
+
+- *setup.py*
+
+  + Modified long description
+  + Added link to source in long description
+  + Modified short description
+  + Added link to original markdown project
+
+Version 1.1.1
+-------------
+
+by Gerry LaMontage
+
+Feature addition of the ``EXCERPT`` header keyword.  This allows for assigning a
+brief summary of the post content which can be displayed as teaser for the
+blog post or will show up in some search results.  To better support this
+feature, quoted string were added as well.  A quoted string is a string
+delimited by a leading and a trailing triple-quote sequence.
+
+- *blogtool/__version__.py*
+
+  + Bumped version revision number.
+
+- *blogtool/headerparse.py*
+
+  + Support for ``EXCERPT`` keyword parsing added
+  + Support for triple-double-quoted string parsing added
+  + Code cleanup, especially for consistency of commenting
+
+- *blogtool/utils.ph*
+
+  + Added excerpt to post meta data structure
+
+- *README.md*
+
+  + Documentation changes.
+
+Version 1.1.0 
 ---------------------
 
 by Gerry LaMontagne
