@@ -72,7 +72,7 @@ class WordpressProxy(proxybase.BlogProxy):
         if int(parent) != 0:
             term['parent'] = int(parent)
         try:
-           return self.wp.newTerm(blogid, 
+            return self.wp.newTerm(blogid, 
                                    self._username,
                                    self._password,
                                    term)
@@ -229,12 +229,12 @@ class WordpressProxy(proxybase.BlogProxy):
     ############################################################################ 
     def upload(self, filename):
 
-        '''
-            _tryMethods
+        #######################################################################
+        """_tryMethods
             Helper function to maintain compatibility with older version of 
             Wordpress.  Tries the newest methods first and then older ones if
             the newer fail.
-        '''
+        """
         def _tryMethods(blogid, mediaStruct):
             # try newer Wordpress API first...
             try:

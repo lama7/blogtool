@@ -26,7 +26,7 @@ class UtilsError(Exception):
     
     Empty container class for creating miscellaneous data structures.
 """
-class dataStruct:
+class dataStruct(object):
     pass
 
 ################################################################################

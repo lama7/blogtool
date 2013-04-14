@@ -52,7 +52,7 @@ class HeaderParseError(Exception):
 
     Essentially a data class for the various header settings.
 """    
-class HeaderParms():
+class HeaderParms(object):
 
     def __init__(self):
         self.title = ''
@@ -120,7 +120,7 @@ class HeaderParms():
     A Container class for keywords useful for storing certain info about
     keyword types.
 """
-class Keyword():
+class Keyword(object):
     def __init__(self, kwtype):
         self.kwtype = kwtype
 
@@ -130,7 +130,7 @@ class Keyword():
     Class for parsing header text and creating a HeaderParms object.
 
 """
-class HeaderParse():
+class HeaderParse(object):
     __hdr_value = re.compile('([^\n,}]+)\s*(.*)', re.DOTALL)
     __hdr_group = re.compile('[{]\s*(.*)', re.DOTALL) 
     __hdr_group_term = re.compile('[}]\s*(.*)', re.DOTALL)
@@ -431,7 +431,7 @@ class HeaderParse():
     
     Reverse parses a HeaderParms object making into a parsable string.
 """
-class reverseParser:
+class reverseParser(object):
     def _getdefault(self, name):
         if self._default_parms:
             for df in self._default_parms:
@@ -550,7 +550,7 @@ class reverseParser:
     
     This is the public class that a header is accessed through.
 """
-class Header():
+class Header(object):
     _parser = HeaderParse()
     _revparser = reverseParser()
 

@@ -64,7 +64,7 @@ class FileProcessorRetry(Exception):
     This class contains methods to process a file for posting to a blog.
 
 """
-class FileProcessor():
+class FileProcessor(object):
 
     if MARKDOWN_PRESENT:
         md = markdown.Markdown(extensions=['typed_list'])

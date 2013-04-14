@@ -27,7 +27,7 @@ class Html2MdException(Exception):
 
     Base class for objects that convert a tag into text
 """
-class TagHandler:
+class TagHandler(object):
 
     def __init__(self, txtConverter):
         self._txtConverter = txtConverter
@@ -435,7 +435,7 @@ class UListHandler(OListHandler):
 
     Creates a converter object for turning HTML markup into markdown text.
 """
-class Html2Markdown:
+class Html2Markdown(object):
 
     _inlinetags = ['code', 'em', 'strong', 'br', 'strike', 'img', 'a']
     _blocktags = ['p', 'blockquote', 'li', 'ul', 'ol', 'pre', 'h1', 'h2', 'h3',

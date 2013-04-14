@@ -37,7 +37,7 @@ def _getProxy(header):
     define the option for the argparse module.  Additionally, every option
     object has the `check` method and a `run` method.
 """
-class CommandLineOption:
+class CommandLineOption(object):
     args = ()  # to be overridden by the option
     kwargs = {}  # to be overriden by the option
 
@@ -838,7 +838,7 @@ class GetVersion(CommandLineOption):
     Class that initializes the option parsing and coordinates executing the
     various options.
 """
-class OptionProcessor:
+class OptionProcessor(object):
     def __init__(self):
         self.o_list = []
         self.o_list.append(SetConfigFile())  # should always be first in list
