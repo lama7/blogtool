@@ -90,14 +90,16 @@ class HeaderParms(object):
 
         return rval
 
-    def getPostMeta(self):
+    @property
+    def postMeta(self):
         return (self.title, 
                 self.categories,
                 self.tags,
                 self.postid,
                 self.posttime)
 
-    def getCommentMeta(self):
+    @property
+    def commentMeta(self):
         return (self.commentstatus,
                 self.commentid,
                 self.parentid,
@@ -105,13 +107,15 @@ class HeaderParms(object):
                 self.authorurl,
                 self.authoremail)
 
-    def getXMLrpc(self):
+    @property
+    def XMLrpc(self):
         return (self.blogtype,
                 self.xmlrpc,
                 self.username,
                 self.password)
     
-    def getDict(self):
+    @property
+    def parmDict(self):
         return self.__dict__
 
 ################################################################################
@@ -532,7 +536,7 @@ class reverseParser(object):
         d = {}
         for parml in parms:
             default = self._getdefault(parml.name)
-            for k,v in parml.getDict().iteritems():
+            for k,v in parml.parmDict.iteritems():
                 if k == 'name' or (not self._isdefault(default, k, v) and v):
                     val = v
                 else:
@@ -761,7 +765,7 @@ class Header(object):
         else:
             pl = self._parms[self._parm_index]
 
-        p = getProxy(*pl.getXMLrpc())
+        p = getProxy(*pl.XMLrpc)
         p.setBlogname(pl.name)
         return p
 
