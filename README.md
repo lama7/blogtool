@@ -23,7 +23,7 @@ Contents:
 ### Huh? ###
 
 I've tried a variety of graphical blog clients.  All of them had spotty
-behavior.  As I continued blogging, I realized that the gui based clients were
+behavior.  As I continued blogging, I realized that the GUI based clients were
 overkill for what I was doing.
 
 What was I doing?  Pushing text up to my blog.  Occasionally with some pictures
@@ -40,7 +40,7 @@ Thus was born `blogtool`.
 
 ### Whats it do? ###
 
-In addition to writing a post to a blog via xmlrpc, it also supports post
+In addition to writing a post to a blog via XMLRPC, it also supports post
 deletion and edits.  Categories and tags can be specified for the post.  A post
 can be sent to multiple blogs, with slightly different configurations (different
 categories or tags, for instance).  Additionally, image files embedded in the
@@ -620,10 +620,3 @@ for it, within the same `p` tag.  Other alignment possibilities are `alignright`
 and `alignleft` or whatever other values are supported by your blog theme.
 Thus, while not exactly a tool for a photo blog, `blogtool` affords the user
 quite a bit of control over pictures.
-:A
-ZZ
-
-
-
-
-?help
