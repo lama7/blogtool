@@ -562,7 +562,7 @@ class Html2Markdown(object):
             if element.tag is etree.Comment:
                 text = "+ + +"
                 if element.text != "more":
-                    text +=  ' ' + element.text + " + + +"
+                    text +=  ' ' + element.text.replace('more ', '')  + " + + +"
                 text += "\n\n"
             else:
                 # certain elements are better printed using HTML method than XML
