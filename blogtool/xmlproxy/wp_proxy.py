@@ -3,6 +3,8 @@ import xmlrpclib
 import mimetypes
 import os
 
+import data
+
 ################################################################################
 """ getInst
 
@@ -175,32 +177,17 @@ class WordpressProxy(proxybase.BlogProxy):
         except xmlrpclib.ProtocolError, error:
             raise proxybase.ProxyError("wp.getPost", error)
         else:
-            # process response from server
-            # to maintain compatiblity with existing code, massage response
-            # into the expected form
-            post = {
-                    'description'  : response['post_content'],
-                    'title'        : response['post_title'],
-                    'mt_excerpt'   : response['post_excerpt'],
-                    'mt_text_more' : '',
-                    'mt_keywords'  : '',
-                    'categories'   : []}
-            for term in response['terms']:
-                if term['taxonomy'] == 'category':
-                    post['categories'].append(term['name'])
-                elif term['taxonomy'] == 'post_tag':
-                    if post['mt_keywords'] != '':
-                        post['mt_keywords'] += ', '
-                    post['mt_keywords'] += term['name']
-            return post
+            return data.Post(response, 'wp')
 
         # fallback to older XMLRPC method
         try:
-            return self.metaWeblog.getPost(postid, 
-                                           self._username, 
-                                           self._password)
+            response = self.metaWeblog.getPost(postid, 
+                                               self._username, 
+                                               self._password)
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.getPost", error)
+        else:
+            return data.Post(response, 'metaweblog')
 
     ############################################################################ 
     def deletePost(self, postid):

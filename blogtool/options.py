@@ -370,24 +370,18 @@ updating with blogtool.
             print err
             sys.exit()
 
-        if post['mt_text_more']:
-            more = "<!--%s-->" % (post['wp_more_text'] or "more")
-            text = html2md.convert("%s%s%s" % (post['description'], 
-                                               more,
-                                               post['mt_text_more']))
-        else:
-            text = html2md.convert(post['description'])
+        text = html2md.convert(post.content)
         header_str = 'BLOG: %s\nPOSTID: %s\nTITLE: %s\n' % (header.name, 
                                                             self.postid, 
-                                                            post['title'])
-        header_str += 'CATEGORIES: %s\n' % self._buildCatStr(post['categories'])
-        if post['mt_keywords']:
-            header_str += 'TAGS: %s\n' % post['mt_keywords']
-        if post['mt_excerpt']:
-            if any([c in post['mt_excerpt'] for c in [',','\n','{','}']]):
-                header_str += 'EXCERPT: """%s"""' % post['mt_excerpt']
+                                                            post.title)
+        header_str += 'CATEGORIES: %s\n' % self._buildCatStr(post.categories)
+        if post.tags:
+            header_str += 'TAGS: %s\n' % post.tags
+        if post.excerpt:
+            if any([c in post.excerpt for c in [',','\n','{','}']]):
+                header_str += 'EXCERPT: """%s"""' % post.excerpt
             else:
-                header_str += 'EXCERPT: %s' % post['mt_excerpt']
+                header_str += 'EXCERPT: %s' % post.excerpt
             header_str = header_str.rstrip() + '\n' # ensure header is terminated
 
         print (header_str + '\n' + text).encode("utf8")
