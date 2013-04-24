@@ -26,6 +26,8 @@ def getInst(url, user, password):
 class WordpressProxy(proxybase.BlogProxy):
 
     ############################################################################ 
+    """getCategories
+    """
     def getCategories(self):
 
         def _tryMethods(blogid):
@@ -61,6 +63,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return self._categories
 
     ############################################################################ 
+    """newCategory
+    """
     def newCategory(self, newcat, parent, slug='', desc=''):
         blogid = self._getBlogID()
 
@@ -96,6 +100,8 @@ class WordpressProxy(proxybase.BlogProxy):
             raise proxybase.ProxyError("wp.newCategory", error)
 
     ############################################################################ 
+    """getRecentTitles
+    """
     def getRecentTitles(self, number):
         blogid = self._getBlogID()
 
@@ -132,27 +138,53 @@ class WordpressProxy(proxybase.BlogProxy):
             raise proxybase.ProxyError("wp.getRecentTitles", error)
 
     ############################################################################ 
+    """publishPost
+    """
     def publishPost(self, post):
         blogid = self._getBlogID()
 
         try:
-            postid = self.metaWeblog.newPost(blogid,
-                                             self._username,
-                                             self._password,
-                                             post,
-                                             post.publish)
+            return self.wp.newPost(blogid,
+                                   self._username,
+                                   self._password,
+                                   post.wpStruct)
+        except xmlrpclib.Fault:
+            pass
+        except xmlrpclib.ProtocolError, error:
+            raise proxybase.ProxyError("wp.publishPost", error)
+
+        try:
+            return self.metaWeblog.newPost(blogid,
+                                           self._username,
+                                           self._password,
+                                           post.metaweblogStruct,
+                                           post.publish)
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.publishPost", error)
 
-        return postid
-
     ############################################################################ 
+    """editPost
+    """
     def editPost(self, postid, post):
+        try:
+            if self.wp.editPost(self._getBlogID(),
+                                self._username,
+                                self._password,
+                                postid,
+                                post.wpStruct):
+                return postid
+            # error updating post
+            raise proxybase.ProxyError("wp.editPost", "post not updated")
+        except xmlrpclib.Fault as err:
+            pass
+        except xmlrpclib.ProtocolError, error:
+            raise proxybase.ProxyError("wp.editPost", error)
+
         try:
             self.metaWeblog.editPost(postid,
                                      self._username,
                                      self._password,
-                                     post,
+                                     post.metaweblogStruct,
                                      post.publish)
         except(xmlrpclib.Fault, xmlrpclib.ProtocolError), error:
             raise proxybase.ProxyError("wp.editPost", error)
@@ -160,6 +192,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return postid
 
     ############################################################################ 
+    """getPost
+    """
     def getPost(self, postid):
         blogid = self._getBlogID()
         try:
@@ -190,6 +224,8 @@ class WordpressProxy(proxybase.BlogProxy):
             return data.Post(response, 'metaweblog')
 
     ############################################################################ 
+    """deletePost
+    """
     def deletePost(self, postid):
         blogid = self._getBlogID()
         # try the newer Wordpress XMLRPC API first...
@@ -214,6 +250,8 @@ class WordpressProxy(proxybase.BlogProxy):
             raise proxybase.ProxyError("wp.deletePost", error)
 
     ############################################################################ 
+    """upload
+    """
     def upload(self, filename):
 
         #######################################################################
@@ -269,6 +307,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return _tryMethods(self._getBlogID(), mediaStruct)
 
     ############################################################################ 
+    """getComments
+    """
     def getComments(self, postid):
         blogid = self._getBlogID()
         count = self._getCommentCount(postid)
@@ -289,6 +329,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return comments
 
     ############################################################################ 
+    """newComment
+    """
     def newComment(self, postid, comment):
         blogid = self._getBlogID()
         try:
@@ -303,6 +345,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return commentid
 
     ############################################################################ 
+    """deleteComment
+    """
     def deleteComment(self, commentid):
         blogid = self._getBlogID()
         try:
@@ -316,6 +360,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return status
 
     ############################################################################ 
+    """editComment
+    """
     def editComment(self, commentid, comment):
         blogid = self._getBlogID()
         try:
@@ -330,6 +376,8 @@ class WordpressProxy(proxybase.BlogProxy):
         return status
 
     ############################################################################ 
+    """getComment
+    """
     def getComment(self, commentid):
         blogid = self._getBlogID()
         try:
@@ -344,6 +392,8 @@ class WordpressProxy(proxybase.BlogProxy):
 
     ##################### START PRIVATE METHODS ################################
     ############################################################################ 
+    """_getBlogID
+    """
     def _getBlogID(self):
         self._getUsersBlogs()
 
@@ -355,6 +405,8 @@ class WordpressProxy(proxybase.BlogProxy):
                                    'bad name: %s' % self._blogname)
 
     ############################################################################ 
+    """_getUsersBlogs
+    """
     def _getUsersBlogs(self):
         # a little trick to avoid repeatedly calling the xmlrpc method
         # it may not be necessary, we'll figure that out later
@@ -366,6 +418,8 @@ class WordpressProxy(proxybase.BlogProxy):
                 raise proxybase.ProxyError('wp._getUsersBlogs', error)
 
     ############################################################################ 
+    """_getCommentCount
+    """
     def _getCommentCount(self, postid):
 
         blogid = self._getBlogID()

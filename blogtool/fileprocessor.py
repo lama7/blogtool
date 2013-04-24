@@ -1,5 +1,5 @@
-
 from xmlproxy.proxybase import ProxyError
+from xmlproxy import data
 import utils
 import re
 import sys
@@ -137,7 +137,12 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         else:
             html_ext = ''
 
-        return html_desc, html_ext, more_text
+        if more_text:
+            return "%s<!--more %s-->%s" % (html_desc, more_text, html_ext)
+        elif html_ext:
+            return "%s<!--more-->%s" % (html_desc, html_ext)
+        else:
+            return html_desc
 
     ############################################################################ 
     """_procHTML
@@ -407,9 +412,9 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
     def pushContent(self, post_text, header):
         rval = None
         self._blogproxy = header.proxy()
-        html_desc, html_ext, more_text = self._procContent(post_text)
+        content = self._procContent(post_text)
         if self.comment:
-            comment = utils.buildComment(header, html_desc)
+            comment = utils.buildComment(header, content)
             try:
                 if header.commentid:
                     print "Updating comment %s on %s" % (header.commentid, 
@@ -424,16 +429,29 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
             except ProxyError, err:
                 raise FileProcessorError("In FileProcessor.pushContent: %s\n" % err)
         else:
+            post = data.Post()
+
             print "Checking post categories..."
-            categories = self._procCategories(header)
+            post.categories = self._procCategories(header)
+            post.posttype = 'post'
+            post.content = content
+            post.title = header.title
+            post.tags = header.tags
+            post.excerpt = header.excerpt    
+            post.comments = 'open'
+            post.ping = 'open'
+            if self.publish:
+                post.publish = 1
+                post.status = 'publish'
+            else:
+                post.publish = 0
+                post.status = 'draft'
+            if self.posttime:
+                post.dategmt = self.posttime
+            elif header.posttime:
+                post.dategmt = header.posttime
+
             try:
-                post = utils.buildPost(header,
-                                       html_desc,
-                                       html_ext,
-                                       categories,
-                                       more_text,
-                                       timestamp = self.posttime,
-                                       publish = self.publish )
                 if header.postid:
                     print "Updating '%s' on %s..." % (header.title, header.name)
                     self._blogproxy.editPost(header.postid, post)

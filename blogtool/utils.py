@@ -1,9 +1,7 @@
-from xmlrpclib import DateTime
 from xmlproxy.proxybase import ProxyError
 
 from tempfile import NamedTemporaryFile
 
-import time
 import sys
 import os
 import subprocess
@@ -30,49 +28,6 @@ class dataStruct(object):
     pass
 
 ################################################################################
-""" _convertTime
-
-    Function that attempts to convert a date time string to a datetime object
-    in UTC time.  Defaults to assuming string is a local time representation.
-"""
-def _convertTime(timestr, local = True):
-    # List of formats to attempt to match up.
-    time_fmts = [
-                  "%Y%m%dT%H:%M",        #YYYYMMDDThh:mm
-                  "%Y%m%dT%I:%M%p",      #YYYYMMDDThh:mmAM/PM
-                  "%Y%m%dT%H:%M:%S",     #YYYYMMDDThh:mm:ss
-                  "%Y%m%dT%I:%M:%S%p",   #YYYYMMDDThh:mm:ssAM/PM
-                  "%b %d, %Y %H:%M",     #Month Day, Year hour:min
-                  "%b %d, %Y %I:%M%p",   #Month Day, Year hour:min AM/PM
-                  "%m/%d/%Y %H:%M",      #MM/DD/YYYY hh:mm
-                  "%m/%d/%Y %I:%M%p",    #MM/DD/YYYY hh:mmAM/PM
-                  "%H:%M %m/%d/%Y",      #hh:mm MM/DD/YYYY
-                  "%I:%M%p %m/%d/%Y",    #hh:mmAM/PM MM/DD/YYYY
-                ]
-
-    # the timestamp is provided as "local time" so we need to convert it to
-    # UTC time- do this by converting timestamp to seconds from epoch, then
-    # to UTC time.  Finally, pass it to xmlrpclib for formatting
-    for tf in time_fmts:
-        try:
-            timeStruct = time.strptime(timestr, tf)
-            if local:
-                utctime = time.gmtime(time.mktime(timeStruct))
-            else:
-                utctime = timeStruct
-            posttime = time.strftime("%Y%m%dT%H:%M:%SZ", utctime)
-
-            # the following merely makes the string into a xmlrpc datetime
-            # object
-            return DateTime(posttime)
-
-        except ValueError:
-            continue
-    else:
-        # the time format could not be parsed properly
-        raise UtilsError("Unable to parse timestring: %s" % timestamp)
-
-################################################################################
 """chkFile
 
     attempts to verify a file exists by checking the home directory as well as
@@ -92,8 +47,8 @@ def chkFile(file):
 
     Launches an editor
 
-    `fh`:  filehandle of file to edit
-    `hdr_string`:  optional string to write to file 
+    ``hdr_string``:  optional string to write to file 
+    ``fh``:  filehandle of file to edit
 """
 def edit(hdr_string = '', fh = None):
     editor = os.getenv('EDITOR', 'editor')
@@ -116,44 +71,6 @@ def edit(hdr_string = '', fh = None):
         return fh
     else:
         return None
-
-################################################################################
-"""buildPost
-
-    Returns a post dictionary suitable for publishing
-"""
-def buildPost(hdrobj, desc, more, categories, more_text, timestamp = None, publish = True):
-
-    postStruct = dataStruct()
-
-    if more_text:
-        postStruct.description = "%s<!--more %s-->%s" % (desc, more_text, more)
-    else:
-        postStruct.description = desc
-        postStruct.mt_text_more = more
-
-    postStruct.title = hdrobj.title
-    postStruct.categories = categories
-    postStruct.mt_keywords = hdrobj.tags
-    postStruct.mt_excerpt = hdrobj.excerpt
-    postStruct.mt_allow_comments = 1
-    postStruct.mt_allow_pings = 1
-    postStruct.mt_convert_breaks = 1
-
-    if publish:
-        postStruct.publish = 1
-    else:
-        postStruct.publish = 0
-
-    # the post can be scheduled expicitly through the timestamp parm, or
-    # via the hdrobj- precedence is given to the timestamp parm
-    if timestamp == None and hdrobj.posttime:
-        timestamp = hdrobj.posttime
-
-    if timestamp != None:
-        postStruct.dateCreated = _convertTime(timestamp)
-
-    return postStruct
 
 ################################################################################
 """buildComment
