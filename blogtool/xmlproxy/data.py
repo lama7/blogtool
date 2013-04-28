@@ -22,7 +22,7 @@ class DataError(Exception):
         return self.message
 
 ################################################################################
-"""post
+"""Post
 
     An kind of container class for post structures.  It serves to provide a
     consistent interface between the application and the actual data.
@@ -131,8 +131,19 @@ class Post(object):
 
         method that attempts to convert a date time string to a datetime object
         in UTC time.  Defaults to assuming string is a local time representation.
+
+        It's a staticmethod because it doesn't affect a `Post` instance, ie it
+        has no side-effects.  This means it can also be called directly from the
+        class.
+
+       ``timestr``:: a string object that specifies a time like 
+                     "8:00AM 12/31/2002"
+
+       ``returns``:: an XMLRPC DateTime object for the time string.
+                     Raises ``DataError`` if unable to convert ``timestr``
     """
-    def _convertTime(self, timestr):
+    @staticmethod
+    def _convertTime(timestr):
         # List of formats to attempt to match up.
         time_fmts = [
                       "%Y%m%dT%H:%M",        #YYYYMMDDThh:mm
