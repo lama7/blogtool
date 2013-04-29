@@ -400,7 +400,7 @@ class Post(object):
         return { 'native'     : native,
                  'wp'         : wp, 
                  'metaweblog' : metaweblog, }[self._type]()
-        
+
     @categories.setter
     def categories(self, value):
         self._setter('categories')(self, value)

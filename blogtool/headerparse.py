@@ -13,7 +13,6 @@ import copy
 class HeaderError(Exception):
     NAMENOTFOUND = 0
     NOCONFIGFILE = 1
-    MULTIPLEBLOGS = 2
 
     ERR_STRINGS = [
                    '''
@@ -24,9 +23,6 @@ line.  Without a configuration file, the only operation possible is posting.
 
 To perform any optional operations (deleting posts, retrieving recent titles,
 etc.) please create a ~/.btrc file.''',
-                   '''
-The rc file supplied has multiple blogs defined.  Please specify one of them
-using the -b option.''', 
                   ]
     def __init__(self, err_code):
         self.message = "HeaderError: %s" % self.ERR_STRINGS[err_code]
@@ -576,7 +572,7 @@ class Header(object):
                     pl = self._parms[self._parm_index]
                 else:
                     pl = self._parms[0]
-        
+                # now set the parameter in the parameter list's dict 
                 if name in pl.__dict__:
                     pl.__dict__[name] = value
                     return
@@ -585,7 +581,7 @@ class Header(object):
                 
     def __getattr__(self, name):
         if self._parms is None:
-            raise AttributeError
+            raise HeaderError.NOCONFIGFILE
         elif len(self._parms) == 1:
             pl = self._parms[0]
         elif self._named_parmlist:
@@ -594,8 +590,7 @@ class Header(object):
             pl = self._parms[self._parm_index]    
         else:
             raise AttributeError
-            # pl = self._parms[0]
-
+        # now perform the lookup in the parameter list's dict
         if name in pl.__dict__:
             return pl.__dict__[name]
         else:
@@ -614,8 +609,10 @@ class Header(object):
             self._parm_index += 1
         else:
             self._parm_index = None
+            self._proxy = None
             raise StopIteration
 
+        self._setProxy(self._parms[self._parm_index])
         return self
 
     def _reconcile(self, newparms):
@@ -652,7 +649,15 @@ class Header(object):
         if '_parms' in self.__dict__:
             del self._parms[:]
         self._parms = newparms
-    
+
+    def _setProxy(self, pl):
+        self._proxy = getProxy(*pl.XMLrpc)
+        self._proxy.setBlogname(pl.name)
+
+    @property
+    def proxy(self):
+        return self._proxy
+
     def debug(self):
         if self._named_parmlist:
             print "named_parm"
@@ -660,6 +665,18 @@ class Header(object):
         print "_parms:"
         for parm in self._parms:
             print parm
+
+    def setBlogParmsByName(self, name = ''):
+        if not self._parms:
+            raise HeaderError(HeaderError.NOCONFIGFILE)
+
+        for parm in self._parms:
+            if parm.name == name:
+                self._named_parmlist = parm
+                self._setProxy(self._named_parmlist)
+                break
+        else:
+            raise HeaderError(HeaderError.NAMENOTFOUND)
 
     def setDefaults(self, hdrstr):
         try:
@@ -741,32 +758,3 @@ class Header(object):
             del parmlist_copy
 
         return headertext
-
-    def setBlogParmsByName(self, name = ''):
-        if not self._parms:
-            raise HeaderError(HeaderError.NOCONFIGFILE)
-
-        for parm in self._parms:
-            if parm.name == name:
-                self._named_parmlist = parm
-                break
-        else:
-            raise HeaderError(HeaderError.NAMENOTFOUND)
-
-    def proxy(self):
-        if self._parms is None:
-            raise HeaderError(HeaderError.NOCONFIGFILE)
-        elif len(self._parms) == 1:
-            pl = self._parms[0]
-        elif self._named_parmlist:
-            pl = self._named_parmlist
-        elif self._parm_index == None:
-            raise HeaderError(HeaderError.MULTIPLEBLOGS)
-        else:
-            pl = self._parms[self._parm_index]
-
-        p = getProxy(*pl.XMLrpc)
-        p.setBlogname(pl.name)
-        return p
-
-

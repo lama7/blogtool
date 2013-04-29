@@ -111,7 +111,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         Processes the content portion of the file, running any plaintext markup
         converters.
     """
-    def _procContent(self, posttext):
+    def _procContent(self, posttext, header):
         if not MARKDOWN_PRESENT:
             print "Unable to publish post without python-markdown.  Sorry..."
             sys.exit()
@@ -131,9 +131,9 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         else:
             description = posttext
 
-        html_desc = self._procHTML(description)
+        html_desc = self._procHTML(description, header)
         if extended:
-            html_ext = self._procHTML(extended)
+            html_ext = self._procHTML(extended, header)
         else:
             html_ext = ''
 
@@ -151,7 +151,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
        this consists of uploading image files and fixing up links to the
        uploaded image. 
     """
-    def _procHTML(self, text):
+    def _procHTML(self, text, header):
 
         ######################################################################## 
         """_ptFixElement
@@ -174,7 +174,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
                 try:
                     ifile = utils.chkFile(ifile)
                     print "Attempting to upload '%s'..." % ifile
-                    res = self._blogproxy.upload(ifile)
+                    res = header.proxy.upload(ifile)
                 except utils.UtilsError, err:
                     raise FileProcessorError("File not found: %s\n" % err)
                 except ProxyError, err:
@@ -337,7 +337,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         nonCats = []
         for c in header.categories:
             try:
-                cat_list = self._blogproxy.getCategories()
+                cat_list = header.proxy.getCategories()
             except ProxyError, err:
                 raise FileProcessorError("In FileProcessor._procCategories:  %s\n" % err)
             t = utils.isBlogCategory(cat_list, c)
@@ -348,7 +348,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         if len(nonCats) == 0:
             print "Post categories OK"
         elif self.addpostcats:
-            [ utils.addCategory(self._blogproxy, *ct) for ct in nonCats ]
+            [ utils.addCategory(header.proxy, *ct) for ct in nonCats ]
         else:
             rcats = [ ct[0] for ct in nonCats ]
             print "Category '%s' is not a valid category for %s so it is being\n\
@@ -411,20 +411,19 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
     """
     def pushContent(self, post_text, header):
         rval = None
-        self._blogproxy = header.proxy()
-        content = self._procContent(post_text)
+        content = self._procContent(post_text, header)
         if self.comment:
             comment = utils.buildComment(header, content)
             try:
                 if header.commentid:
                     print "Updating comment %s on %s" % (header.commentid, 
                                                          header.name)
-                    rval = self._blogproxy.editComment(header.commentid,
-                                                       comment)
+                    rval = header.proxy.editComment(header.commentid,
+                                                    comment)
                 else:
                     print "Publishing comment to post %s..." % header.postid
-                    commentid = self._blogproxy.newComment(header.postid,
-                                                           comment)
+                    commentid = header.proxy.newComment(header.postid,
+                                                        comment)
                     rval = commentid
             except ProxyError, err:
                 raise FileProcessorError("In FileProcessor.pushContent: %s\n" % err)
@@ -454,14 +453,14 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
             try:
                 if header.postid:
                     print "Updating '%s' on %s..." % (header.title, header.name)
-                    self._blogproxy.editPost(header.postid, post)
+                    header.proxy.editPost(header.postid, post)
                 else:
                     if self.publish:
                         msg_text = "Publishing '%s' to '%s'" 
                     else:
                         msg_text = "Publishing '%s' to '%s' as a draft" 
                     print msg_text % (header.title, header.name)
-                    postid = self._blogproxy.publishPost(post)
+                    postid = header.proxy.publishPost(post)
                     rval = postid
             except utils.UtilsError, timestr:
                 raise FileProcessorError("In FileProcessor.pushContent: %s\n" %

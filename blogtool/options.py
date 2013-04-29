@@ -14,21 +14,6 @@ import datetime
 import os
 
 ################################################################################
-"""_getProxy
-
-   Wrapper function for getting a proxy object for a particular header.  Takes
-   care of the "try-except" structure.
-"""
-def _getProxy(header):
-    try:
-        p = header.proxy()
-    except HeaderError, err:
-        print err
-        sys.exit()
-
-    return p
-
-################################################################################
 """CommandLineOption
 
     Base Class for handling command line options
@@ -88,10 +73,8 @@ class DeletePost(CommandLineOption):
 
     def run(self, header, opts):
         print "Attempting to delete post %s from %s..." % (self.postid, header.name)
-
-        proxy = _getProxy(header)
         try:
-            postid = proxy.deletePost(self.postid)
+            postid = header.proxy.deletePost(self.postid)
         except ProxyError, err:
             print "Caught in options.DeletePost.run:"
             print err
@@ -127,9 +110,8 @@ class DeleteComment(CommandLineOption):
     def run(self, header, opts):
         print "Deleting comment %s" % self.comment_id
 
-        proxy = _getProxy(header)
         try:
-            postid = proxy.deleteComment(self.comment_id)
+            postid = header.proxy.deleteComment(self.comment_id)
         except ProxyError, err:
             print "Caught in options.DeleteComment.run:"
             print err
@@ -162,21 +144,16 @@ class GetRecentTitles(CommandLineOption):
     def run(self, header, opts):
         try:
             self._getRecentTitles(header)
-        except HeaderError, err:
-            if err.code != HeaderError.MULTIPLEBLOGS:
-                print err
-                sys.exit()
-            else:
-                for hdr in header:
-                    self._getRecentTitles(hdr)
+        except AttributeError:
+            for hdr in header:
+                self._getRecentTitles(hdr)
 
     def _getRecentTitles(self, header):
-        proxy = header.proxy()
         blogname = header.name
         print "\nRetrieving %s most recent posts from blog '%s'.\n" % (self.count,
                                                                      blogname)
         try:
-            recent = proxy.getRecentTitles(self.count)
+            recent = header.proxy.getRecentTitles(self.count)
         except ProxyError, err:
             print "Caught in options.GetRecentTitles.run:"
             print err
@@ -193,7 +170,6 @@ class GetRecentTitles(CommandLineOption):
                                   t_converted.strftime("%b %d, %Y at %H:%M"))
 
         return None
-
 
 ################################################################################
 """GetCategories
@@ -213,11 +189,9 @@ class GetCategories(CommandLineOption):
         return bool(opts.getcats)
 
     def run(self, header, opts):
-        proxy = _getProxy(header)
         print "Retrieving category list for '%s'." % header.name
-
         try:
-            cat_list = proxy.getCategories()
+            cat_list = header.proxy.getCategories()
         except ProxyError, err:
             print "Caught in options.GetCategories.run:"
             print err
@@ -264,16 +238,14 @@ categories using a dot notation to separate subcategories, eg
         return False
 
     def run(self, header, opts):
-        proxy = _getProxy(header)
-        blogname = header.name
-        print "Checking if category already exists on '%s'..." % (blogname)
-
         # this will check the category string to see if it is a valid blog
         # category, or partially valid if sub-categories are specified.
         # If the category exists on the blog, processing stops, otherwise
         # the first part that is not on the blog is returned
+        blogname = header.name
         try:
-            blogcats = proxy.getCategories()
+            print "Checking if category already exists on '%s'..." % (blogname)
+            blogcats = header.proxy.getCategories()
         except ProxyError, err:
             print "Caught in options.AddCategory.run:"
             print err
@@ -288,7 +260,7 @@ categories using a dot notation to separate subcategories, eg
             print "Attempting to add '%s' category to blog '%s'" % (self.catname,
                                                                    blogname)
             # the '*' is the unpacking operator
-            utils.addCategory(proxy, self.catname, *t)
+            utils.addCategory(header.proxy, self.catname, *t)
 
         return None
 
@@ -315,10 +287,9 @@ class UploadMediaFile(CommandLineOption):
 
     def run(self, header, opts):
         try:
-            proxy = _getProxy(header)
             uf = utils.chkFile(self.uploadfile)
             print "Attempting to upload '%s'..." % uf
-            res = proxy.upload(uf)
+            res = header.proxy.upload(uf)
         except utils.UtilsError, err:
             print "File not found: %s" % err
         except ProxyError, err:
@@ -361,10 +332,9 @@ updating with blogtool.
             print "Option not supported without python-lxml library."
             return
 
-        proxy = _getProxy(header)
         try:
-            post = proxy.getPost(self.postid)
-            self.blogcats = proxy.getCategories()
+            post = header.proxy.getPost(self.postid)
+            self.blogcats = header.proxy.getCategories()
         except ProxyError, err:
             print "Caught in options.GetPost.run:"
             print err
@@ -482,9 +452,7 @@ Retrieves the comments for post POSTID.
         return False
 
     def run(self, header, opts):
-        proxy = _getProxy(header)
-
-        comments = proxy.getComments(self.postid)
+        comments = header.proxy.getComments(self.postid)
         comments.reverse()
         for comment in comments:
             t_converted = datetime.datetime.strptime(comment['date_created_gmt'].value,
@@ -500,7 +468,6 @@ Retrieves the comments for post POSTID.
 
             content = html2md.convert(comment['content'])
             print output + '\n' + content
-
         return None
 
 ################################################################################
@@ -528,8 +495,7 @@ be edited, for instance to approve a comment held in moderation.
         return False
 
     def run(self, header, opts):
-        proxy = _getProxy(header)
-        comment = proxy.getComment(self.commentid)
+        comment = header.proxy.getComment(self.commentid)
         commenttext = "COMMENTID: %s\n" % (self.commentid)
         commenttext += "PARENTID: %s\n" % (comment['parent'])
         commenttext += "COMMENTSTATUS: %s\n" % (comment['status'])
@@ -660,11 +626,7 @@ to a name in ~/.btrc or a config file specified on the command line.
         return False
 
     def run(self, header, opts):
-        try:
-            header.setBlogParmsByName(self.blogname)
-        except HeaderError, err:
-            print err
-            sys.exit()
+        header.setBlogParmsByName(self.blogname)
         return None
 
 ################################################################################
@@ -825,7 +787,6 @@ class GetVersion(CommandLineOption):
         print "blogtool version  %s" % __version__
         return None
 
-
 ################################################################################
 """OptionProcessor
     
@@ -877,7 +838,14 @@ class OptionProcessor(object):
         rval = False
         for option in self.o_list:
             if option.check(self.opts):
-                if option.run(header, self.opts) == 'runeditor':
-                     rval = True
+                try:
+                    if option.run(header, self.opts) == 'runeditor':
+                        rval = True
+                except AttributeError:
+                    print "You must specify a blog using the -b option."
+                    sys.exit()
+                except HeaderError, err:
+                    print err
+                    sys.exit()
 
         return rval
