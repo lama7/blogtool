@@ -335,11 +335,11 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
         # first, build a list of catgories that aren't on the blog from the
         # post's category list
         nonCats = []
+        try:
+            cat_list = header.proxy.getCategories()
+        except ProxyError, err:
+            raise FileProcessorError("In FileProcessor._procCategories:  %s\n" % err)
         for c in header.categories:
-            try:
-                cat_list = header.proxy.getCategories()
-            except ProxyError, err:
-                raise FileProcessorError("In FileProcessor._procCategories:  %s\n" % err)
             t = utils.isBlogCategory(cat_list, c)
             if t != None:
                 nonCats.append((c,) + t)
