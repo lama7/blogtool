@@ -63,68 +63,47 @@ class Post(object):
                         'tags'       : 'mt_keywords', }
 
     def __init__(self, data = None, type = 'native'):
-
         if data != None:
             if type not in self._supported_types:
                 raise DataError("Post object type '%s' not supported." % type)
         self._data = data
         self._type = type
 
-    ############################################################################
-    """_getter
-
-        Returns a closure of a function designed to return a public attribute
-        value.  The closure is made based on the attribute name, which will be
-        returned from either a properly interpreted internal dict called
-        ``_data`` or will be returned from an internl version of the attribute
-        which has an identical name prepended with an ``_`` character.
-
-        It is meant to be used to on attributes decorated with the ``property``
-        decorator so the attributes don't look like methods to the caller.
-
-        ``attr``:: name of the attribute to close the ``_get`` function over.
-                   This is the public name of the attribute.
-
-        ``returns``: closure of ``_get`` function.
-    """
-    @staticmethod
-    def _getter(attr):
-        def _get(self):
-            def native():
-                return getattr(self, "_%s" % attr)
-            def wp():
-                return self._data[self._wp_map[attr]]
-            def metaweblog():
-                return self._data[self._metaweblog_map[attr]]
+    def __getattr__(self, name):
+        if name in ['id', 'title', 'dategmt', 'status', 'posttype', 'author',
+                    'excerpt', 'comments', 'ping', ]:
+            def native(n):
+                return getattr(self, "_%s" % n)
+            def wp(n):
+                return self._data[self._wp_map[n]]
+            def metaweblog(n):
+                return self._data[self._metaweblog_map[n]]
 
             return { 'native'     : native,
                      'wp'         : wp,
-                     'metaweblog' : metaweblog, }[self._type]()
+                     'metaweblog' : metaweblog, }[self._type](name)
+        else:
+            raise AttributeError
 
-        return _get
+    ############################################################################
+    """__setattr__
 
-    ############################################################################ 
-    """_setter
-
-        Creates a closure of a function designed to set an internal attribute
-        value that maps to a public value.  **Only** internal attribute setting
-        is supported.  If the object is not of type ``native`` then a
-        ``ValueError`` exception is raised when trying to set a value.
-
-        ``attr``:: name of attribute to set.  Note that an internal version of
-                   this name will be created.  The actual name of the attribute
-                   is a method disguised as an attribute by the property
-                   decorator.
-
-        ``returns``:: closure of ``_set`` function over the attribute name
+        What's convenient here is that __setattr__ is _always_ called when
+        setting an attribute, as opposed to __getattr__ above which is only
+        called if the attribute isn't found by normal means.
     """
-    @staticmethod
-    def _setter(attr):
-        def _set(self, value):
+    def __setattr__(self, name, value):
+        if name in ['id', 'title', 'status', 'posttype', 'author', 'excerpt',
+                    'comments', 'ping', 'content', 'categories', 'tags' ]:
             if self._type != 'native':
                 raise ValueError
-            setattr(self, "_%s" % attr, value)
-        return _set
+            object.__setattr__(self, "_%s" % name, value)
+        elif name is 'dategmt':
+            object.__setattr__(self, 
+                                    "_%s" % name,
+                                    self._convertTime(value))
+        else:
+            object.__setattr__(self, name, value)
 
     ################################################################################
     """_convertTime
@@ -215,105 +194,6 @@ class Post(object):
         return post
         
     ############################################################################
-    """id
-    """
-    @property
-    def id(self):
-        return self._getter('id')(self)
-
-    @id.setter
-    def id(self, value):
-        self._setter('id')(self, value)
- 
-    ############################################################################
-    """title
-    """
-    @property
-    def title(self):
-        return self._getter('title')(self)
-
-    @title.setter
-    def title(self, value):
-        self._setter('title')(self, value)
- 
-    ############################################################################
-    """dategmt
-    """
-    @property
-    def dategmt(self):
-        return self._getter('dategmt')(self)
-
-    @dategmt.setter
-    def dategmt(self, value):
-        self._setter('dategmt')(self, self._convertTime(value))
- 
-    ############################################################################
-    """status
-    """
-    @property
-    def status(self):
-        return self._getter('status')(self)
-
-    @status.setter
-    def status(self, value):
-        self._setter('status')(self, value)
-
-    ############################################################################
-    """posttype
-    """
-    @property
-    def posttype(self):
-        return self._getter('posttype')(self)
-
-    @posttype.setter
-    def posttype(self, value):
-        self._setter('posttype')(self, value)
-
-    ############################################################################
-    """author
-    """
-    @property
-    def author(self):
-        return self._getter('author')(self)
-
-    @author.setter
-    def author(self, value):
-        self._setter('author')(self, value)
-
-    ############################################################################
-    """excerpt
-    """
-    @property
-    def excerpt(self):
-        return self._getter('excerpt')(self)
-
-    @excerpt.setter
-    def excerpt(self, value):
-        self._setter('excerpt')(self, value)
-
-    ############################################################################
-    """comments
-    """
-    @property
-    def comments(self):
-        return self._getter('comments')(self)
-
-    @comments.setter
-    def comments(self, value):
-        self._setter('comments')(self, value)
-
-    ############################################################################
-    """ping
-    """
-    @property
-    def ping(self):
-        return self._getter('ping')(self)
-
-    @ping.setter
-    def ping(self, value):
-        self._setter('ping')(self, value)
-
-    ############################################################################
     """publish
     """
     @property
@@ -375,10 +255,6 @@ class Post(object):
                  'wp'         : wp,
                  'metaweblog' : metaweblog, }[self._type]()
 
-    @content.setter
-    def content(self, value):
-        self._setter('content')(self, value)
-
     ############################################################################
     """categories
     """
@@ -386,24 +262,18 @@ class Post(object):
     def categories(self):
         def native():
             return self._categories
-
         def wp():
             cats = []
             for term in self._data['terms']:
                 if term['taxonomy'] == 'category':
                     cats.append(term['name'])
             return cats
-
         def metaweblog():
             return self._data['categories']
 
         return { 'native'     : native,
                  'wp'         : wp, 
                  'metaweblog' : metaweblog, }[self._type]()
-
-    @categories.setter
-    def categories(self, value):
-        self._setter('categories')(self, value)
 
     ############################################################################
     """tags
@@ -412,7 +282,6 @@ class Post(object):
     def tags(self):
         def native():
             return self._tags
-
         def wp():
             tags = ''
             for term in self._data['terms']:
@@ -421,7 +290,6 @@ class Post(object):
                         tags += ', '
                     tags += term['name']
             return tags
-
         def metaweblog():
             return self._data['mt_keywords']
 
@@ -429,6 +297,3 @@ class Post(object):
                  'wp'         : wp,
                  'metaweblog' : metaweblog, }[self._type]()
  
-    @tags.setter
-    def tags(self, value):
-        self._setter('tags')(self, value)
