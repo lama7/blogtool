@@ -50,37 +50,42 @@ class HeaderParseError(Exception):
 """    
 class HeaderParms(object):
 
+    _parms = {
+                 'title'         : '',
+                 'categories'    : [],
+                 'tags'          : [],
+                 'postid'        : '',
+                 'posttime'      : '',
+                 'name'          : '',
+                 'blogtype'      : '',
+                 'xmlrpc'        : '',
+                 'username'      : '',
+                 'password'      : '',
+                 'commentstatus' : '',
+                 'commentid'     : '',
+                 'parentid'      : '',
+                 'author'        : '',
+                 'authorurl'     : '',
+                 'authoremail'   : '',
+                 'excerpt'       : '',
+             }
+
     def __init__(self):
-        self.title = ''
-        self.categories = []
-        self.tags = []
-        self.postid = ''
-        self.posttime = ''
-        self.name = ''
-        self.blogtype = ''
-        self.xmlrpc = ''
-        self.username = ''
-        self.password = ''
-        self.commentstatus = ''
-        self.commentid = ''
-        self.parentid = ''
-        self.author = ''
-        self.authorurl = ''
-        self.authoremail = ''
-        self.excerpt = ''
+        for a,v in self._parms.iteritems():
+            setattr(self, a, v)
 
     def __str__(self):
-        l = ["%s:  %s" % (attr, val) for attr, val in self.__dict__.iteritems()]
+        l = ["%s:  %s" % (attr, getattr(self, attr)) for attr, val in self._parms.keys()]
         return '\n'.join(l) + '\n'
 
     def __contains__(self, item):
-        if item in self.__dict__:
+        if hasattr(self, item):
             return True
         else:
             return False
 
     def get(self, name):
-        rval = self.__dict__[name]
+        rval = getattr(self, name)
         if rval == '' or (type(rval) == types.ListType and len(rval) == 0):
             return None
 
@@ -112,7 +117,7 @@ class HeaderParms(object):
     
     @property
     def parmDict(self):
-        return self.__dict__
+        return { k: getattr(self, k) for k in self._parms.keys() }
 
 ################################################################################
 """Keyword
@@ -561,8 +566,8 @@ class Header(object):
         self._parms = None
 
     def __setattr__(self, name, value):
-        if '_parms' in self.__dict__ and ('_parm_index' in self.__dict__ or
-                                          '_named_parmlist' in self.__dict__):
+        if hasattr(self, '_parms') and (hasattr(self, '_parm_index') or
+                                        hasattr(self, '_named_parmlist')):
             if self._parms:
                 if len(self._parms) == 1:
                     pl = self._parms[0]
@@ -573,11 +578,11 @@ class Header(object):
                 else:
                     pl = self._parms[0]
                 # now set the parameter in the parameter list's dict 
-                if name in pl.__dict__:
-                    pl.__dict__[name] = value
+                if hasattr(pl, name):
+                    setattr(pl, name, value)
                     return
 
-        self.__dict__[name] = value        
+        object.__setattr__(self, name, value)
                 
     def __getattr__(self, name):
         if self._parms is None:
@@ -590,9 +595,9 @@ class Header(object):
             pl = self._parms[self._parm_index]    
         else:
             raise AttributeError
-        # now perform the lookup in the parameter list's dict
-        if name in pl.__dict__:
-            return pl.__dict__[name]
+        # if the parameter is in the parameter list, return it
+        if hasattr(pl, name):
+            return getattr(pl, name)
         else:
             raise AttributeError
 
@@ -617,7 +622,7 @@ class Header(object):
 
     def _reconcile(self, newparms):
         def _merge(default_parmlist, parmlist):
-            for (k, v) in parmlist.__dict__.iteritems():
+            for (k, v) in parmlist.parmDict.iteritems():
                 if k in ['categories', 'tags']:
                     if len(v) != 0:
                         continue
@@ -646,7 +651,7 @@ class Header(object):
 
                 _merge(default_parmlist, parmlist)
 
-        if '_parms' in self.__dict__:
+        if hasattr(self, '_parms'):
             del self._parms[:]
         self._parms = newparms
 
@@ -708,9 +713,9 @@ class Header(object):
 
     def buildPostHeader(self, options):
         def pl2text(pl):
-            text = ': \n'.join([attrname.upper() for attrname in pl.__dict__ \
-                                if not pl.get(attrname) and \
-                                   attrname in req_parms])
+            text = ': \n'.join([attrname.upper() for attrname in pl.parmDict \
+                                                   if not pl.get(attrname) and \
+                                                      attrname in req_parms])
             if text != '':
                 text += ': \n'
             if flags['comment']:
