@@ -339,6 +339,14 @@ Following are command line options that can be specified for `blogtool`:
 +   --charset=CHARSET  
     Set the CHARSET to use to decode text prior to running it through markdown.
 
++   --posttype=POSTTYPE  
+    By default, post file content is published as a post to a blog so this
+    option is not normally needed (in other words, `--posttype=post` is
+    redundant)  Wordpress blogs also support a __page__ type as well, in which
+    case the content is published as a page to the blog, rather than as a post
+    entry on the main page.  Note this also will support other page types, but
+    they must be registered with the blog software.
+
 +   -D COMMENTID, --deletecomment=COMMENTID  
     Delete COMMENTID from a blog.
 
