@@ -432,7 +432,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
 
             print "Checking post categories..."
             post.categories = self._procCategories(header)
-            post.posttype = 'post'
+            post.posttype = self.posttype or 'post'
             post.content = content
             post.title = header.title
             post.tags = header.tags

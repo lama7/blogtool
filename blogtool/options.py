@@ -765,7 +765,35 @@ markdown.
             return False
 
     def run(self, header, opts):
-        header.charset = self.charset
+        return 'runeditor' 
+
+################################################################################
+"""SetPostType
+
+    Option to set the encoding for text in a blog post.
+"""
+class SetPostType(CommandLineOption):
+    args = ('--posttype', )
+    kwargs = {
+              'action' : 'store',
+              'dest' : 'posttype',
+              'metavar' : 'POSTTYPE',
+              'help' : '''
+Set the post type when publishing a post file.  By default, POSTTYPE is 'post'
+and is not normally needed.  For Wordpress, 'page' is a valid post type and may
+be specified on the command line if publishing the content as its own page on a
+blog.
+'''
+             }
+
+    def check(self, opts):
+        if opts.posttype:
+            self.posttype = opts.posttype
+            return True
+        else:
+            return False
+
+    def run(self, header, opts):
         return 'runeditor' 
 
 ################################################################################
@@ -804,6 +832,7 @@ class OptionProcessor(object):
         self.o_list.append(SetAllBlogs())
         self.o_list.append(SetPostComment())
         self.o_list.append(SetCharset())
+        self.o_list.append(SetPostType())
         self.o_list.append(DeletePost())
         self.o_list.append(DeleteComment())
         self.o_list.append(GetRecentTitles())
@@ -832,6 +861,7 @@ class OptionProcessor(object):
                 'allblogs'    : self.opts.allblogs,
                 'comment'     : self.opts.comment,
                 'charset'     : self.opts.charset,
+                'posttype'    : self.opts.posttype,
                }
 
     def check(self, header):
