@@ -3,9 +3,88 @@
 Change Log
 ==========
 
+Latest Version 1.2.0
+--------------------
 
-Latest Version: 1.1.2
----------------------
+by Gerry LaMontagne
+
+Minor rev change because of internal modifications.  Wordpress proxy now uses
+Wordpress XMLRPC methods for all blog interactions and falls back to prior
+methods if they fail.  This should maintain compatability with older Wordpress
+installs.
+
+- *README.md*
+
+  + Minor grammatical and syntax fixes.
+  + Added documentation of ``posttype`` option.
+
+- *blogtool/__version__.py*
+
+  + Bumped minor revision
+
+- *blogtool/fileprocessor.py*
+
+  + Uses new post data object.
+  + New usage of proxy by invoking directly through the header object.
+  + Saved time processing categories by removing unnecessary redundant calls to
+  getCategories.
+  + Report returned ID of published content.
+
+- *blogtool/headerparse.py*
+
+  + Eliminated usage of ``self.__dict__`` and replaced with ``hasattr``,
+  ``setattr`` or ``getattr`` wherever possible.
+  + Use ``@property`` decorator for several object attributes.
+  + All classes are now "new" classes compliant, subclassing Python ``object``
+  class.
+  + Header objects are now responsible for setting the proxy object, since all
+  the information is readily available in the ``header`` object.
+
+- *blogtool/html2md.py*
+
+  + All classes are now "new" classes compliant, subclassing Python ``object``
+  class.
+  + Fixed bug when converting post with ``more``.
+
+- *blogtool/options.py*
+
+  + All classes are now "new" classes compliant, subclassing Python ``object``
+  class.
+  + Eliminated helper ``_getProxy`` function and use proxy directly through
+  ``header`` object.
+  + Make use of new ``post`` class when retrieving posts.
+  + Added ``posttype`` option.
+
+- *blogtool/utils.py*
+
+  + ``ConvertTime`` function now moved to *blogtool/xmlproxy/data.py* module.
+  + ``buildPost`` function eliminated.
+
+- *blogtool/xmlproxy/data.py*
+
+  + Created module to house certain data classes.  For now, ``post`` data
+  class is all that's here.  It provides a unified interface to post objects
+  attributes such as ``categories`` or ``content``.
+
+- *blogtool/xmlproxy/wp_proxy*
+
+  + All methods now try to first use Wordpress specific XMLRPC calls.  Where
+  applicable, will silently fallback to prior XMLRPC calls.
+
+- *doc/source/commandline.rst*
+
+  + Added ``posttype`` option documentation.
+
+- *doc/source/usage.rst*
+
+  + Fixed typos and grammar mistakes.
+
+- *doc/source/changelog.rst*
+
+  + Updated with latest modifications
+
+Version: 1.1.2
+--------------
 
 by Gerry LaMontagne
 

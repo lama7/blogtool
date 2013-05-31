@@ -73,6 +73,11 @@ Following are command line options that can be specified for blogtool_:
 | --charset=CHARSET               | Set the *CHARSET* to use to decode text prior to running it through     |
 |                                 | markdown. `\*`_                                                         |
 +---------------------------------+-------------------------------------------------------------------------+
+| --posttype=POSTTYPE             | By default, content is published to posts on main page of a blog, so    |
+|                                 | this option is not needed.  Setting this option to "page" will cause    |
+|                                 | the content to be published to it's own page on the blog.  Normal       |
+|                                 | content files can be used to create blog pages this way. `\*`_          |
++---------------------------------+-------------------------------------------------------------------------+
 | -D *COMMENTID*,                 | Delete *COMMENTID* from a blog. `\*`_                                   |
 | --deletecomment= *COMMENTID*    |                                                                         | 
 +---------------------------------+-------------------------------------------------------------------------+

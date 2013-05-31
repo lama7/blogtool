@@ -44,13 +44,13 @@ To post a file and make sure that all categories are added to the blog::
 
 Any categories specified in the file will now be added to the blog automatically
 if they are not already valid categories.  The default is not to do so in the
-case of typos, in which case the default category for the blog is will be used.
+case of typos, in which case the default category for the blog will be used.
 
 To manually add a new category to a blog::
 
     > bt -n cat.subcat1.subcat2
 
-Catgories can be supplied as a hierarchy by using a dotted notation as above.
+Categories can be supplied as a hierarchy by using a dotted notation as above.
 All necessary categories will be added to the blog to fulfill the command.  So
 if all 3 categories are new, 3 new categories will be added.  If only the final
 ``subcat2`` is new, that is the only new one created with it's parent being
@@ -102,8 +102,8 @@ To write a comment::
 
 This command will result in an editor being opened with a header setup for a
 comment.  The comment will be associated with post ID 12345 and will be in reply
-to comment 67890.  If just writing a comment that isn't doesn't need to be a
-reply, just use 0 as the comment ID::
+to comment 67890.  If writing a comment that isn't a reply to another comment,
+just use 0 as the reply comment ID::
 
     > bt --comment 12345 0
 
