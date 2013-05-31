@@ -461,6 +461,7 @@ FileProcessor._getHeaderandContent: No text for post, aborting.
                         msg_text = "Publishing '%s' to '%s' as a draft" 
                     print msg_text % (header.title, header.name)
                     postid = header.proxy.publishPost(post)
+                    print "Content published with ID %s." % postid
                     rval = postid
             except utils.UtilsError, timestr:
                 raise FileProcessorError("In FileProcessor.pushContent: %s\n" %
